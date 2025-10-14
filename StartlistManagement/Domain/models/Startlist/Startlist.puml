@@ -1,0 +1,238 @@
+@startuml Startlist Aggregate
+
+!define AGGREGATE_COLOR #FFE6CC
+!define COMMAND_COLOR #CCE5FF
+!define EVENT_COLOR #FFE6CC
+!define SIDE_EFFECT_COLOR #FFB3B3
+
+package "スタートリスト管理コンテキスト" {
+    
+    class Startlist <<Aggregate Root>> {
+        - id: StartlistId
+        - settings: StartlistSettings
+        - laneAssignments: List<LaneAssignment>
+        - classAssignments: List<ClassAssignment>
+        - startTimes: List<StartTime>
+        - status: StartlistStatus
+        
+        + enterSettings(settings: StartlistSettings): void
+        + assignLaneOrderAndIntervals(laneAssignments: List<LaneAssignment>): void
+        + assignPlayerOrderAndIntervals(classAssignments: List<ClassAssignment>): void
+        + assignStartTimes(startTimes: List<StartTime>): void
+        + finalizeStartlist(): void
+        + manuallyReassignLaneOrder(laneAssignments: List<LaneAssignment>): void
+        + manuallyFinalizeClassStartOrder(classAssignments: List<ClassAssignment>): void
+        + invalidateStartTimes(reason: String): void
+    }
+    
+    ' コマンド（青い付箋）
+    class EnterStartlistSettingsCommand <<Command>> {
+        + settings: StartlistSettings
+    }
+    
+    class AssignLaneOrderCommand <<Command>> {
+        + laneAssignments: List<LaneAssignment>
+    }
+    
+    class AssignPlayerOrderCommand <<Command>> {
+        + classAssignments: List<ClassAssignment>
+    }
+    
+    class AssignStartTimesCommand <<Command>> {
+        + startTimes: List<StartTime>
+    }
+    
+    class FinalizeStartlistCommand <<Command>> {
+    }
+    
+    class ManuallyReassignLaneOrderCommand <<Command>> {
+        + laneAssignments: List<LaneAssignment>
+    }
+    
+    class ManuallyFinalizeClassStartOrderCommand <<Command>> {
+        + classAssignments: List<ClassAssignment>
+    }
+    
+    class InvalidateStartTimesCommand <<Command>> {
+        + reason: String
+    }
+    
+    ' イベント（オレンジの付箋）
+    class StartlistSettingsEnteredEvent <<Event>> {
+        + settings: StartlistSettings
+        + timestamp: DateTime
+    }
+    
+    class LaneOrderAndIntervalsAssignedEvent <<Event>> {
+        + laneAssignments: List<LaneAssignment>
+        + timestamp: DateTime
+    }
+    
+    class PlayerOrderAndIntervalsAssignedEvent <<Event>> {
+        + classAssignments: List<ClassAssignment>
+        + timestamp: DateTime
+    }
+    
+    class StartTimesAssignedEvent <<Event>> {
+        + startTimes: List<StartTime>
+        + timestamp: DateTime
+    }
+    
+    class StartlistFinalizedEvent <<Event>> {
+        + finalStartlist: Startlist
+        + timestamp: DateTime
+    }
+    
+    class LaneOrderManuallyReassignedEvent <<Event>> {
+        + laneAssignments: List<LaneAssignment>
+        + timestamp: DateTime
+    }
+    
+    class ClassStartOrderManuallyFinalizedEvent <<Event>> {
+        + classAssignments: List<ClassAssignment>
+        + timestamp: DateTime
+    }
+    
+    ' ドメインイベント
+    class StartTimesInvalidatedEvent <<Event>> {
+        + reason: String
+        + timestamp: DateTime
+    }
+    
+    ' 値オブジェクト
+    class StartlistSettings {
+        + eventId: EventId
+        + startTime: DateTime
+        + interval: TimeSpan
+        + laneCount: int
+    }
+    
+    class LaneAssignment {
+        + laneNumber: int
+        + classOrder: List<ClassId>
+        + interval: TimeSpan
+    }
+    
+    class ClassAssignment {
+        + classId: ClassId
+        + playerOrder: List<PlayerId>
+        + interval: TimeSpan
+    }
+    
+    class StartTime {
+        + playerId: PlayerId
+        + startTime: DateTime
+        + laneNumber: int
+    }
+    
+    enum StartlistStatus {
+        DRAFT
+        SETTINGS_ENTERED
+        LANE_ORDER_ASSIGNED
+        PLAYER_ORDER_ASSIGNED
+        START_TIMES_ASSIGNED
+        FINALIZED
+    }
+    
+    ' コマンドから集約への関係
+    EnterStartlistSettingsCommand --> Startlist : "enterSettings()"
+    AssignLaneOrderCommand --> Startlist : "assignLaneOrderAndIntervals()"
+    AssignPlayerOrderCommand --> Startlist : "assignPlayerOrderAndIntervals()"
+    AssignStartTimesCommand --> Startlist : "assignStartTimes()"
+    FinalizeStartlistCommand --> Startlist : "finalizeStartlist()"
+    ManuallyReassignLaneOrderCommand --> Startlist : "manuallyReassignLaneOrder()"
+    ManuallyFinalizeClassStartOrderCommand --> Startlist : "manuallyFinalizeClassStartOrder()"
+    InvalidateStartTimesCommand --> Startlist : "invalidateStartTimes()"
+    
+    ' 集約からイベントへの関係
+    Startlist --> StartlistSettingsEnteredEvent : "publishes"
+    Startlist --> LaneOrderAndIntervalsAssignedEvent : "publishes"
+    Startlist --> PlayerOrderAndIntervalsAssignedEvent : "publishes"
+    Startlist --> StartTimesAssignedEvent : "publishes"
+    Startlist --> StartlistFinalizedEvent : "publishes"
+    Startlist --> LaneOrderManuallyReassignedEvent : "publishes"
+    Startlist --> ClassStartOrderManuallyFinalizedEvent : "publishes"
+    Startlist --> StartTimesInvalidatedEvent : "publishes"
+    
+    ' 調停（プロセスマネージャ）による因果連鎖（購読→判断→コマンド発行）
+    package "Coordination (Process)" {
+      class StartlistProcessManager <<ProcessManager>>
+    }
+    LaneOrderManuallyReassignedEvent ..> StartlistProcessManager : subscribed
+    ClassStartOrderManuallyFinalizedEvent ..> StartlistProcessManager : subscribed
+    StartlistProcessManager ..> InvalidateStartTimesCommand : decides & sends
+    
+    ' 値オブジェクトの関係
+    Startlist --> StartlistSettings : "contains"
+    Startlist --> LaneAssignment : "contains"
+    Startlist --> ClassAssignment : "contains"
+    Startlist --> StartTime : "contains"
+    Startlist --> StartlistStatus : "has"
+
+}
+
+note bottom of Startlist
+  スタートリスト集約の責務：
+  1. 設定・レーン割当・クラス内順・スタート時刻の管理
+  2. 手動再割当と確定の制御
+
+  {invariant}
+  - Finalize の前提:
+    settings 入力済み AND
+    レーン内クラス順・間隔確定 AND
+    クラス内選手順・間隔確定 AND
+    スタート時刻割当て完了
+  - status = FINALIZED のとき、割当・順序の変更は不可
+
+  {operation rules}
+  - manuallyReassignLaneOrder(): 変更時は既存 startTimes を必ず無効化（全体 or 影響範囲）
+  - manuallyFinalizeClassStartOrder(): 変更時は既存 startTimes を必ず無効化（全体 or 影響範囲）
+  - assignStartTimes(): 再計算は明示コマンドのみ（自動トリガーなし）
+end note
+
+note bottom of StartlistSettings
+  制約：
+  - startTime は一貫したタイムゾーンで扱う（Zoned）
+  - laneCount >= 1
+  - interval は正の時間（> 0、クラス間のデフォルト間隔）
+end note
+
+note bottom of LaneAssignment
+  {invariant}
+  - laneNumber は 1..StartlistSettings.laneCount
+  - classOrder は同一レーン内で重複禁止
+  - classOrder の順序は 1..n の連番（欠番なし）
+  - interval は正の時間（> 0、次クラス開始までの間隔）
+end note
+
+note bottom of ClassAssignment
+  {invariant}
+  - playerOrder は重複禁止
+  - order は 1..m の連番（欠番なし）
+  - interval は選手間デフォルト間隔、正の時間（> 0）
+end note
+
+note bottom of StartTime
+  startTime は日付跨ぎを許容（深夜帯の大会等）
+end note
+
+note bottom of StartlistStatus
+  DRAFT → SETTINGS_ENTERED → LANE_ORDER_ASSIGNED → PLAYER_ORDER_ASSIGNED → START_TIMES_ASSIGNED → FINALIZED
+  （途中状態をスキップする場合も、Finalize 前提は満たすこと）
+end note
+
+note bottom of StartTimesInvalidatedEvent
+  集約のコマンド実行結果として発生するドメインイベント。
+  手動でのレーン順変更やクラス順確定により
+  既存のスタート時刻が無効化される場合に発行される。
+  因果関係の調停は集約外の StartlistProcessManager が担当。
+end note
+
+legend left
+  <<Aggregate Root>>: 一貫性境界
+  <<Event>>: 既に起きた重要事実（過去形）
+  <<Command>>: 意図・要求（命令形/動詞句）
+  <<ProcessManager>>: イベント購読→判断→コマンド発行の調停
+endlegend
+
+@enduml
