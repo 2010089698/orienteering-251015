@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, test } from '@jest/globals';
+import { describe, test } from 'vitest';
 
 import { DomainError } from '../../common/DomainError.js';
 import { DomainEvent } from '../../common/DomainEvent.js';

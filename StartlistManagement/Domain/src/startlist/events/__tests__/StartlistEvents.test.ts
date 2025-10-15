@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from '@jest/globals';
+import { test } from 'vitest';
 
 import { ClassAssignment } from '../../../startlist/ClassAssignment.js';
 import { Duration } from '../../../startlist/Duration.js';
