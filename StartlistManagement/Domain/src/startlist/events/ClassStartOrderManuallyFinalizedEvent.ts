@@ -3,10 +3,13 @@ import { ClassAssignment } from '../ClassAssignment';
 
 export class ClassStartOrderManuallyFinalizedEvent implements DomainEvent {
   readonly type = 'ClassStartOrderManuallyFinalizedEvent';
+  public readonly occurredAt: Date;
 
   constructor(
     public readonly startlistId: string,
     public readonly classAssignments: ReadonlyArray<ClassAssignment>,
-    public readonly occurredAt: Date,
-  ) {}
+    occurredAt: Date,
+  ) {
+    this.occurredAt = new Date(occurredAt.getTime());
+  }
 }
