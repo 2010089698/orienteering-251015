@@ -95,8 +95,8 @@ export class Startlist {
   }
 
   pullDomainEvents(): DomainEvent[] {
-    const events = [...this.pendingEvents];
-    this.pendingEvents = [];
+    const events = this.pendingEvents.slice();
+    this.pendingEvents.length = 0;
     return events;
   }
 
