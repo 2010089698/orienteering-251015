@@ -141,11 +141,19 @@ export class Startlist {
     if (startTimes.length === 0) {
       throw new DomainError('At least one start time must be provided.');
     }
+    const allowedPlayerIds = new Set<string>(
+      this.classAssignments.flatMap((assignment) => assignment.playerOrder),
+    );
     const playerIds = new Set<string>();
     const laneCount = this.settings!.laneCount;
     startTimes.forEach((startTime) => {
       if (playerIds.has(startTime.playerId)) {
         throw new DomainError('Start times must be unique per player.');
+      }
+      if (!allowedPlayerIds.has(startTime.playerId)) {
+        throw new DomainError(
+          `Player ${startTime.playerId} does not have a class assignment and cannot receive a start time.`,
+        );
       }
       if (startTime.laneNumber > laneCount) {
         throw new DomainError('Start time lane number exceeds configured lane count.');
