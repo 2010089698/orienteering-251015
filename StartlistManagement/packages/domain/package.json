@@ -1,0 +1,12 @@
+{
+  "name": "@startlist-management/domain",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
+  }
+}

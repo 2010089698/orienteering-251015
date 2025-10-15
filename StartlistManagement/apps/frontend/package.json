@@ -1,0 +1,13 @@
+{
+  "name": "@startlist-management/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.ts",
+  "dependencies": {
+    "@startlist-management/ui-components": "file:../../packages/ui-components"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
+  }
+}
