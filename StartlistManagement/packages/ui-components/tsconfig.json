@@ -3,7 +3,10 @@
   "compilerOptions": {
     "composite": true,
     "declaration": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Node"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
