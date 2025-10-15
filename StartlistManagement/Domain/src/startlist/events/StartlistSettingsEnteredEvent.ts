@@ -3,10 +3,13 @@ import { StartlistSettings } from '../StartlistSettings';
 
 export class StartlistSettingsEnteredEvent implements DomainEvent {
   readonly type = 'StartlistSettingsEnteredEvent';
+  public readonly occurredAt: Date;
 
   constructor(
     public readonly startlistId: string,
     public readonly settings: StartlistSettings,
-    public readonly occurredAt: Date,
-  ) {}
+    occurredAt: Date,
+  ) {
+    this.occurredAt = new Date(occurredAt.getTime());
+  }
 }

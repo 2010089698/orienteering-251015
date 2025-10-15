@@ -3,10 +3,13 @@ import { LaneAssignment } from '../LaneAssignment';
 
 export class LaneOrderManuallyReassignedEvent implements DomainEvent {
   readonly type = 'LaneOrderManuallyReassignedEvent';
+  public readonly occurredAt: Date;
 
   constructor(
     public readonly startlistId: string,
     public readonly laneAssignments: ReadonlyArray<LaneAssignment>,
-    public readonly occurredAt: Date,
-  ) {}
+    occurredAt: Date,
+  ) {
+    this.occurredAt = new Date(occurredAt.getTime());
+  }
 }

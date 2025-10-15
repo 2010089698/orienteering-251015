@@ -3,10 +3,13 @@ import { StartTime } from '../StartTime';
 
 export class StartTimesAssignedEvent implements DomainEvent {
   readonly type = 'StartTimesAssignedEvent';
+  public readonly occurredAt: Date;
 
   constructor(
     public readonly startlistId: string,
     public readonly startTimes: ReadonlyArray<StartTime>,
-    public readonly occurredAt: Date,
-  ) {}
+    occurredAt: Date,
+  ) {
+    this.occurredAt = new Date(occurredAt.getTime());
+  }
 }

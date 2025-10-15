@@ -3,10 +3,13 @@ import { StartlistSnapshot } from '../StartlistSnapshot';
 
 export class StartlistFinalizedEvent implements DomainEvent {
   readonly type = 'StartlistFinalizedEvent';
+  public readonly occurredAt: Date;
 
   constructor(
     public readonly startlistId: string,
     public readonly finalStartlist: StartlistSnapshot,
-    public readonly occurredAt: Date,
-  ) {}
+    occurredAt: Date,
+  ) {
+    this.occurredAt = new Date(occurredAt.getTime());
+  }
 }
