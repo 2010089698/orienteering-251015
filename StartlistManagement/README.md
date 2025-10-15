@@ -1,18 +1,20 @@
 # StartlistManagement
 
 ## プロジェクト概要
-StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / HTTP アダプタの 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成になっています。
+StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / HTTP アダプタの 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成に加え、React + Vite 製のウィザード UI で API ワークフローを体験できます。
 
 ## 主な機能
 - スタートリスト設定（イベント ID・開始時刻・レーン数・インターバル）の入力とドメインイベント発行
 - レーン割り当てとクラス順の決定、プレイヤー順の決定、スタート時間割り当てのユースケース提供
 - スタートリストの確定処理と手動再割当て時のスタート時間自動無効化
 - Fastify による RESTful API エンドポイント群と TypeBox スキーマ定義
+- React 製スタートリストウィザード UI によるマルチステップ操作
 
 ## 技術スタック
 - **言語/ランタイム**: Node.js、TypeScript、ts-node
 - **Web フレームワーク**: Fastify + @fastify/type-provider-typebox
 - **スキーマ定義**: @sinclair/typebox
+- **フロントエンド**: React, Vite, TypeScript
 - **テスト**: Vitest
 
 ## クイックスタート
@@ -20,12 +22,17 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
    ```bash
    npm install
    ```
-2. 開発サーバーを起動します（既定: `PORT=3000`, `HOST=0.0.0.0`）。
+2. バックエンド開発サーバーを起動します（既定: `PORT=3000`, `HOST=0.0.0.0`）。
    ```bash
    npm run dev:backend
    ```
    `apps/backend/src/start.ts` でホストとポートを環境変数から解決しています。
-3. ユニットテストを実行します。
+3. フロントエンド開発サーバーを起動します（既定: `http://localhost:5173`）。
+   ```bash
+   npm run dev --workspace @startlist-management/frontend
+   ```
+   Vite がバックエンド API を `http://localhost:3000` へアクセスすることを想定しています。
+4. ユニットテストを実行します。
    ```bash
    npm test
    ```
@@ -35,13 +42,13 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
 StartlistManagement/
 ├── apps/
 │   ├── backend/            # Fastify バックエンドアプリ (HTTP エントリポイント)
-│   └── frontend/           # フロントエンドアプリ (将来実装予定)
+│   └── frontend/           # フロントエンドアプリ (React + Vite スタートリストウィザード)
 ├── packages/
 │   ├── domain/             # 集約とドメインイベント、値オブジェクト
 │   ├── application/        # ユースケース、DTO、クエリサービス、プロセスマネージャ
 │   ├── infrastructure/     # 永続化、イベントバス、トランザクション管理、DI 構成
 │   ├── adapters-http/      # Fastify HTTP サーバーとルーティング
-│   └── ui-components/      # フロント共通 UI コンポーネント (将来の共有資産)
+│   └── ui-components/      # フロント共通 UI コンポーネント
 ├── configs/                # tsconfig などの共通設定
 └── docs/                   # アーキテクチャやドメインに関する資料
 ```
@@ -83,6 +90,12 @@ StartlistManagement/
 | 取得 | GET | `/api/startlists/:id` | 現在のスタートリストスナップショットを返す |
 
 各ハンドラは TypeBox でバリデーションされたリクエストボディをユースケースに委譲し、標準化されたエラーハンドリングを提供します。
+
+## フロントエンドウィザード
+- `apps/frontend` に Vite + React + TypeScript の単一ページアプリとして実装しています。
+- 左カラムのステップナビゲーションと右カラムのスナップショットビューを備え、設定 → エントリー入力 → レーン割当 → クラス順調整 → スタート時間確定の流れをガイドします。
+- `src/state/StartlistContext.tsx` で設定・エントリー・割り当て情報を一元管理し、`src/hooks/useStartlistApi.ts` 経由でバックエンドと連携します。
+- 共通 UI として `@startlist-management/ui-components` の `StatusMessage` や `Tag` コンポーネントを利用します。
 
 ## ドメインイベントとプロセスマネージャ
 - 手動レーン再割当てまたはクラス順手動確定のイベントを購読し、スタート時間の再計算が必要な状態を自動的に作ります。

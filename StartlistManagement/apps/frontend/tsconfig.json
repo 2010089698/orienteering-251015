@@ -3,7 +3,10 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "dist",
-    "types": ["node"]
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "jsx": "react-jsx",
+    "types": ["vite/client"]
   },
   "include": ["src/**/*"]
 }
