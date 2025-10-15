@@ -1,5 +1,5 @@
-import { DomainEvent } from '../../common/DomainEvent';
-import { StartTime } from '../StartTime';
+import { DomainEvent } from '../../common/DomainEvent.js';
+import { StartTime } from '../StartTime.js';
 
 export class StartTimesAssignedEvent implements DomainEvent {
   readonly type = 'StartTimesAssignedEvent';

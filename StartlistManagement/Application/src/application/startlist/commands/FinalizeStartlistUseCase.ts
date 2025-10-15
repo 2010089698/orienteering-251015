@@ -1,9 +1,9 @@
-import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository';
-import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot';
-import { ApplicationEventPublisher } from '../../shared/event-publisher';
-import { TransactionManager } from '../../shared/transaction';
-import { FinalizeStartlistCommand } from '../dto/StartlistDtos';
-import { StartlistCommandBase } from './StartlistCommandBase';
+import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository.js';
+import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot.js';
+import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
+import { TransactionManager } from '../../shared/transaction.js';
+import { FinalizeStartlistCommand } from '../dto/StartlistDtos.js';
+import { StartlistCommandBase } from './StartlistCommandBase.js';
 
 export interface FinalizeStartlistUseCase {
   execute(command: FinalizeStartlistCommand): Promise<StartlistSnapshot>;

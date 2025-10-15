@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from '@jest/globals';
 
-import { ClassAssignment } from '../../../startlist/ClassAssignment';
-import { Duration } from '../../../startlist/Duration';
-import { LaneAssignment } from '../../../startlist/LaneAssignment';
-import { StartTime } from '../../../startlist/StartTime';
-import { StartlistSettings } from '../../../startlist/StartlistSettings';
-import { StartlistSnapshot } from '../../../startlist/StartlistSnapshot';
-import { StartlistStatus } from '../../../startlist/StartlistStatus';
-import { ClassStartOrderManuallyFinalizedEvent } from '../ClassStartOrderManuallyFinalizedEvent';
-import { LaneOrderAndIntervalsAssignedEvent } from '../LaneOrderAndIntervalsAssignedEvent';
-import { LaneOrderManuallyReassignedEvent } from '../LaneOrderManuallyReassignedEvent';
-import { PlayerOrderAndIntervalsAssignedEvent } from '../PlayerOrderAndIntervalsAssignedEvent';
-import { StartTimesAssignedEvent } from '../StartTimesAssignedEvent';
-import { StartTimesInvalidatedEvent } from '../StartTimesInvalidatedEvent';
-import { StartlistFinalizedEvent } from '../StartlistFinalizedEvent';
-import { StartlistSettingsEnteredEvent } from '../StartlistSettingsEnteredEvent';
+import { ClassAssignment } from '../../../startlist/ClassAssignment.js';
+import { Duration } from '../../../startlist/Duration.js';
+import { LaneAssignment } from '../../../startlist/LaneAssignment.js';
+import { StartTime } from '../../../startlist/StartTime.js';
+import { StartlistSettings } from '../../../startlist/StartlistSettings.js';
+import { StartlistSnapshot } from '../../../startlist/StartlistSnapshot.js';
+import { StartlistStatus } from '../../../startlist/StartlistStatus.js';
+import { ClassStartOrderManuallyFinalizedEvent } from '../ClassStartOrderManuallyFinalizedEvent.js';
+import { LaneOrderAndIntervalsAssignedEvent } from '../LaneOrderAndIntervalsAssignedEvent.js';
+import { LaneOrderManuallyReassignedEvent } from '../LaneOrderManuallyReassignedEvent.js';
+import { PlayerOrderAndIntervalsAssignedEvent } from '../PlayerOrderAndIntervalsAssignedEvent.js';
+import { StartTimesAssignedEvent } from '../StartTimesAssignedEvent.js';
+import { StartTimesInvalidatedEvent } from '../StartTimesInvalidatedEvent.js';
+import { StartlistFinalizedEvent } from '../StartlistFinalizedEvent.js';
+import { StartlistSettingsEnteredEvent } from '../StartlistSettingsEnteredEvent.js';
 
 const baseDate = new Date('2024-01-02T12:00:00Z');
 const interval = Duration.fromMinutes(1);

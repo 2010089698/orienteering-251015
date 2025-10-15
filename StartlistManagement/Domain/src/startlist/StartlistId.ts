@@ -1,4 +1,4 @@
-import { DomainError } from '../common/DomainError';
+import { DomainError } from '../common/DomainError.js';
 
 export class StartlistId {
   private constructor(private readonly value: string) {}

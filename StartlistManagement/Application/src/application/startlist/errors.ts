@@ -1,4 +1,4 @@
-import { DomainError } from '../../../../Domain/src/common/DomainError';
+import { DomainError } from '../../../../Domain/src/common/DomainError.js';
 
 export class StartlistApplicationError extends Error {
   constructor(message: string, public readonly cause?: unknown) {

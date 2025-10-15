@@ -1,5 +1,5 @@
-import { DomainEvent } from '../../common/DomainEvent';
-import { LaneAssignment } from '../LaneAssignment';
+import { DomainEvent } from '../../common/DomainEvent.js';
+import { LaneAssignment } from '../LaneAssignment.js';
 
 export class LaneOrderAndIntervalsAssignedEvent implements DomainEvent {
   readonly type = 'LaneOrderAndIntervalsAssignedEvent';

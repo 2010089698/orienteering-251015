@@ -1,5 +1,5 @@
-import { Startlist } from './Startlist';
-import { StartlistId } from './StartlistId';
+import { Startlist } from './Startlist.js';
+import { StartlistId } from './StartlistId.js';
 
 export interface StartlistRepository {
   findById(id: StartlistId): Promise<Startlist | undefined> | Startlist | undefined;

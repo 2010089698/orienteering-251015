@@ -1,8 +1,8 @@
-import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository';
-import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot';
-import { StartlistId } from '../../../../../Domain/src/startlist/StartlistId';
-import { GetStartlistQuery } from '../dto/StartlistDtos';
-import { StartlistNotFoundError } from '../errors';
+import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository.js';
+import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot.js';
+import { StartlistId } from '../../../../../Domain/src/startlist/StartlistId.js';
+import { GetStartlistQuery } from '../dto/StartlistDtos.js';
+import { StartlistNotFoundError } from '../errors.js';
 
 export interface StartlistQueryService {
   execute(query: GetStartlistQuery): Promise<StartlistSnapshot>;

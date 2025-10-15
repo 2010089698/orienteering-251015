@@ -1,18 +1,18 @@
-import { DomainEvent } from '../../../../../Domain/src/common/DomainEvent';
-import { Startlist } from '../../../../../Domain/src/startlist/Startlist';
-import { StartlistFactory } from '../../../../../Domain/src/startlist/StartlistFactory';
-import { StartlistId } from '../../../../../Domain/src/startlist/StartlistId';
-import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository';
-import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot';
-import { ApplicationEventPublisher } from '../../shared/event-publisher';
-import { TransactionManager } from '../../shared/transaction';
+import { DomainEvent } from '../../../../../Domain/src/common/DomainEvent.js';
+import { Startlist } from '../../../../../Domain/src/startlist/Startlist.js';
+import { StartlistFactory } from '../../../../../Domain/src/startlist/StartlistFactory.js';
+import { StartlistId } from '../../../../../Domain/src/startlist/StartlistId.js';
+import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository.js';
+import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot.js';
+import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
+import { TransactionManager } from '../../shared/transaction.js';
 import {
   InvalidCommandError,
   PersistenceError,
   StartlistApplicationError,
   StartlistNotFoundError,
   mapToApplicationError,
-} from '../errors';
+} from '../errors.js';
 
 export abstract class StartlistCommandBase {
   protected constructor(

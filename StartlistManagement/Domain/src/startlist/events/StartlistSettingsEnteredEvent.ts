@@ -1,5 +1,5 @@
-import { DomainEvent } from '../../common/DomainEvent';
-import { StartlistSettings } from '../StartlistSettings';
+import { DomainEvent } from '../../common/DomainEvent.js';
+import { StartlistSettings } from '../StartlistSettings.js';
 
 export class StartlistSettingsEnteredEvent implements DomainEvent {
   readonly type = 'StartlistSettingsEnteredEvent';

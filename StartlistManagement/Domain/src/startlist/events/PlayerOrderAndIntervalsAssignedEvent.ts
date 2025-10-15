@@ -1,5 +1,5 @@
-import { DomainEvent } from '../../common/DomainEvent';
-import { ClassAssignment } from '../ClassAssignment';
+import { DomainEvent } from '../../common/DomainEvent.js';
+import { ClassAssignment } from '../ClassAssignment.js';
 
 export class PlayerOrderAndIntervalsAssignedEvent implements DomainEvent {
   readonly type = 'PlayerOrderAndIntervalsAssignedEvent';

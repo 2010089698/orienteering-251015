@@ -1,14 +1,14 @@
-import { Duration } from '../../../../../Domain/src/startlist/Duration';
-import { ClassAssignment } from '../../../../../Domain/src/startlist/ClassAssignment';
-import { LaneAssignment } from '../../../../../Domain/src/startlist/LaneAssignment';
-import { StartTime } from '../../../../../Domain/src/startlist/StartTime';
-import { StartlistSettings } from '../../../../../Domain/src/startlist/StartlistSettings';
+import { Duration } from '../../../../../Domain/src/startlist/Duration.js';
+import { ClassAssignment } from '../../../../../Domain/src/startlist/ClassAssignment.js';
+import { LaneAssignment } from '../../../../../Domain/src/startlist/LaneAssignment.js';
+import { StartTime } from '../../../../../Domain/src/startlist/StartTime.js';
+import { StartlistSettings } from '../../../../../Domain/src/startlist/StartlistSettings.js';
 import {
   ClassAssignmentDto,
   LaneAssignmentDto,
   StartTimeDto,
   StartlistSettingsDto,
-} from './StartlistDtos';
+} from './StartlistDtos.js';
 
 const toDate = (value: Date | string): Date => {
   if (value instanceof Date) {
