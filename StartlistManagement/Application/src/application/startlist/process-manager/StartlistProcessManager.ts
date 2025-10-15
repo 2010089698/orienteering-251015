@@ -1,9 +1,9 @@
-import { DomainEvent } from '../../../../../Domain/src/common/DomainEvent';
-import { ClassStartOrderManuallyFinalizedEvent } from '../../../../../Domain/src/startlist/events/ClassStartOrderManuallyFinalizedEvent';
-import { LaneOrderManuallyReassignedEvent } from '../../../../../Domain/src/startlist/events/LaneOrderManuallyReassignedEvent';
-import { InvalidateStartTimesCommand } from '../dto/StartlistDtos';
-import { InvalidCommandError, mapToApplicationError } from '../errors';
-import { InvalidateStartTimesUseCase } from '../commands/InvalidateStartTimesUseCase';
+import { DomainEvent } from '../../../../../Domain/src/common/DomainEvent.js';
+import { ClassStartOrderManuallyFinalizedEvent } from '../../../../../Domain/src/startlist/events/ClassStartOrderManuallyFinalizedEvent.js';
+import { LaneOrderManuallyReassignedEvent } from '../../../../../Domain/src/startlist/events/LaneOrderManuallyReassignedEvent.js';
+import { InvalidateStartTimesCommand } from '../dto/StartlistDtos.js';
+import { InvalidCommandError, mapToApplicationError } from '../errors.js';
+import { InvalidateStartTimesUseCase } from '../commands/InvalidateStartTimesUseCase.js';
 
 const NO_START_TIMES_MESSAGE = 'No start times are assigned to invalidate.';
 

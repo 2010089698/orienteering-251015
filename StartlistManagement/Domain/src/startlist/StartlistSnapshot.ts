@@ -1,8 +1,8 @@
-import { ClassAssignment } from './ClassAssignment';
-import { LaneAssignment } from './LaneAssignment';
-import { StartTime } from './StartTime';
-import { StartlistSettings } from './StartlistSettings';
-import { StartlistStatus } from './StartlistStatus';
+import { ClassAssignment } from './ClassAssignment.js';
+import { LaneAssignment } from './LaneAssignment.js';
+import { StartTime } from './StartTime.js';
+import { StartlistSettings } from './StartlistSettings.js';
+import { StartlistStatus } from './StartlistStatus.js';
 
 export interface StartlistSnapshot {
   readonly id: string;

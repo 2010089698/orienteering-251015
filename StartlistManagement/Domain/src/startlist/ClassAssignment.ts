@@ -1,5 +1,5 @@
-import { DomainError } from '../common/DomainError';
-import { Duration } from './Duration';
+import { DomainError } from '../common/DomainError.js';
+import { Duration } from './Duration.js';
 
 export class ClassAssignment {
   private constructor(

@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../common/DomainEvent';
+import { DomainEvent } from '../../common/DomainEvent.js';
 
 export class StartTimesInvalidatedEvent implements DomainEvent {
   readonly type = 'StartTimesInvalidatedEvent';

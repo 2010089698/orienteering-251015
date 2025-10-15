@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, test } from '@jest/globals';
 
-import { DomainError } from '../../common/DomainError';
-import { ClassAssignment } from '../ClassAssignment';
-import { Duration } from '../Duration';
-import { LaneAssignment } from '../LaneAssignment';
-import { StartTime } from '../StartTime';
-import { StartlistId } from '../StartlistId';
-import { StartlistSettings } from '../StartlistSettings';
+import { DomainError } from '../../common/DomainError.js';
+import { ClassAssignment } from '../ClassAssignment.js';
+import { Duration } from '../Duration.js';
+import { LaneAssignment } from '../LaneAssignment.js';
+import { StartTime } from '../StartTime.js';
+import { StartlistId } from '../StartlistId.js';
+import { StartlistSettings } from '../StartlistSettings.js';
 
 describe('Duration', () => {
   test('factories produce expected values', () => {

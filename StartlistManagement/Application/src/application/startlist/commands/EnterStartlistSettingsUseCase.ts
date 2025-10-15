@@ -1,11 +1,11 @@
-import { StartlistFactory } from '../../../../../Domain/src/startlist/StartlistFactory';
-import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository';
-import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot';
-import { ApplicationEventPublisher } from '../../shared/event-publisher';
-import { TransactionManager } from '../../shared/transaction';
-import { toStartlistSettings } from '../dto/StartlistMappers';
-import { EnterStartlistSettingsCommand } from '../dto/StartlistDtos';
-import { StartlistCommandBase } from './StartlistCommandBase';
+import { StartlistFactory } from '../../../../../Domain/src/startlist/StartlistFactory.js';
+import { StartlistRepository } from '../../../../../Domain/src/startlist/StartlistRepository.js';
+import { StartlistSnapshot } from '../../../../../Domain/src/startlist/StartlistSnapshot.js';
+import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
+import { TransactionManager } from '../../shared/transaction.js';
+import { toStartlistSettings } from '../dto/StartlistMappers.js';
+import { EnterStartlistSettingsCommand } from '../dto/StartlistDtos.js';
+import { StartlistCommandBase } from './StartlistCommandBase.js';
 
 export interface EnterStartlistSettingsUseCase {
   execute(command: EnterStartlistSettingsCommand): Promise<StartlistSnapshot>;

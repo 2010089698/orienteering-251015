@@ -1,3 +1,3 @@
-export * from './application/shared/event-publisher';
-export * from './application/shared/transaction';
-export * from './application/startlist';
+export * from './application/shared/event-publisher.js';
+export * from './application/shared/transaction.js';
+export * from './application/startlist/index.js';

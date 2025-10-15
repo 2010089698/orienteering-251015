@@ -1,24 +1,24 @@
 import assert from 'node:assert/strict';
 import { describe, test } from '@jest/globals';
 
-import { DomainError } from '../../common/DomainError';
-import { DomainEvent } from '../../common/DomainEvent';
-import { ClassAssignment } from '../ClassAssignment';
-import { Duration } from '../Duration';
-import { LaneAssignment } from '../LaneAssignment';
-import { StartTime } from '../StartTime';
-import { Startlist } from '../Startlist';
-import { StartlistId } from '../StartlistId';
-import { StartlistSettings } from '../StartlistSettings';
-import { StartlistStatus } from '../StartlistStatus';
-import { ClassStartOrderManuallyFinalizedEvent } from '../events/ClassStartOrderManuallyFinalizedEvent';
-import { LaneOrderAndIntervalsAssignedEvent } from '../events/LaneOrderAndIntervalsAssignedEvent';
-import { LaneOrderManuallyReassignedEvent } from '../events/LaneOrderManuallyReassignedEvent';
-import { PlayerOrderAndIntervalsAssignedEvent } from '../events/PlayerOrderAndIntervalsAssignedEvent';
-import { StartTimesAssignedEvent } from '../events/StartTimesAssignedEvent';
-import { StartTimesInvalidatedEvent } from '../events/StartTimesInvalidatedEvent';
-import { StartlistFinalizedEvent } from '../events/StartlistFinalizedEvent';
-import { StartlistSettingsEnteredEvent } from '../events/StartlistSettingsEnteredEvent';
+import { DomainError } from '../../common/DomainError.js';
+import { DomainEvent } from '../../common/DomainEvent.js';
+import { ClassAssignment } from '../ClassAssignment.js';
+import { Duration } from '../Duration.js';
+import { LaneAssignment } from '../LaneAssignment.js';
+import { StartTime } from '../StartTime.js';
+import { Startlist } from '../Startlist.js';
+import { StartlistId } from '../StartlistId.js';
+import { StartlistSettings } from '../StartlistSettings.js';
+import { StartlistStatus } from '../StartlistStatus.js';
+import { ClassStartOrderManuallyFinalizedEvent } from '../events/ClassStartOrderManuallyFinalizedEvent.js';
+import { LaneOrderAndIntervalsAssignedEvent } from '../events/LaneOrderAndIntervalsAssignedEvent.js';
+import { LaneOrderManuallyReassignedEvent } from '../events/LaneOrderManuallyReassignedEvent.js';
+import { PlayerOrderAndIntervalsAssignedEvent } from '../events/PlayerOrderAndIntervalsAssignedEvent.js';
+import { StartTimesAssignedEvent } from '../events/StartTimesAssignedEvent.js';
+import { StartTimesInvalidatedEvent } from '../events/StartTimesInvalidatedEvent.js';
+import { StartlistFinalizedEvent } from '../events/StartlistFinalizedEvent.js';
+import { StartlistSettingsEnteredEvent } from '../events/StartlistSettingsEnteredEvent.js';
 
 const fixedDate = new Date('2024-01-01T10:00:00Z');
 
