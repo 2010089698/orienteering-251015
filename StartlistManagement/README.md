@@ -1,7 +1,7 @@
 # StartlistManagement
 
 ## プロジェクト概要
-StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / Presentation の 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成になっています。
+StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / HTTP アダプタの 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成になっています。
 
 ## 主な機能
 - スタートリスト設定（イベント ID・開始時刻・レーン数・インターバル）の入力とドメインイベント発行
@@ -22,9 +22,9 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
    ```
 2. 開発サーバーを起動します（既定: `PORT=3000`, `HOST=0.0.0.0`）。
    ```bash
-   npm start
+   npm run dev:backend
    ```
-   `Presentation/src/http/start.ts` でホストとポートを環境変数から解決しています。
+   `apps/backend/src/start.ts` でホストとポートを環境変数から解決しています。
 3. ユニットテストを実行します。
    ```bash
    npm test
@@ -33,12 +33,19 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
 ## プロジェクト構成
 ```
 StartlistManagement/
-├── Domain/                 # 集約とドメインイベント、値オブジェクト
-├── Application/            # ユースケース、DTO、クエリサービス、プロセスマネージャ
-├── Infrastructure/         # インメモリ永続化、イベントバス、トランザクション管理、DI 構成
-└── Presentation/           # Fastify HTTP サーバーとルーティング
+├── apps/
+│   ├── backend/            # Fastify バックエンドアプリ (HTTP エントリポイント)
+│   └── frontend/           # フロントエンドアプリ (将来実装予定)
+├── packages/
+│   ├── domain/             # 集約とドメインイベント、値オブジェクト
+│   ├── application/        # ユースケース、DTO、クエリサービス、プロセスマネージャ
+│   ├── infrastructure/     # 永続化、イベントバス、トランザクション管理、DI 構成
+│   ├── adapters-http/      # Fastify HTTP サーバーとルーティング
+│   └── ui-components/      # フロント共通 UI コンポーネント (将来の共有資産)
+├── configs/                # tsconfig などの共通設定
+└── docs/                   # アーキテクチャやドメインに関する資料
 ```
-`createStartlistModule` が各レイヤの依存関係をまとめて初期化し、Fastify サーバーからユースケースとクエリを利用できるようにしています。
+`createStartlistModule` が各レイヤの依存関係をまとめて初期化し、HTTP アダプタからユースケースとクエリを利用できるようにしています。
 
 ## ドメインモデル
 - **Startlist 集約**: 設定入力、レーン/クラス/選手順の割り当て、スタート時間の割り当て、確定、手動再割当てによるスタート時間無効化などを一貫した不変条件下で管理します。各操作は該当するドメインイベントを蓄積し、後段の処理に通知します。
@@ -83,8 +90,8 @@ StartlistManagement/
 
 ## テスト
 Vitest によるユースケース・クエリ・HTTP 層のテストが用意されています。`npm test` で全テストを実行できます。主なテストスイート:
-- `Application/src/application/startlist/__tests__` – コマンド、クエリ、プロセスマネージャ、マッパーのテスト
-- `Presentation/src/http/__tests__/startlistRoutes.test.ts` – HTTP ルートとバリデーションのテスト
+- `packages/application/src/application/startlist/__tests__` – コマンド、クエリ、プロセスマネージャ、マッパーのテスト
+- `packages/adapters-http/src/__tests__/startlistRoutes.test.ts` – HTTP ルートとバリデーションのテスト
 
 ## 今後の発展・貢献ガイド
 - 永続化層をデータベース実装に差し替え、`StartlistRepository` のインターフェースを活かした実運用対応を検討できます。

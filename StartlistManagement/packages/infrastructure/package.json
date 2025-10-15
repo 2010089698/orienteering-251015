@@ -1,0 +1,17 @@
+{
+  "name": "@startlist-management/infrastructure",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config/startlistModule": "./src/config/startlistModule.ts"
+  },
+  "dependencies": {
+    "@startlist-management/application": "file:../application",
+    "@startlist-management/domain": "file:../domain"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
+  }
+}
