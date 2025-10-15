@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 
 import { DomainError } from '../../common/DomainError';
+import { DomainEvent } from '../../common/DomainEvent';
 import { ClassAssignment } from '../ClassAssignment';
 import { Duration } from '../Duration';
 import { LaneAssignment } from '../LaneAssignment';
@@ -24,6 +25,136 @@ const fixedDate = new Date('2024-01-01T10:00:00Z');
 const clockStub = {
   now: () => fixedDate,
 };
+
+test('reconstitute clones provided state', () => {
+  const startlistId = StartlistId.create('startlist-reconstitute');
+  const interval = Duration.fromMinutes(1);
+  const settings = StartlistSettings.create({
+    eventId: 'event-reconstitute',
+    startTime: fixedDate,
+    interval,
+    laneCount: 2,
+  });
+  const laneAssignments = [
+    LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 2 }),
+    LaneAssignment.create({ laneNumber: 2, classOrder: ['class-b'], interval, laneCount: 2 }),
+  ];
+  const classAssignments = [
+    ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+    ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
+  ];
+  const startTimes = [
+    StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
+    StartTime.create({
+      playerId: 'player-2',
+      startTime: new Date(fixedDate.getTime() + interval.value),
+      laneNumber: 2,
+    }),
+  ];
+
+  const startlist = Startlist.reconstitute({
+    id: startlistId,
+    clock: clockStub,
+    settings,
+    laneAssignments,
+    classAssignments,
+    startTimes,
+    status: StartlistStatus.START_TIMES_ASSIGNED,
+  });
+
+  laneAssignments.push(
+    LaneAssignment.create({ laneNumber: 3, classOrder: ['class-c'], interval, laneCount: 3 }),
+  );
+  classAssignments[0] = ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-3'], interval });
+  startTimes[0] = StartTime.create({
+    playerId: 'player-4',
+    startTime: new Date(fixedDate.getTime() + interval.value * 2),
+    laneNumber: 1,
+  });
+
+  assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
+  const snapshot = startlist.toSnapshot();
+  assert.deepStrictEqual(snapshot, {
+    id: startlistId.toString(),
+    settings,
+    laneAssignments: [
+      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 2 }),
+      LaneAssignment.create({ laneNumber: 2, classOrder: ['class-b'], interval, laneCount: 2 }),
+    ],
+    classAssignments: [
+      ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+      ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
+    ],
+    startTimes: [
+      StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
+      StartTime.create({
+        playerId: 'player-2',
+        startTime: new Date(fixedDate.getTime() + interval.value),
+        laneNumber: 2,
+      }),
+    ],
+    status: StartlistStatus.START_TIMES_ASSIGNED,
+  });
+
+  assert.notStrictEqual(startlist.getLaneAssignments(), laneAssignments);
+  assert.notStrictEqual(startlist.getClassAssignments(), classAssignments);
+  assert.notStrictEqual(startlist.getStartTimes(), startTimes);
+
+  const firstSnapshotLaneAssignments = snapshot.laneAssignments as LaneAssignment[];
+  firstSnapshotLaneAssignments.push(
+    LaneAssignment.create({ laneNumber: 4, classOrder: ['class-d'], interval, laneCount: 4 }),
+  );
+
+  const secondSnapshot = startlist.toSnapshot();
+  assert.strictEqual(secondSnapshot.laneAssignments.length, 2);
+  assert.strictEqual(secondSnapshot.classAssignments.length, 2);
+  assert.strictEqual(secondSnapshot.startTimes.length, 2);
+});
+
+test('pullDomainEvents returns a copy and clears the queue', () => {
+  const startlistId = StartlistId.create('startlist-events');
+  const startlist = Startlist.createNew(startlistId, clockStub);
+  const interval = Duration.fromMinutes(1);
+
+  const settings = StartlistSettings.create({
+    eventId: 'event-events',
+    startTime: fixedDate,
+    interval,
+    laneCount: 1,
+  });
+  startlist.enterSettings(settings);
+
+  const laneAssignments = [
+    LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 1 }),
+  ];
+  startlist.assignLaneOrderAndIntervals(laneAssignments);
+
+  const classAssignments = [
+    ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+  ];
+  startlist.assignPlayerOrderAndIntervals(classAssignments);
+
+  const internalEventsBeforePull = (startlist as unknown as { pendingEvents: DomainEvent[] }).pendingEvents;
+  assert.strictEqual(internalEventsBeforePull.length, 3);
+
+  const events = startlist.pullDomainEvents();
+  assert.strictEqual(events.length, 3);
+  assert.notStrictEqual(events, internalEventsBeforePull);
+
+  events.splice(0, events.length);
+
+  const startTimes = [
+    StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
+  ];
+  startlist.assignStartTimes(startTimes);
+
+  const internalEventsAfterPull = (startlist as unknown as { pendingEvents: DomainEvent[] }).pendingEvents;
+  assert.deepStrictEqual(internalEventsAfterPull, []);
+
+  const subsequentEvents = startlist.pullDomainEvents();
+  assert.strictEqual(subsequentEvents.length, 1);
+  assert(subsequentEvents[0] instanceof StartTimesAssignedEvent);
+});
 
 test('assignStartTimes rejects players without class assignments', () => {
   const startlist = Startlist.createNew(StartlistId.create('startlist-1'), clockStub);
