@@ -143,13 +143,13 @@ test('pullDomainEvents returns a copy and clears the queue', () => {
 
   events.splice(0, events.length);
 
+  const internalEventsAfterPull = (startlist as unknown as { pendingEvents: DomainEvent[] }).pendingEvents;
+  assert.deepStrictEqual(internalEventsAfterPull, []);
+
   const startTimes = [
     StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
   ];
   startlist.assignStartTimes(startTimes);
-
-  const internalEventsAfterPull = (startlist as unknown as { pendingEvents: DomainEvent[] }).pendingEvents;
-  assert.deepStrictEqual(internalEventsAfterPull, []);
 
   const subsequentEvents = startlist.pullDomainEvents();
   assert.strictEqual(subsequentEvents.length, 1);
@@ -948,6 +948,9 @@ describe('Startlist failure scenarios', () => {
     startlist.enterSettings(settings);
     startlist.assignLaneOrderAndIntervals(laneAssignments);
     startlist.assignPlayerOrderAndIntervals(classAssignments);
+
+  // clear setup events before asserting error case
+  startlist.pullDomainEvents();
 
     assert.throws(
       () => startlist.invalidateStartTimes('No start times yet'),
