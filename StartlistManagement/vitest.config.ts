@@ -6,6 +6,8 @@ export default defineConfig({
     include: [
       'Domain/src/**/*.{test,spec}.ts',
       'Application/src/**/*.{test,spec}.ts',
+      'Infrastructure/src/**/*.{test,spec}.ts',
+      'Presentation/src/**/*.{test,spec}.ts',
     ],
   },
 });

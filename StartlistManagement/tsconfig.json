@@ -10,6 +10,8 @@
   },
   "include": [
     "Application/src/**/*.ts",
-    "Domain/src/**/*.ts"
+    "Domain/src/**/*.ts",
+    "Infrastructure/src/**/*.ts",
+    "Presentation/src/**/*.ts"
   ]
 }

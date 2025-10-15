@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node --loader ts-node/esm Presentation/src/http/start.ts",
     "test": "vitest"
   },
   "keywords": [],
@@ -15,5 +16,10 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@fastify/type-provider-typebox": "^4.0.0",
+    "@sinclair/typebox": "^0.33.9",
+    "fastify": "^4.28.1"
   }
 }
