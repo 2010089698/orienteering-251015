@@ -388,7 +388,10 @@ describe('Startlist lifecycle scenarios', () => {
     const invalidatedByLaneEvent = events[0];
     assert(invalidatedByLaneEvent instanceof StartTimesInvalidatedEvent);
     assert.strictEqual(invalidatedByLaneEvent.startlistId, startlistId.toString());
-    assert.strictEqual(invalidatedByLaneEvent.reason, 'Lane order manually reassigned');
+    assert.strictEqual(
+      invalidatedByLaneEvent.reason,
+      'Lane order manually reassigned - start times invalidated',
+    );
     assert.strictEqual(invalidatedByLaneEvent.occurredAt.toISOString(), fixedDate.toISOString());
     const laneReassignedEvent = events[1];
     assert(laneReassignedEvent instanceof LaneOrderManuallyReassignedEvent);
@@ -460,7 +463,7 @@ describe('Startlist lifecycle scenarios', () => {
     assert.strictEqual(invalidatedByManualClassEvent.startlistId, startlistId.toString());
     assert.strictEqual(
       invalidatedByManualClassEvent.reason,
-      'Class start order manually finalized',
+      'Class start order manually finalized - start times invalidated',
     );
     assert.strictEqual(invalidatedByManualClassEvent.occurredAt.toISOString(), fixedDate.toISOString());
     const manuallyFinalizedClassEvent = events[1];
@@ -579,42 +582,57 @@ describe('Startlist failure scenarios', () => {
     assert.deepStrictEqual(startlist.pullDomainEvents(), []);
   });
 
-  test('assignLaneOrderAndIntervals is blocked once finalized', () => {
+  test('assignLaneOrderAndIntervals reopens a finalized startlist and clears start times', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-lane-finalized'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-lane-finalized',
       startTime: fixedDate,
       interval,
-      laneCount: 1,
+      laneCount: 2,
     });
-    const laneAssignments = [
-      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 1 }),
+    const initialLaneAssignments = [
+      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 2 }),
+      LaneAssignment.create({ laneNumber: 2, classOrder: ['class-b'], interval, laneCount: 2 }),
     ];
     const classAssignments = [
       ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+      ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
     ];
     const startTimes = [
       StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
+      StartTime.create({
+        playerId: 'player-2',
+        startTime: new Date(fixedDate.getTime() + interval.value),
+        laneNumber: 2,
+      }),
     ];
 
     startlist.enterSettings(settings);
-    startlist.assignLaneOrderAndIntervals(laneAssignments);
+    startlist.assignLaneOrderAndIntervals(initialLaneAssignments);
     startlist.assignPlayerOrderAndIntervals(classAssignments);
     startlist.assignStartTimes(startTimes);
     startlist.finalizeStartlist();
     startlist.pullDomainEvents();
 
-    assert.throws(
-      () => startlist.assignLaneOrderAndIntervals(laneAssignments),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual((error as Error).message, 'Cannot assign lane order when startlist is finalized.');
-        return true;
-      },
-    );
+    const updatedLaneAssignments = [
+      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-b'], interval, laneCount: 2 }),
+      LaneAssignment.create({ laneNumber: 2, classOrder: ['class-a'], interval, laneCount: 2 }),
+    ];
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    startlist.assignLaneOrderAndIntervals(updatedLaneAssignments);
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.LANE_ORDER_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), []);
+
+    const events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 2);
+    const invalidatedEvent = events[0];
+    assert(invalidatedEvent instanceof StartTimesInvalidatedEvent);
+    assert.strictEqual(invalidatedEvent.reason, 'Lane order assigned - start times invalidated');
+    const reassignedEvent = events[1];
+    assert(reassignedEvent instanceof LaneOrderAndIntervalsAssignedEvent);
+    assert.deepStrictEqual(reassignedEvent.laneAssignments, startlist.getLaneAssignments());
   });
 
   test('assignPlayerOrderAndIntervals requires lane assignments', () => {
@@ -701,42 +719,57 @@ describe('Startlist failure scenarios', () => {
     assert.deepStrictEqual(startlist.pullDomainEvents(), []);
   });
 
-  test('assignPlayerOrderAndIntervals is blocked once finalized', () => {
+  test('assignPlayerOrderAndIntervals reopens a finalized startlist and clears start times', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-player-finalized'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-finalized',
       startTime: fixedDate,
       interval,
-      laneCount: 1,
+      laneCount: 2,
     });
     const laneAssignments = [
-      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 1 }),
+      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 2 }),
+      LaneAssignment.create({ laneNumber: 2, classOrder: ['class-b'], interval, laneCount: 2 }),
     ];
-    const classAssignments = [
+    const initialClassAssignments = [
       ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+      ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
     ];
     const startTimes = [
       StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
+      StartTime.create({
+        playerId: 'player-2',
+        startTime: new Date(fixedDate.getTime() + interval.value),
+        laneNumber: 2,
+      }),
     ];
 
     startlist.enterSettings(settings);
     startlist.assignLaneOrderAndIntervals(laneAssignments);
-    startlist.assignPlayerOrderAndIntervals(classAssignments);
+    startlist.assignPlayerOrderAndIntervals(initialClassAssignments);
     startlist.assignStartTimes(startTimes);
     startlist.finalizeStartlist();
     startlist.pullDomainEvents();
 
-    assert.throws(
-      () => startlist.assignPlayerOrderAndIntervals(classAssignments),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual((error as Error).message, 'Cannot assign player order when startlist is finalized.');
-        return true;
-      },
-    );
+    const reorderedClassAssignments = [
+      ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
+      ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
+    ];
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    startlist.assignPlayerOrderAndIntervals(reorderedClassAssignments);
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), []);
+
+    const events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 2);
+    const invalidatedEvent = events[0];
+    assert(invalidatedEvent instanceof StartTimesInvalidatedEvent);
+    assert.strictEqual(invalidatedEvent.reason, 'Player order assigned - start times invalidated');
+    const reassignedEvent = events[1];
+    assert(reassignedEvent instanceof PlayerOrderAndIntervalsAssignedEvent);
+    assert.deepStrictEqual(reassignedEvent.classAssignments, startlist.getClassAssignments());
   });
 
   test('assignStartTimes requires class assignments', () => {
@@ -852,7 +885,7 @@ describe('Startlist failure scenarios', () => {
     assert.deepStrictEqual(startlist.pullDomainEvents(), []);
   });
 
-  test('assignStartTimes is blocked once finalized', () => {
+  test('assignStartTimes reopens a finalized startlist and can finalize again', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-starttime-finalized'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
@@ -867,27 +900,45 @@ describe('Startlist failure scenarios', () => {
     const classAssignments = [
       ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
     ];
-    const startTimes = [
+    const initialStartTimes = [
       StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
     ];
 
     startlist.enterSettings(settings);
     startlist.assignLaneOrderAndIntervals(laneAssignments);
     startlist.assignPlayerOrderAndIntervals(classAssignments);
-    startlist.assignStartTimes(startTimes);
+    startlist.assignStartTimes(initialStartTimes);
     startlist.finalizeStartlist();
     startlist.pullDomainEvents();
 
-    assert.throws(
-      () => startlist.assignStartTimes(startTimes),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual((error as Error).message, 'Cannot assign start times when startlist is finalized.');
-        return true;
-      },
-    );
+    const rescheduledStartTimes = [
+      StartTime.create({
+        playerId: 'player-1',
+        startTime: new Date(fixedDate.getTime() + interval.value),
+        laneNumber: 1,
+      }),
+    ];
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    startlist.assignStartTimes(rescheduledStartTimes);
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), rescheduledStartTimes);
+
+    let events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 1);
+    const assignedEvent = events[0];
+    assert(assignedEvent instanceof StartTimesAssignedEvent);
+    assert.deepStrictEqual(assignedEvent.startTimes, startlist.getStartTimes());
+
+    startlist.finalizeStartlist();
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.FINALIZED);
+
+    events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 1);
+    const finalizedEvent = events[0];
+    assert(finalizedEvent instanceof StartlistFinalizedEvent);
+    assert.deepStrictEqual(finalizedEvent.finalStartlist, startlist.toSnapshot());
   });
 
   test('finalizeStartlist requires assigned start times', () => {
@@ -926,7 +977,7 @@ describe('Startlist failure scenarios', () => {
     assert.deepStrictEqual(startlist.pullDomainEvents(), []);
   });
 
-  test('invalidateStartTimes requires existing assignments and rejects finalized state', () => {
+  test('invalidateStartTimes requires existing assignments and reopens finalized startlist', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-invalidate'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
@@ -949,8 +1000,8 @@ describe('Startlist failure scenarios', () => {
     startlist.assignLaneOrderAndIntervals(laneAssignments);
     startlist.assignPlayerOrderAndIntervals(classAssignments);
 
-  // clear setup events before asserting error case
-  startlist.pullDomainEvents();
+    // clear setup events before asserting error case
+    startlist.pullDomainEvents();
 
     assert.throws(
       () => startlist.invalidateStartTimes('No start times yet'),
@@ -967,22 +1018,33 @@ describe('Startlist failure scenarios', () => {
     startlist.finalizeStartlist();
     startlist.pullDomainEvents();
 
-    assert.throws(
-      () => startlist.invalidateStartTimes('Should not run'),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual(
-          (error as Error).message,
-          'Cannot invalidate start times when startlist is finalized.',
-        );
-        return true;
-      },
-    );
+    const reopenReason = 'Weather delay - start times cleared';
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    startlist.invalidateStartTimes(reopenReason);
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), []);
+
+    let events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 1);
+    const invalidatedEvent = events[0];
+    assert(invalidatedEvent instanceof StartTimesInvalidatedEvent);
+    assert.strictEqual(invalidatedEvent.reason, reopenReason);
+
+    startlist.assignStartTimes(startTimes);
+    startlist.finalizeStartlist();
+
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.FINALIZED);
+
+    events = startlist.pullDomainEvents();
+    assert.strictEqual(events.length, 2);
+    const reassignedEvent = events[0];
+    assert(reassignedEvent instanceof StartTimesAssignedEvent);
+    const finalizedEvent = events[1];
+    assert(finalizedEvent instanceof StartlistFinalizedEvent);
   });
 
-  test('manuallyReassignLaneOrder propagates reason and is blocked once finalized', () => {
+  test('manuallyReassignLaneOrder propagates reason and reopens finalized startlist', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-manual-lane'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
@@ -1022,34 +1084,19 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(manualLaneEvents.length, 2);
     const invalidatedEvent = manualLaneEvents[0];
     assert(invalidatedEvent instanceof StartTimesInvalidatedEvent);
-    assert.strictEqual(invalidatedEvent.reason, manualReason);
+    assert.strictEqual(
+      invalidatedEvent.reason,
+      `${manualReason} - start times invalidated`,
+    );
     const reassignedEvent = manualLaneEvents[1];
     assert(reassignedEvent instanceof LaneOrderManuallyReassignedEvent);
     assert.deepStrictEqual(reassignedEvent.laneAssignments, startlist.getLaneAssignments());
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
-
-    startlist.assignPlayerOrderAndIntervals(classAssignments);
-    startlist.assignStartTimes(startTimes);
-    startlist.finalizeStartlist();
-    startlist.pullDomainEvents();
-
-    assert.throws(
-      () => startlist.manuallyReassignLaneOrder(newLaneAssignments),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual(
-          (error as Error).message,
-          'Cannot reassign lane order when startlist is finalized.',
-        );
-        return true;
-      },
-    );
-
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.LANE_ORDER_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), []);
   });
 
-  test('manuallyFinalizeClassStartOrder propagates reason and is blocked once finalized', () => {
+  test('manuallyFinalizeClassStartOrder propagates reason and reopens finalized startlist', () => {
     const startlist = Startlist.createNew(StartlistId.create('startlist-failure-manual-class'), clockStub);
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
@@ -1082,29 +1129,15 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(manualClassEvents.length, 2);
     const invalidatedEvent = manualClassEvents[0];
     assert(invalidatedEvent instanceof StartTimesInvalidatedEvent);
-    assert.strictEqual(invalidatedEvent.reason, manualReason);
+    assert.strictEqual(
+      invalidatedEvent.reason,
+      `${manualReason} - start times invalidated`,
+    );
     const finalizedClassEvent = manualClassEvents[1];
     assert(finalizedClassEvent instanceof ClassStartOrderManuallyFinalizedEvent);
     assert.deepStrictEqual(finalizedClassEvent.classAssignments, startlist.getClassAssignments());
 
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
-
-    startlist.assignStartTimes(startTimes);
-    startlist.finalizeStartlist();
-    startlist.pullDomainEvents();
-
-    assert.throws(
-      () => startlist.manuallyFinalizeClassStartOrder(classAssignments),
-      (error: unknown) => {
-        assert.ok(error instanceof DomainError);
-        assert.strictEqual(
-          (error as Error).message,
-          'Cannot manually finalize class start order when startlist is finalized.',
-        );
-        return true;
-      },
-    );
-
-    assert.deepStrictEqual(startlist.pullDomainEvents(), []);
+    assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
+    assert.deepStrictEqual(startlist.getStartTimes(), []);
   });
 });

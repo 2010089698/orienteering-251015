@@ -108,9 +108,12 @@ export class Startlist {
   }
 
   assignLaneOrderAndIntervals(assignments: LaneAssignment[]): void {
-    this.ensureNotFinalized('Cannot assign lane order when startlist is finalized.');
     this.ensureSettingsPresent();
     this.updateLaneAssignments(assignments);
+    this.invalidateExistingStartTimes(
+      'Lane order assigned - start times invalidated',
+      StartlistStatus.LANE_ORDER_ASSIGNED,
+    );
     this.record(
       new LaneOrderAndIntervalsAssignedEvent(
         this.id.toString(),
@@ -121,10 +124,13 @@ export class Startlist {
   }
 
   assignPlayerOrderAndIntervals(assignments: ClassAssignment[]): void {
-    this.ensureNotFinalized('Cannot assign player order when startlist is finalized.');
     this.ensureSettingsPresent();
     this.ensureLaneAssignmentsPresent();
     this.updateClassAssignments(assignments);
+    this.invalidateExistingStartTimes(
+      'Player order assigned - start times invalidated',
+      StartlistStatus.PLAYER_ORDER_ASSIGNED,
+    );
     this.record(
       new PlayerOrderAndIntervalsAssignedEvent(
         this.id.toString(),
@@ -135,7 +141,6 @@ export class Startlist {
   }
 
   assignStartTimes(startTimes: StartTime[]): void {
-    this.ensureNotFinalized('Cannot assign start times when startlist is finalized.');
     this.ensureSettingsPresent();
     this.ensureClassAssignmentsPresent();
     if (startTimes.length === 0) {
@@ -179,10 +184,12 @@ export class Startlist {
   }
 
   manuallyReassignLaneOrder(assignments: LaneAssignment[], reason = 'Lane order manually reassigned'): void {
-    this.ensureNotFinalized('Cannot reassign lane order when startlist is finalized.');
     this.ensureSettingsPresent();
     this.updateLaneAssignments(assignments);
-    this.invalidateExistingStartTimes(reason, StartlistStatus.LANE_ORDER_ASSIGNED);
+    this.invalidateExistingStartTimes(
+      `${reason} - start times invalidated`,
+      StartlistStatus.LANE_ORDER_ASSIGNED,
+    );
     this.record(
       new LaneOrderManuallyReassignedEvent(
         this.id.toString(),
@@ -196,11 +203,13 @@ export class Startlist {
     assignments: ClassAssignment[],
     reason = 'Class start order manually finalized',
   ): void {
-    this.ensureNotFinalized('Cannot manually finalize class start order when startlist is finalized.');
     this.ensureSettingsPresent();
     this.ensureLaneAssignmentsPresent();
     this.updateClassAssignments(assignments);
-    this.invalidateExistingStartTimes(reason, StartlistStatus.PLAYER_ORDER_ASSIGNED);
+    this.invalidateExistingStartTimes(
+      `${reason} - start times invalidated`,
+      StartlistStatus.PLAYER_ORDER_ASSIGNED,
+    );
     this.record(
       new ClassStartOrderManuallyFinalizedEvent(
         this.id.toString(),
@@ -211,7 +220,6 @@ export class Startlist {
   }
 
   invalidateStartTimes(reason: string): void {
-    this.ensureNotFinalized('Cannot invalidate start times when startlist is finalized.');
     if (this.startTimes.length === 0) {
       throw new DomainError('No start times are assigned to invalidate.');
     }
@@ -271,12 +279,6 @@ export class Startlist {
     });
     this.classAssignments = [...assignments];
     this.status = StartlistStatus.PLAYER_ORDER_ASSIGNED;
-  }
-
-  private ensureNotFinalized(message: string): void {
-    if (this.status === StartlistStatus.FINALIZED) {
-      throw new DomainError(message);
-    }
   }
 
   private ensureSettingsPresent(): void {

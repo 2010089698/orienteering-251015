@@ -182,12 +182,13 @@ note bottom of Startlist
     レーン内クラス順・間隔確定 AND
     クラス内選手順・間隔確定 AND
     スタート時刻割当て完了
-  - status = FINALIZED のとき、割当・順序の変更は不可
 
   {operation rules}
   - manuallyReassignLaneOrder(): 変更時は既存 startTimes を必ず無効化（全体 or 影響範囲）
   - manuallyFinalizeClassStartOrder(): 変更時は既存 startTimes を必ず無効化（全体 or 影響範囲）
   - assignStartTimes(): 再計算は明示コマンドのみ（自動トリガーなし）
+  - assignLaneOrderAndIntervals()/assignPlayerOrderAndIntervals()/manually*(): Finalize 済みでも実行すると startTimes を無効化し、ステータスを対応フェーズまで戻す
+  - assignStartTimes()/invalidateStartTimes(): Finalize 済みでも実行するとステータスが再び開き、必要に応じて startTimes をクリアする
 end note
 
 note bottom of StartlistSettings
