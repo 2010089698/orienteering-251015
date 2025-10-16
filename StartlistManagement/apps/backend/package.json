@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/start.ts",
   "scripts": {
-    "start": "node --loader ts-node/esm src/start.ts"
+    "start": "tsx src/start.ts"
   },
   "dependencies": {
     "@startlist-management/adapters-http": "file:../../packages/adapters-http",

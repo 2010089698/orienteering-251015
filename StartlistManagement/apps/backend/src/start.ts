@@ -1,5 +1,5 @@
-import { createStartlistModule } from '@startlist-management/infrastructure/config/startlistModule.js';
-import { createServer } from '@startlist-management/adapters-http/server.js';
+import { createStartlistModule } from '@startlist-management/infrastructure/config/startlistModule';
+import { createServer } from '@startlist-management/adapters-http/server';
 
 const start = async () => {
   const startlistModule = createStartlistModule();
