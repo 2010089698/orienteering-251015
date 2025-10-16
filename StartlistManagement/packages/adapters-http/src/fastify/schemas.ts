@@ -5,17 +5,52 @@ export const StartlistIdParamsSchema = Type.Object({
   id: Type.String({ minLength: 1 }),
 });
 
-export const DurationSchema = Type.Object({
-  milliseconds: Type.Number({ minimum: 1 }),
-});
+export const DurationSchema = Type.Object(
+  {
+    milliseconds: Type.Number({
+      minimum: 1,
+      description: 'Duration expressed in milliseconds. Must be greater than or equal to 1.',
+    }),
+  },
+  { description: 'Duration value used for interval configuration.' },
+);
 
-export const StartlistSettingsSchema = Type.Object({
-  eventId: Type.String({ minLength: 1 }),
-  startTime: Type.String({ format: 'date-time' }),
+const StartlistSettingsBaseSchema = {
+  eventId: Type.String({ minLength: 1, description: 'Identifier of the event the startlist belongs to.' }),
+  startTime: Type.String({
+    format: 'date-time',
+    description: 'ISO 8601 timestamp indicating when the first start should happen.',
+  }),
+  laneCount: Type.Integer({ minimum: 1, description: 'Total number of lanes used in the competition.' }),
+};
+
+const StartlistSettingsDualIntervalSchema = Type.Object({
+  ...StartlistSettingsBaseSchema,
   laneClassInterval: DurationSchema,
   classPlayerInterval: DurationSchema,
-  laneCount: Type.Integer({ minimum: 1 }),
+  interval: Type.Optional(
+    DurationSchema,
+    {
+      description: 'Deprecated single interval setting kept for backward compatibility.',
+    },
+  ),
 });
+
+const StartlistSettingsLegacyIntervalSchema = Type.Object({
+  ...StartlistSettingsBaseSchema,
+  interval: DurationSchema,
+});
+
+export const StartlistSettingsSchema = Type.Union(
+  [
+    StartlistSettingsDualIntervalSchema,
+    StartlistSettingsLegacyIntervalSchema,
+  ],
+  {
+    description:
+      'Startlist settings payload. New clients must provide both laneClassInterval and classPlayerInterval. A legacy single "interval" field is accepted for backwards compatibility.',
+  },
+);
 
 export const LaneAssignmentSchema = Type.Object({
   laneNumber: Type.Integer({ minimum: 1 }),
@@ -35,13 +70,19 @@ export const StartTimeSchema = Type.Object({
   laneNumber: Type.Integer({ minimum: 1 }),
 });
 
-const StartlistSettingsResponseSchema = Type.Object({
-  eventId: Type.String(),
-  startTime: Type.String({ format: 'date-time' }),
-  laneClassInterval: DurationSchema,
-  classPlayerInterval: DurationSchema,
-  laneCount: Type.Integer({ minimum: 1 }),
-});
+const StartlistSettingsResponseSchema = Type.Object(
+  {
+    eventId: Type.String(),
+    startTime: Type.String({ format: 'date-time' }),
+    laneClassInterval: DurationSchema,
+    classPlayerInterval: DurationSchema,
+    laneCount: Type.Integer({ minimum: 1 }),
+  },
+  {
+    description:
+      'Startlist settings returned by the API. Both laneClassInterval and classPlayerInterval are always included.',
+  },
+);
 
 const LaneAssignmentResponseSchema = Type.Object({
   laneNumber: Type.Integer({ minimum: 1 }),

@@ -123,6 +123,26 @@ describe('startlistRoutes', () => {
     expect(body.status).toBe('START_TIMES_ASSIGNED');
     expect(body.startTimes).toHaveLength(START_TIMES.length);
     expect(body.settings.eventId).toBe(SETTINGS_PAYLOAD.eventId);
+    expect(body.settings.laneClassInterval).toEqual(SETTINGS_PAYLOAD.laneClassInterval);
+    expect(body.settings.classPlayerInterval).toEqual(SETTINGS_PAYLOAD.classPlayerInterval);
+  });
+
+  it('accepts legacy interval payloads and returns the expanded structure', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/startlists/${STARTLIST_ID}/settings`,
+      payload: {
+        eventId: 'legacy-event',
+        startTime: '2024-01-02T10:00:00.000Z',
+        interval: { milliseconds: 600000 },
+        laneCount: 3,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.settings.laneClassInterval).toEqual({ milliseconds: 600000 });
+    expect(body.settings.classPlayerInterval).toEqual({ milliseconds: 600000 });
   });
 
   it('returns 404 when querying a missing startlist', async () => {
