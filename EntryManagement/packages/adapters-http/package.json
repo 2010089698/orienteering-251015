@@ -1,0 +1,19 @@
+{
+  "name": "@entry-management/adapters-http",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "@entry-management/application": "file:../application",
+    "@fastify/type-provider-typebox": "^4.0.0",
+    "@sinclair/typebox": "^0.33.9",
+    "fastify": "^4.28.1"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
+  }
+}
