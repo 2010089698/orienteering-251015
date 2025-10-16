@@ -33,6 +33,7 @@ export const toStartlistSettings = (dto: StartlistSettingsDto): StartlistSetting
     startTime: toDate(dto.startTime),
     interval: toDuration(dto.interval),
     laneCount: dto.laneCount,
+    intervalType: dto.intervalType,
   });
 };
 

@@ -80,6 +80,7 @@ describe('Startlist application use cases', () => {
         startTime: new Date().toISOString(),
         interval: { milliseconds: 60000 },
         laneCount: 4,
+        intervalType: 'player',
       },
     });
 
@@ -106,7 +107,7 @@ describe('Startlist application use cases', () => {
   it('AssignLaneOrderService maps lane assignments with lane count', async () => {
     const assignLaneOrder = vi.fn();
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({ laneCount: 3 })),
+      getSettings: vi.fn(() => ({ laneCount: 3, intervalType: 'player' })),
       assignLaneOrderAndIntervals: assignLaneOrder,
     });
     const service = new AssignLaneOrderService(repository, transactionManager, publisher);
@@ -141,7 +142,7 @@ describe('Startlist application use cases', () => {
   it('ManuallyReassignLaneOrderService maps assignments and reason', async () => {
     const manual = vi.fn();
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({ laneCount: 2 })),
+      getSettings: vi.fn(() => ({ laneCount: 2, intervalType: 'player' })),
       manuallyReassignLaneOrder: manual,
     });
     const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);

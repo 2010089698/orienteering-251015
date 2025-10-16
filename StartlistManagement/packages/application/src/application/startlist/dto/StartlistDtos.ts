@@ -7,6 +7,7 @@ export interface StartlistSettingsDto {
   startTime: Date | string;
   interval: DurationDto;
   laneCount: number;
+  intervalType: 'class' | 'player';
 }
 
 export interface LaneAssignmentDto {
