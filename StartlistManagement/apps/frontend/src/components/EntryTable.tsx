@@ -12,12 +12,12 @@ const EntryTable = (): JSX.Element => {
   };
 
   if (entries.length === 0) {
-    return <p className="muted">登録済みのエントリーがまだありません。</p>;
+    return <p className="muted">登録済みの参加者はまだいません。</p>;
   }
 
   return (
     <div>
-      <h3>エントリー一覧</h3>
+      <h3>登録済みの参加者</h3>
       <div className="table-wrapper">
         <table>
           <thead>
