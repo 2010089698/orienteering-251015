@@ -23,13 +23,13 @@ const EntryForm = (): JSX.Element => {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!form.classId.trim() || !form.cardNo.trim()) {
-      setStatus(dispatch, 'entries', createStatus('クラス ID とカード番号は必須です。', 'error'));
+      setStatus(dispatch, 'entries', createStatus('クラスとカード番号を入力してください。', 'error'));
       return;
     }
     const normalizedCard = form.cardNo.trim();
     const duplicate = entries.some((entry) => entry.cardNo === normalizedCard);
     if (duplicate) {
-      setStatus(dispatch, 'entries', createStatus('同じカード番号のエントリーが既に存在します。', 'error'));
+      setStatus(dispatch, 'entries', createStatus('同じカード番号の参加者が登録されています。', 'error'));
       return;
     }
 
@@ -44,7 +44,7 @@ const EntryForm = (): JSX.Element => {
     setStatus(
       dispatch,
       'entries',
-      createStatus(`${entries.length + 1} 件のエントリーがあります。`, 'success'),
+      createStatus(`${entries.length + 1} 人の参加者を登録しました。`, 'success'),
     );
     setForm({ ...emptyEntry });
   };
@@ -52,8 +52,8 @@ const EntryForm = (): JSX.Element => {
   return (
     <section aria-labelledby="entry-heading">
       <header>
-        <h2 id="entry-heading">エントリー入力</h2>
-        <p className="muted">選手名や所属クラブ、カード番号を登録します。</p>
+        <h2 id="entry-heading">参加者の登録</h2>
+        <p className="muted">名前・所属・クラス・カード番号を順に入力してください。</p>
       </header>
       <form onSubmit={handleSubmit} className="form-grid">
         <label>
@@ -65,7 +65,7 @@ const EntryForm = (): JSX.Element => {
           <input name="club" value={form.club} onChange={handleChange} placeholder="Tokyo OL Club" />
         </label>
         <label>
-          クラス ID
+          クラス
           <input name="classId" value={form.classId} onChange={handleChange} placeholder="M21E" required />
         </label>
         <label>
@@ -73,7 +73,7 @@ const EntryForm = (): JSX.Element => {
           <input name="cardNo" value={form.cardNo} onChange={handleChange} placeholder="123456" required />
         </label>
         <div className="actions-row">
-          <button type="submit">エントリー追加</button>
+          <button type="submit">参加者を追加</button>
         </div>
       </form>
       <StatusMessage tone={statuses.entries.level} message={statuses.entries.text} />

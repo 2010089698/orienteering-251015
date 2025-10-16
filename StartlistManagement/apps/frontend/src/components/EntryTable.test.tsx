@@ -8,7 +8,7 @@ describe('EntryTable', () => {
   it('shows empty state when no entries exist', () => {
     renderWithStartlist(<EntryTable />);
 
-    expect(screen.getByText('登録済みのエントリーがまだありません。')).toBeInTheDocument();
+    expect(screen.getByText('登録済みの参加者はまだいません。')).toBeInTheDocument();
   });
 
   it('removes entry and updates status when delete is pressed', async () => {

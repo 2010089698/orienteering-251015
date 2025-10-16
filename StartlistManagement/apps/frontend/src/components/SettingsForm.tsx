@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StatusMessage } from '@startlist-management/ui-components';
-import type { EnterStartlistSettingsCommand, StartlistSettingsDto } from '@startlist-management/application';
-import { useStartlistApi } from '../hooks/useStartlistApi';
+import type { StartlistSettingsDto } from '@startlist-management/application';
 import {
   createStatus,
-  setLoading,
   setStatus,
   updateSettings,
-  updateSnapshot,
   useStartlistDispatch,
   useStartlistState,
 } from '../state/StartlistContext';
@@ -31,9 +28,8 @@ const extractInterval = (interval?: StartlistSettingsDto['interval']) => {
 };
 
 const SettingsForm = (): JSX.Element => {
-  const { settings, startlistId, statuses, loading } = useStartlistState();
+  const { settings, startlistId, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
-  const api = useStartlistApi();
 
   const [startlistIdInput, setStartlistIdInput] = useState(startlistId);
   const [eventId, setEventId] = useState(settings?.eventId ?? '');
@@ -79,65 +75,36 @@ const SettingsForm = (): JSX.Element => {
       return;
     }
 
-    const command: EnterStartlistSettingsCommand = {
-      startlistId: startlistIdInput.trim(),
-      settings: {
-        eventId: eventId.trim(),
-        startTime: new Date(startTime).toISOString(),
-        interval: { milliseconds: intervalMs },
-        laneCount: laneCount,
-      },
+    const nextSettings: StartlistSettingsDto = {
+      eventId: eventId.trim(),
+      startTime: new Date(startTime).toISOString(),
+      interval: { milliseconds: intervalMs },
+      laneCount: laneCount,
     };
 
-    try {
-      setLoading(dispatch, 'settings', true);
-      const snapshot = await api.enterSettings(command);
-      updateSettings(dispatch, { startlistId: command.startlistId, settings: command.settings, snapshot });
-      updateSnapshot(dispatch, snapshot);
-      setStatus(dispatch, 'settings', createStatus('基本情報を保存しました。', 'success'));
-      if (snapshot) {
-        setStatus(dispatch, 'snapshot', createStatus('最新スナップショットを取得しました。', 'info'));
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '設定の送信に失敗しました。';
-      setStatus(dispatch, 'settings', createStatus(message, 'error'));
-    } finally {
-      setLoading(dispatch, 'settings', false);
-    }
-  };
-
-  const handleRefreshSnapshot = async () => {
-    if (!startlistIdInput.trim()) {
-      setStatus(dispatch, 'snapshot', createStatus('先にスタートリスト ID を設定してください。', 'error'));
-      return;
-    }
-    try {
-      setLoading(dispatch, 'snapshot', true);
-      const snapshot = await api.fetchSnapshot({ startlistId: startlistIdInput.trim() });
-      updateSnapshot(dispatch, snapshot);
-      setStatus(dispatch, 'snapshot', createStatus('最新スナップショットを取得しました。', 'success'));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'スナップショットの取得に失敗しました。';
-      setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
-    } finally {
-      setLoading(dispatch, 'snapshot', false);
-    }
+    updateSettings(dispatch, { startlistId: startlistIdInput.trim(), settings: nextSettings });
+    setStatus(dispatch, 'settings', createStatus('基本情報を保存しました。', 'success'));
   };
 
   return (
     <section aria-labelledby="settings-heading">
       <header>
-        <h2 id="settings-heading">スタートリスト基本情報</h2>
-        <p className="muted">イベント ID やインターバルなど、スタートリスト生成の前提条件を入力します。</p>
+        <h2 id="settings-heading">スタートリストの基本情報</h2>
+        <p className="muted">大会名や開始時刻など、スタートリスト作成に必要な内容を入力してください。</p>
       </header>
       <form onSubmit={handleSubmit} className="form-grid">
         <label>
           スタートリスト ID
-          <input value={startlistIdInput} onChange={(event) => setStartlistIdInput(event.target.value)} placeholder="SL-2024" required />
+          <input
+            value={startlistIdInput}
+            onChange={(event) => setStartlistIdInput(event.target.value)}
+            placeholder="SL-2024"
+            required
+          />
         </label>
         <label>
-          イベント ID
-          <input value={eventId} onChange={(event) => setEventId(event.target.value)} placeholder="event-001" />
+          大会メモ（任意）
+          <input value={eventId} onChange={(event) => setEventId(event.target.value)} placeholder="春の大会" />
         </label>
         <label>
           開始時刻
@@ -158,10 +125,7 @@ const SettingsForm = (): JSX.Element => {
           <input type="number" min={1} value={laneCount} onChange={(event) => setLaneCount(Number(event.target.value))} />
         </label>
         <div className="actions-row">
-          <button type="submit" disabled={loading.settings}>設定を送信</button>
-          <button type="button" className="secondary" onClick={handleRefreshSnapshot} disabled={loading.snapshot}>
-            最新スナップショット取得
-          </button>
+          <button type="submit">基本情報を保存</button>
         </div>
       </form>
       <StatusMessage tone={statuses.settings.level} message={statuses.settings.text} />
