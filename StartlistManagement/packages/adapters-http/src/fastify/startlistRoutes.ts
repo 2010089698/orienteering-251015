@@ -11,7 +11,7 @@ import {
   StartlistResponseSchema,
   StartlistSettingsSchema,
 } from './schemas.js';
-import { toStartlistHttpResponse } from './mappers.js';
+import { toEnterStartlistSettingsCommand, toStartlistHttpResponse } from './mappers.js';
 import {
   AssignLaneOrderUseCase,
   AssignPlayerOrderUseCase,
@@ -120,7 +120,7 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
       },
     },
     async (request) => {
-      const command = { startlistId: request.params.id, settings: request.body };
+      const command = toEnterStartlistSettingsCommand(request.params.id, request.body);
       const snapshot = await useCases.enterStartlistSettings.execute(command);
       return toStartlistHttpResponse(snapshot);
     },

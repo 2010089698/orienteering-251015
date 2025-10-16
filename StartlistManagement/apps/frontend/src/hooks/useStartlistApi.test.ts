@@ -22,11 +22,13 @@ describe('useStartlistApi', () => {
       }),
     );
 
+    const startTime = new Date('2024-01-01T00:00:00.000Z');
+
     await result.current.enterSettings({
       startlistId: 'SL-1',
       settings: {
         eventId: 'event',
-        startTime: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+        startTime,
         laneClassInterval: { milliseconds: 60000 },
         classPlayerInterval: { milliseconds: 45000 },
         laneCount: 2,
@@ -39,6 +41,33 @@ describe('useStartlistApi', () => {
     }));
     const [, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(init?.body).toContain('event');
+    const body = JSON.parse(init?.body as string);
+    expect(body.startTime).toBe(startTime.toISOString());
+    expect(body.laneClassInterval).toEqual({ milliseconds: 60000 });
+    expect(body.classPlayerInterval).toEqual({ milliseconds: 45000 });
+  });
+
+  it('normalizes legacy interval fields when fetching snapshots', async () => {
+    const { result } = renderHook(() => useStartlistApi());
+    const snapshot = {
+      settings: {
+        eventId: 'legacy',
+        startTime: '2024-01-01T00:00:00.000Z',
+        interval: { milliseconds: 60000 },
+        laneCount: 2,
+      },
+    };
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify(snapshot), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const response = await result.current.fetchSnapshot({ startlistId: 'SL-1' });
+    const settings = response.settings as Record<string, unknown>;
+    expect(settings?.laneClassInterval).toEqual({ milliseconds: 60000 });
+    expect(settings?.classPlayerInterval).toEqual({ milliseconds: 60000 });
   });
 
   it('appends optional reason when reassigning lane order manually', async () => {

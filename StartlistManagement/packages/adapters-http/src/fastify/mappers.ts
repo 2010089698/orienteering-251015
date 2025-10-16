@@ -6,6 +6,8 @@ import {
   ClassAssignment,
   StartTime,
 } from '@startlist-management/domain';
+import type { EnterStartlistSettingsCommand } from '@startlist-management/application';
+import { InvalidCommandError } from '@startlist-management/application';
 
 export interface DurationResponse {
   milliseconds: number;
@@ -18,6 +20,22 @@ export interface StartlistSettingsResponse {
   classPlayerInterval: DurationResponse;
   laneCount: number;
 }
+
+export type StartlistSettingsRequestBody =
+  | ({
+        eventId: string;
+        startTime: string;
+        laneCount: number;
+        laneClassInterval: DurationResponse;
+        classPlayerInterval: DurationResponse;
+        interval?: DurationResponse;
+      } & Record<string, unknown>)
+  | ({
+        eventId: string;
+        startTime: string;
+        laneCount: number;
+        interval: DurationResponse;
+      } & Record<string, unknown>);
 
 export interface LaneAssignmentResponse {
   laneNumber: number;
@@ -49,6 +67,52 @@ export interface StartlistHttpResponse {
 const toDurationResponse = (duration: Duration): DurationResponse => ({
   milliseconds: duration.value,
 });
+
+const copyDuration = (duration: DurationResponse): DurationResponse => ({
+  milliseconds: duration.milliseconds,
+});
+
+const resolveDuration = (
+  primary: DurationResponse | undefined,
+  fallback: DurationResponse | undefined,
+): DurationResponse | undefined => {
+  if (primary) {
+    return copyDuration(primary);
+  }
+  if (fallback) {
+    return copyDuration(fallback);
+  }
+  return undefined;
+};
+
+export const toEnterStartlistSettingsCommand = (
+  startlistId: string,
+  body: StartlistSettingsRequestBody,
+): EnterStartlistSettingsCommand => {
+  const laneClassInterval =
+    'laneClassInterval' in body
+      ? resolveDuration(body.laneClassInterval, body.interval as DurationResponse | undefined)
+      : resolveDuration(undefined, body.interval);
+  const classPlayerInterval =
+    'classPlayerInterval' in body
+      ? resolveDuration(body.classPlayerInterval, body.interval as DurationResponse | undefined)
+      : resolveDuration(undefined, body.interval);
+
+  if (!laneClassInterval || !classPlayerInterval) {
+    throw new InvalidCommandError('Both laneClassInterval and classPlayerInterval must be provided.');
+  }
+
+  return {
+    startlistId,
+    settings: {
+      eventId: body.eventId,
+      startTime: body.startTime,
+      laneClassInterval,
+      classPlayerInterval,
+      laneCount: body.laneCount,
+    },
+  };
+};
 
 const mapSettings = (settings: StartlistSettings | undefined): StartlistSettingsResponse | undefined => {
   if (!settings) {
