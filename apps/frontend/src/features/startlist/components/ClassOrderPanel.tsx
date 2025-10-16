@@ -1,6 +1,6 @@
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { ClassAssignmentDto } from '@startlist-management/application';
-import { useStartlistApi } from '../hooks/useStartlistApi';
+import { useStartlistApi } from '../api/useStartlistApi';
 import {
   createStatus,
   setLoading,

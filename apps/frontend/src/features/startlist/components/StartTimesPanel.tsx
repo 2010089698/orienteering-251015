@@ -1,5 +1,5 @@
 import { StatusMessage } from '@orienteering/shared-ui';
-import { useStartlistApi } from '../hooks/useStartlistApi';
+import { useStartlistApi } from '../api/useStartlistApi';
 import {
   createStatus,
   setLoading,

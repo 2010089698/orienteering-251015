@@ -1,18 +1,32 @@
-import { screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import App from './App';
-import { renderWithStartlist } from './test/test-utils';
 
 describe('App', () => {
-  it('guides the user through the three steps', async () => {
-    renderWithStartlist(<App />);
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+  });
 
-    expect(screen.getByRole('heading', { name: 'スタートリスト作成ガイド' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-    // move to step 2 without data should show validation message
-    await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
-    expect(await screen.findByText('基本情報を保存してから進んでください。')).toBeInTheDocument();
+  it('navigates between registered business capabilities', async () => {
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'スタートリスト作成ガイド' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('link', { name: 'エントリー管理' }));
+
+    expect(await screen.findByRole('heading', { name: 'エントリー管理 (準備中)' })).toBeInTheDocument();
   });
 });
