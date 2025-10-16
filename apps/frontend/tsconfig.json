@@ -1,5 +1,5 @@
 {
-  "extends": "../StartlistManagement/configs/tsconfig/base.json",
+  "extends": "../../StartlistManagement/configs/tsconfig/base.json",
   "compilerOptions": {
     "composite": true,
     "outDir": "dist",
@@ -13,7 +13,8 @@
     ],
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@orienteering/shared-ui": ["../shared-ui-components/src"]
     }
   },
   "include": ["src/**/*"]

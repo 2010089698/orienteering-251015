@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StatusMessage } from '@startlist-management/ui-components';
+import { StatusMessage } from '@orienteering/shared-ui';
 import type { DurationDto, StartlistSettingsDto } from '@startlist-management/application';
 import {
   createStatus,
@@ -158,7 +158,7 @@ const SettingsForm = (): JSX.Element => {
         <h2 id="settings-heading">スタートリストの基本情報</h2>
         <p className="muted">大会名や開始時刻など、スタートリスト作成に必要な内容を入力してください。すべての時刻は日本時間 (JST) で取り扱われます。</p>
       </header>
-      <form onSubmit={handleSubmit} className="form-grid">
+      <form onSubmit={handleSubmit} className="form-grid" noValidate>
         <label>
           スタートリスト ID
           <input

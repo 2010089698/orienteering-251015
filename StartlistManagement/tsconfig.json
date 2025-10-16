@@ -5,7 +5,7 @@
     { "path": "./packages/application" },
     { "path": "./packages/infrastructure" },
     { "path": "./packages/adapters-http" },
-    { "path": "./packages/ui-components" },
+    { "path": "../apps/shared-ui-components" },
     { "path": "./apps/backend" },
     { "path": "../apps/frontend" }
   ]

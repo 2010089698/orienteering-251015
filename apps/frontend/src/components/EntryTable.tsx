@@ -1,4 +1,4 @@
-import { Tag } from '@startlist-management/ui-components';
+import { Tag } from '@orienteering/shared-ui';
 import { createStatus, removeEntry, setStatus, useStartlistDispatch, useStartlistState } from '../state/StartlistContext';
 
 const EntryTable = (): JSX.Element => {

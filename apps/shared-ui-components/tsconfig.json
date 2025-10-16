@@ -1,5 +1,5 @@
 {
-  "extends": "../../configs/tsconfig/base.json",
+  "extends": "../../StartlistManagement/configs/tsconfig/base.json",
   "compilerOptions": {
     "composite": true,
     "declaration": true,

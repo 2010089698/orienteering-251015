@@ -1,4 +1,4 @@
-import { StatusMessage } from '@startlist-management/ui-components';
+import { StatusMessage } from '@orienteering/shared-ui';
 import SettingsForm from './SettingsForm';
 import EntryForm from './EntryForm';
 import EntryTable from './EntryTable';

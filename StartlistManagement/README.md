@@ -95,7 +95,7 @@ StartlistManagement/
 - `apps/frontend` に Vite + React + TypeScript の単一ページアプリとして実装しています。
 - 左カラムのステップナビゲーションと右カラムのスナップショットビューを備え、設定 → エントリー入力 → レーン割当 → クラス順調整 → スタート時間確定の流れをガイドします。
 - `src/state/StartlistContext.tsx` で設定・エントリー・割り当て情報を一元管理し、`src/hooks/useStartlistApi.ts` 経由でバックエンドと連携します。
-- 共通 UI として `@startlist-management/ui-components` の `StatusMessage` や `Tag` コンポーネントを利用します。
+- 共通 UI として `@orienteering/shared-ui` の `StatusMessage` や `Tag` コンポーネントを利用します。
 
 ## ドメインイベントとプロセスマネージャ
 - 手動レーン再割当てまたはクラス順手動確定のイベントを購読し、スタート時間の再計算が必要な状態を自動的に作ります。
