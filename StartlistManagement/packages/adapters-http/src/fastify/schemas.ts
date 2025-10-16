@@ -24,10 +24,14 @@ const StartlistSettingsBaseSchema = {
   laneCount: Type.Integer({ minimum: 1, description: 'Total number of lanes used in the competition.' }),
 };
 
-const StartlistSettingsDualIntervalSchema = Type.Object({
+const StartlistIntervalsSchema = Type.Object({
+  laneClass: DurationSchema,
+  classPlayer: DurationSchema,
+});
+
+const StartlistSettingsIntervalsSchema = Type.Object({
   ...StartlistSettingsBaseSchema,
-  laneClassInterval: DurationSchema,
-  classPlayerInterval: DurationSchema,
+  intervals: StartlistIntervalsSchema,
   interval: Type.Optional(
     DurationSchema,
     {
@@ -43,12 +47,12 @@ const StartlistSettingsLegacyIntervalSchema = Type.Object({
 
 export const StartlistSettingsSchema = Type.Union(
   [
-    StartlistSettingsDualIntervalSchema,
+    StartlistSettingsIntervalsSchema,
     StartlistSettingsLegacyIntervalSchema,
   ],
   {
     description:
-      'Startlist settings payload. New clients must provide both laneClassInterval and classPlayerInterval. A legacy single "interval" field is accepted for backwards compatibility.',
+      'Startlist settings payload. New clients must provide both intervals.laneClass and intervals.classPlayer. A legacy single "interval" field is accepted for backwards compatibility.',
   },
 );
 
@@ -74,13 +78,12 @@ const StartlistSettingsResponseSchema = Type.Object(
   {
     eventId: Type.String(),
     startTime: Type.String({ format: 'date-time' }),
-    laneClassInterval: DurationSchema,
-    classPlayerInterval: DurationSchema,
+    intervals: StartlistIntervalsSchema,
     laneCount: Type.Integer({ minimum: 1 }),
   },
   {
     description:
-      'Startlist settings returned by the API. Both laneClassInterval and classPlayerInterval are always included.',
+      'Startlist settings returned by the API. Both laneClass and classPlayer intervals are always included.',
   },
 );
 

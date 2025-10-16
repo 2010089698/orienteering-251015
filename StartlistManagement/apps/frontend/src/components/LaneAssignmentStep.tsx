@@ -129,8 +129,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
 
   const laneCount = settings?.laneCount ?? laneAssignments.length;
   const laneIntervalMs =
-    settings?.laneClassInterval?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
-  const playerIntervalMs = settings?.classPlayerInterval?.milliseconds ?? 0;
+    settings?.intervals?.laneClass?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
+  const playerIntervalMs = settings?.intervals?.classPlayer?.milliseconds ?? 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

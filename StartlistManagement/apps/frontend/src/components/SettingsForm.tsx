@@ -79,10 +79,10 @@ const SettingsForm = (): JSX.Element => {
   const [startlistIdInput, setStartlistIdInput] = useState(startlistId);
   const [eventId, setEventId] = useState(settings?.eventId ?? '');
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-  const initialLaneInterval = useMemo(() => extractInterval(settings?.laneClassInterval), [settings]);
+  const initialLaneInterval = useMemo(() => extractInterval(settings?.intervals?.laneClass), [settings]);
   const [laneIntervalMinutes, setLaneIntervalMinutes] = useState(initialLaneInterval.minutes);
   const [laneIntervalSeconds, setLaneIntervalSeconds] = useState(initialLaneInterval.seconds);
-  const initialPlayerInterval = useMemo(() => extractInterval(settings?.classPlayerInterval), [settings]);
+  const initialPlayerInterval = useMemo(() => extractInterval(settings?.intervals?.classPlayer), [settings]);
   const [playerIntervalMinutes, setPlayerIntervalMinutes] = useState(initialPlayerInterval.minutes);
   const [playerIntervalSeconds, setPlayerIntervalSeconds] = useState(initialPlayerInterval.seconds);
   const [laneCount, setLaneCount] = useState(settings?.laneCount ?? 1);
@@ -94,10 +94,10 @@ const SettingsForm = (): JSX.Element => {
   useEffect(() => {
     setEventId(settings?.eventId ?? '');
     setStartTime(toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-    const nextLaneInterval = extractInterval(settings?.laneClassInterval);
+    const nextLaneInterval = extractInterval(settings?.intervals?.laneClass);
     setLaneIntervalMinutes(nextLaneInterval.minutes);
     setLaneIntervalSeconds(nextLaneInterval.seconds);
-    const nextPlayerInterval = extractInterval(settings?.classPlayerInterval);
+    const nextPlayerInterval = extractInterval(settings?.intervals?.classPlayer);
     setPlayerIntervalMinutes(nextPlayerInterval.minutes);
     setPlayerIntervalSeconds(nextPlayerInterval.seconds);
     setLaneCount(settings?.laneCount ?? 1);
@@ -141,8 +141,10 @@ const SettingsForm = (): JSX.Element => {
     const nextSettings: StartlistSettingsDto = {
       eventId: eventId.trim(),
       startTime: normalizedStartTime,
-      laneClassInterval: { milliseconds: laneIntervalMs },
-      classPlayerInterval: { milliseconds: playerIntervalMs },
+      intervals: {
+        laneClass: { milliseconds: laneIntervalMs },
+        classPlayer: { milliseconds: playerIntervalMs },
+      },
       laneCount: laneCount,
     };
 

@@ -18,8 +18,10 @@ export const createSnapshot = (overrides: Partial<MockSnapshot> = {}): MockSnaps
   settings: {
     eventId: 'mock-event',
     startTime: new Date('2024-01-01T00:00:00.000Z').toISOString(),
-    laneClassInterval: { milliseconds: 60000 },
-    classPlayerInterval: { milliseconds: 45000 },
+    intervals: {
+      laneClass: { milliseconds: 60000 },
+      classPlayer: { milliseconds: 45000 },
+    },
     laneCount: 2,
   },
   laneAssignments: [],

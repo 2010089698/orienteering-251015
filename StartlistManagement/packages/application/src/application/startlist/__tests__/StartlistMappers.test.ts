@@ -8,8 +8,10 @@ describe('Startlist mappers', () => {
     const settings = toStartlistSettings({
       eventId: 'event-1',
       startTime: validDate,
-      laneClassInterval: { milliseconds: 90000 },
-      classPlayerInterval: { milliseconds: 60000 },
+      intervals: {
+        laneClass: { milliseconds: 90000 },
+        classPlayer: { milliseconds: 60000 },
+      },
       laneCount: 4,
     });
 
@@ -24,8 +26,10 @@ describe('Startlist mappers', () => {
       toStartlistSettings({
         eventId: 'event-1',
         startTime: 'invalid-date',
-        laneClassInterval: { milliseconds: 90000 },
-        classPlayerInterval: { milliseconds: 60000 },
+        intervals: {
+          laneClass: { milliseconds: 90000 },
+          classPlayer: { milliseconds: 60000 },
+        },
         laneCount: 4,
       }),
     ).toThrow('Invalid date value: invalid-date');

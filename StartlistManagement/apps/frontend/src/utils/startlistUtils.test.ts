@@ -96,22 +96,30 @@ describe('calculateStartTimes', () => {
 
   it('calculates start times honoring lane and class assignments', () => {
     const laneAssignments = [
-      { laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } },
-      { laneNumber: 2, classOrder: ['W21'], interval: { milliseconds: 60000 } },
+      { laneNumber: 1, classOrder: ['M21', 'W21'], interval: { milliseconds: 90000 } },
     ];
     const classAssignments = createDefaultClassAssignments(entries, 60000);
     const settings = {
       eventId: 'event',
       startTime: new Date('2024-01-01T09:00:00.000Z').toISOString(),
-      laneClassInterval: { milliseconds: 90000 },
-      classPlayerInterval: { milliseconds: 60000 },
+      intervals: {
+        laneClass: { milliseconds: 90000 },
+        classPlayer: { milliseconds: 60000 },
+      },
       laneCount: 2,
     };
 
     const result = calculateStartTimes({ settings, laneAssignments, classAssignments, entries });
 
     expect(result).toHaveLength(3);
-    expect(result[0].laneNumber).toBe(1);
-    expect(new Date(result[0].startTime).toISOString()).toBe(settings.startTime);
+    const [first, second, third] = result;
+    expect(first.laneNumber).toBe(1);
+    expect(new Date(first.startTime).toISOString()).toBe(settings.startTime);
+    expect(new Date(second.startTime).toISOString()).toBe(
+      new Date(new Date(settings.startTime).getTime() + 60000).toISOString(),
+    );
+    expect(new Date(third.startTime).toISOString()).toBe(
+      new Date(new Date(settings.startTime).getTime() + 60000 * 2 + 90000).toISOString(),
+    );
   });
 });

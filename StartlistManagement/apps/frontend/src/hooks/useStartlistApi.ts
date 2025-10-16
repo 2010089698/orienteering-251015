@@ -20,7 +20,11 @@ export interface StartlistSnapshot {
 }
 
 type DurationLike = { milliseconds: number };
-type StartlistSettingsCommandInput = EnterStartlistSettingsCommand['settings'] & { interval?: DurationLike };
+type StartlistSettingsCommandInput = EnterStartlistSettingsCommand['settings'] & {
+  interval?: DurationLike;
+  laneClassInterval?: DurationLike;
+  classPlayerInterval?: DurationLike;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null;
@@ -45,8 +49,14 @@ const resolveDuration = (primary: unknown, fallback: unknown): DurationLike | un
 const normalizeSettingsPayload = (
   settings: StartlistSettingsCommandInput,
 ): EnterStartlistSettingsCommand['settings'] => {
-  const laneClassInterval = resolveDuration(settings.laneClassInterval, settings.interval);
-  const classPlayerInterval = resolveDuration(settings.classPlayerInterval, settings.interval);
+  const laneClassInterval = resolveDuration(
+    settings.intervals?.laneClass,
+    settings.laneClassInterval ?? settings.interval,
+  );
+  const classPlayerInterval = resolveDuration(
+    settings.intervals?.classPlayer,
+    settings.classPlayerInterval ?? settings.interval,
+  );
   if (!laneClassInterval || !classPlayerInterval) {
     throw new Error('Both laneClassInterval and classPlayerInterval must be provided.');
   }
@@ -57,8 +67,10 @@ const normalizeSettingsPayload = (
   return {
     eventId: settings.eventId,
     startTime,
-    laneClassInterval,
-    classPlayerInterval,
+    intervals: {
+      laneClass: laneClassInterval,
+      classPlayer: classPlayerInterval,
+    },
     laneCount: settings.laneCount,
   };
 };
@@ -67,17 +79,27 @@ const normalizeSettingsResponse = (settings: unknown): unknown => {
   if (!isRecord(settings)) {
     return settings;
   }
-  const laneClassInterval = resolveDuration(settings.laneClassInterval, settings.interval);
-  const classPlayerInterval = resolveDuration(settings.classPlayerInterval, settings.interval);
+  const laneClassInterval = resolveDuration(
+    isRecord(settings.intervals) ? settings.intervals.laneClass : undefined,
+    settings.laneClassInterval ?? settings.interval,
+  );
+  const classPlayerInterval = resolveDuration(
+    isRecord(settings.intervals) ? settings.intervals.classPlayer : undefined,
+    settings.classPlayerInterval ?? settings.interval,
+  );
 
-  if (!laneClassInterval && !classPlayerInterval) {
+  if (!laneClassInterval || !classPlayerInterval) {
     return settings;
   }
 
+  const { laneClassInterval: _legacyLane, classPlayerInterval: _legacyPlayer, ...rest } = settings;
+
   return {
-    ...settings,
-    ...(laneClassInterval ? { laneClassInterval } : {}),
-    ...(classPlayerInterval ? { classPlayerInterval } : {}),
+    ...rest,
+    intervals: {
+      laneClass: laneClassInterval,
+      classPlayer: classPlayerInterval,
+    },
   };
 };
 

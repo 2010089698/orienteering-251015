@@ -16,8 +16,10 @@ export interface DurationResponse {
 export interface StartlistSettingsResponse {
   eventId: string;
   startTime: string;
-  laneClassInterval: DurationResponse;
-  classPlayerInterval: DurationResponse;
+  intervals: {
+    laneClass: DurationResponse;
+    classPlayer: DurationResponse;
+  };
   laneCount: number;
 }
 
@@ -26,8 +28,12 @@ export type StartlistSettingsRequestBody =
         eventId: string;
         startTime: string;
         laneCount: number;
-        laneClassInterval: DurationResponse;
-        classPlayerInterval: DurationResponse;
+        intervals: {
+          laneClass: DurationResponse;
+          classPlayer: DurationResponse;
+        };
+        laneClassInterval?: DurationResponse;
+        classPlayerInterval?: DurationResponse;
         interval?: DurationResponse;
       } & Record<string, unknown>)
   | ({
@@ -90,13 +96,17 @@ export const toEnterStartlistSettingsCommand = (
   body: StartlistSettingsRequestBody,
 ): EnterStartlistSettingsCommand => {
   const laneClassInterval =
-    'laneClassInterval' in body
-      ? resolveDuration(body.laneClassInterval, body.interval as DurationResponse | undefined)
-      : resolveDuration(undefined, body.interval);
+    'intervals' in body
+      ? resolveDuration(body.intervals.laneClass, body.interval as DurationResponse | undefined)
+      : 'laneClassInterval' in body
+        ? resolveDuration(body.laneClassInterval, body.interval as DurationResponse | undefined)
+        : resolveDuration(undefined, body.interval);
   const classPlayerInterval =
-    'classPlayerInterval' in body
-      ? resolveDuration(body.classPlayerInterval, body.interval as DurationResponse | undefined)
-      : resolveDuration(undefined, body.interval);
+    'intervals' in body
+      ? resolveDuration(body.intervals.classPlayer, body.interval as DurationResponse | undefined)
+      : 'classPlayerInterval' in body
+        ? resolveDuration(body.classPlayerInterval, body.interval as DurationResponse | undefined)
+        : resolveDuration(undefined, body.interval);
 
   if (!laneClassInterval || !classPlayerInterval) {
     throw new InvalidCommandError('Both laneClassInterval and classPlayerInterval must be provided.');
@@ -107,8 +117,10 @@ export const toEnterStartlistSettingsCommand = (
     settings: {
       eventId: body.eventId,
       startTime: body.startTime,
-      laneClassInterval,
-      classPlayerInterval,
+      intervals: {
+        laneClass: laneClassInterval,
+        classPlayer: classPlayerInterval,
+      },
       laneCount: body.laneCount,
     },
   };
@@ -121,8 +133,10 @@ const mapSettings = (settings: StartlistSettings | undefined): StartlistSettings
   return {
     eventId: settings.eventId,
     startTime: settings.startTime.toISOString(),
-    laneClassInterval: toDurationResponse(settings.laneClassInterval),
-    classPlayerInterval: toDurationResponse(settings.classPlayerInterval),
+    intervals: {
+      laneClass: toDurationResponse(settings.laneClassInterval),
+      classPlayer: toDurationResponse(settings.classPlayerInterval),
+    },
     laneCount: settings.laneCount,
   };
 };
