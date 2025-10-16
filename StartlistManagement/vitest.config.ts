@@ -4,7 +4,10 @@ import path from 'node:path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['packages/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'packages/**/*.{test,spec}.{ts,tsx}',
+      '../apps/shared-ui-components/**/*.{test,spec}.{ts,tsx}',
+    ],
   },
   projects: [path.resolve(__dirname, '../apps/frontend/vitest.config.ts')],
 });

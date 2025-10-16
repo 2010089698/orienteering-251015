@@ -1,5 +1,5 @@
-import { Tag } from '@startlist-management/ui-components';
-import type { TagTone } from '@startlist-management/ui-components';
+import { Tag } from '@orienteering/shared-ui';
+import type { TagTone } from '@orienteering/shared-ui';
 import type { StatusKey, StartlistState } from '../state/types';
 
 interface StepDefinition {

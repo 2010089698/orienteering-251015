@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { StatusMessage } from '@startlist-management/ui-components';
+import { StatusMessage } from '@orienteering/shared-ui';
 import {
   DndContext,
   PointerSensor,
