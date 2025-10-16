@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "packages/*",
+    "apps/backend"
   ],
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run",
+    "test:frontend": "npm --prefix .. run test:run --workspace @orienteering/startlist-frontend",
     "dev:backend": "npm run start --workspace @startlist-management/backend"
   },
   "devDependencies": {

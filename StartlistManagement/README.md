@@ -29,7 +29,7 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
    `apps/backend/src/start.ts` でホストとポートを環境変数から解決しています。
 3. フロントエンド開発サーバーを起動します（既定: `http://localhost:5173`）。
    ```bash
-   npm run dev --workspace @startlist-management/frontend
+   npm run dev --workspace @orienteering/startlist-frontend
    ```
    Vite がバックエンド API を `http://localhost:3000` へアクセスすることを想定しています。
 4. ユニットテストを実行します。
@@ -42,7 +42,7 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
 StartlistManagement/
 ├── apps/
 │   ├── backend/            # Fastify バックエンドアプリ (HTTP エントリポイント)
-│   └── frontend/           # フロントエンドアプリ (React + Vite スタートリストウィザード)
+│   └── frontend/           # フロントエンドアプリ (React + Vite スタートリストウィザード) [移設済み -> /apps/frontend]
 ├── packages/
 │   ├── domain/             # 集約とドメインイベント、値オブジェクト
 │   ├── application/        # ユースケース、DTO、クエリサービス、プロセスマネージャ

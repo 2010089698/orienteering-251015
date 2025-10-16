@@ -7,6 +7,6 @@
     { "path": "./packages/adapters-http" },
     { "path": "./packages/ui-components" },
     { "path": "./apps/backend" },
-    { "path": "./apps/frontend" }
+    { "path": "../apps/frontend" }
   ]
 }

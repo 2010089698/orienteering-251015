@@ -1,0 +1,9 @@
+{
+  "name": "orienteering-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "StartlistManagement/packages/*",
+    "EntryManagement/packages/*"
+  ]
+}

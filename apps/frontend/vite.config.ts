@@ -2,8 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+const projectRoot = path.resolve(__dirname);
+const srcRoot = path.resolve(projectRoot, 'src');
+
 export default defineConfig({
-  root: __dirname,
+  root: projectRoot,
   plugins: [react()],
   server: {
     proxy: {
@@ -15,7 +18,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': srcRoot,
     },
   },
   build: {
