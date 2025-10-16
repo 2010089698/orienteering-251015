@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { resolveApiEndpoint } from '../../../config/api';
 import type {
   AssignLaneOrderCommand,
   AssignPlayerOrderCommand,
@@ -130,7 +131,20 @@ const ensureOk = async (response: Response): Promise<unknown> => {
 };
 
 export const useStartlistApi = () => {
-  const basePath = '/api/startlists';
+  const basePath = resolveApiEndpoint('startlist');
+
+  const withBasePath = useCallback(
+    (path: string) => {
+      if (!path) {
+        return basePath;
+      }
+      if (/^https?:/i.test(path)) {
+        return path;
+      }
+      return `${basePath}${path.startsWith('/') ? '' : '/'}${path}`;
+    },
+    [basePath],
+  );
 
   const post = useCallback(async (path: string, body?: unknown) => {
     const init: RequestInit = {
@@ -140,35 +154,35 @@ export const useStartlistApi = () => {
       init.headers = { 'Content-Type': 'application/json' };
       init.body = JSON.stringify(body);
     }
-    const response = await fetch(path, init);
+    const response = await fetch(withBasePath(path), init);
     return ensureOk(response);
-  }, []);
+  }, [withBasePath]);
 
   const get = useCallback(async (path: string) => {
-    const response = await fetch(path);
+    const response = await fetch(withBasePath(path));
     return ensureOk(response);
-  }, []);
+  }, [withBasePath]);
 
   const enterSettings = useCallback(
     async (command: EnterStartlistSettingsCommand): Promise<StartlistSnapshot> => {
       const payload = normalizeSettingsPayload(command.settings as StartlistSettingsCommandInput);
       const response = (await post(
-        `${basePath}/${encodeURIComponent(command.startlistId)}/settings`,
+        `/${encodeURIComponent(command.startlistId)}/settings`,
         payload,
       )) as StartlistSnapshot;
       return normalizeSnapshot(response) as StartlistSnapshot;
     },
-    [post, basePath],
+    [post],
   );
 
   const fetchSnapshot = useCallback(
     async (query: GetStartlistQuery): Promise<StartlistSnapshot> => {
       const snapshot = (await get(
-        `${basePath}/${encodeURIComponent(query.startlistId)}`,
+        `/${encodeURIComponent(query.startlistId)}`,
       )) as StartlistSnapshot;
       return normalizeSnapshot(snapshot) as StartlistSnapshot;
     },
-    [get, basePath],
+    [get],
   );
 
   const assignLaneOrder = useCallback(
@@ -178,12 +192,12 @@ export const useStartlistApi = () => {
         payload.reason = command.reason;
       }
       const response = (await post(
-        `${basePath}/${encodeURIComponent(command.startlistId)}/lane-order`,
+        `/${encodeURIComponent(command.startlistId)}/lane-order`,
         payload,
       )) as StartlistSnapshot | undefined;
       return normalizeSnapshot(response);
     },
-    [post, basePath],
+    [post],
   );
 
   const assignPlayerOrder = useCallback(
@@ -195,45 +209,45 @@ export const useStartlistApi = () => {
         payload.reason = command.reason;
       }
       const response = (await post(
-        `${basePath}/${encodeURIComponent(command.startlistId)}/player-order`,
+        `/${encodeURIComponent(command.startlistId)}/player-order`,
         payload,
       )) as StartlistSnapshot | undefined;
       return normalizeSnapshot(response);
     },
-    [post, basePath],
+    [post],
   );
 
   const assignStartTimes = useCallback(
     async (command: AssignStartTimesCommand): Promise<StartlistSnapshot | undefined> => {
-      const response = (await post(`${basePath}/${encodeURIComponent(command.startlistId)}/start-times`, {
+      const response = (await post(`/${encodeURIComponent(command.startlistId)}/start-times`, {
         startTimes: command.startTimes,
       })) as StartlistSnapshot | undefined;
       return normalizeSnapshot(response);
     },
-    [post, basePath],
+    [post],
   );
 
   const finalize = useCallback(
     async (command: FinalizeStartlistCommand): Promise<StartlistSnapshot | undefined> => {
       const response = (await post(
-        `${basePath}/${encodeURIComponent(command.startlistId)}/finalize`,
+        `/${encodeURIComponent(command.startlistId)}/finalize`,
       )) as StartlistSnapshot | undefined;
       return normalizeSnapshot(response);
     },
-    [post, basePath],
+    [post],
   );
 
   const invalidateStartTimes = useCallback(
     async (command: InvalidateStartTimesCommand): Promise<StartlistSnapshot | undefined> => {
       const response = (await post(
-        `${basePath}/${encodeURIComponent(command.startlistId)}/start-times/invalidate`,
+        `/${encodeURIComponent(command.startlistId)}/start-times/invalidate`,
         {
           reason: command.reason,
         },
       )) as StartlistSnapshot | undefined;
       return normalizeSnapshot(response);
     },
-    [post, basePath],
+    [post],
   );
 
   return {

@@ -1,6 +1,6 @@
 import { StatusMessage, Tag } from '@orienteering/shared-ui';
 import type { LaneAssignmentDto } from '@startlist-management/application';
-import { useStartlistApi } from '../hooks/useStartlistApi';
+import { useStartlistApi } from '../api/useStartlistApi';
 import {
   createStatus,
   setLoading,

@@ -99,4 +99,35 @@ describe('useStartlistApi', () => {
 
     await expect(result.current.fetchSnapshot({ startlistId: 'bad' })).rejects.toThrow('失敗しました');
   });
+
+  it('honours custom base path from environment variables', async () => {
+    const originalEnv = { ...import.meta.env } as Record<string, string>;
+    Object.assign(import.meta.env, { VITE_STARTLIST_API_BASE_URL: 'https://api.example.com/startlists/' });
+
+    const { result } = renderHook(() => useStartlistApi());
+
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(undefined, { status: 204 }),
+    );
+
+    await result.current.enterSettings({
+      startlistId: 'SL-9',
+      settings: {
+        eventId: 'event',
+        startTime: '2024-01-01T00:00:00.000Z',
+        intervals: {
+          laneClass: { milliseconds: 60000 },
+          classPlayer: { milliseconds: 60000 },
+        },
+        laneCount: 6,
+      },
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.example.com/startlists/SL-9/settings',
+      expect.objectContaining({ method: 'POST' }),
+    );
+
+    Object.assign(import.meta.env, originalEnv);
+  });
 });
