@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StatusMessage } from '@startlist-management/ui-components';
-import { appendEntry, createStatus, setStatus, useStartlistDispatch, useStartlistState } from '../state/StartlistContext';
+import {
+  appendEntry,
+  createStatus,
+  setStatus,
+  updateEntries,
+  useStartlistDispatch,
+  useStartlistState,
+} from '../state/StartlistContext';
 import type { Entry } from '../state/types';
+import { parseEntriesFromCsvFile } from '../utils/entryCsv';
 
 const emptyEntry: Entry = {
   name: '',
@@ -14,6 +22,7 @@ const EntryForm = (): JSX.Element => {
   const { entries, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const [form, setForm] = useState<Entry>({ ...emptyEntry });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -49,6 +58,40 @@ const EntryForm = (): JSX.Element => {
     setForm({ ...emptyEntry });
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const newEntries = await parseEntriesFromCsvFile(file, entries);
+
+      if (newEntries.length === 0) {
+        setStatus(
+          dispatch,
+          'entries',
+          createStatus('CSV に有効な参加者の行が見つかりませんでした。', 'info'),
+        );
+        return;
+      }
+
+      updateEntries(dispatch, [...entries, ...newEntries]);
+      setStatus(
+        dispatch,
+        'entries',
+        createStatus(`CSV から ${newEntries.length} 人の参加者を追加しました。`, 'success'),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'CSV の読み込みに失敗しました。';
+      setStatus(dispatch, 'entries', createStatus(message, 'error'));
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <section aria-labelledby="entry-heading">
       <header>
@@ -76,6 +119,21 @@ const EntryForm = (): JSX.Element => {
           <button type="submit">参加者を追加</button>
         </div>
       </form>
+      <div className="file-upload">
+        <label htmlFor="entry-upload">
+          CSV から参加者を一括登録
+          <input
+            id="entry-upload"
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileUpload}
+          />
+        </label>
+        <p className="muted small">
+          ヘッダーに <code>name</code>・<code>club</code>・<code>class</code>・<code>card number</code> を含む CSV をアップロードしてください。
+        </p>
+      </div>
       <StatusMessage tone={statuses.entries.level} message={statuses.entries.text} />
     </section>
   );
