@@ -9,6 +9,7 @@ const baseSettings = {
   startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
   interval: { milliseconds: 60000 },
   laneCount: 2,
+  intervalType: 'player' as const,
 };
 
 const laneAssignments = [

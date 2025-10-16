@@ -8,6 +8,7 @@ const SETTINGS_PAYLOAD = {
   startTime: '2024-01-01T10:00:00.000Z',
   interval: { milliseconds: 600000 },
   laneCount: 2,
+  intervalType: 'player' as const,
 };
 
 const LANE_ASSIGNMENTS = [

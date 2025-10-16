@@ -16,7 +16,15 @@ const formatDateTime = (iso: string): string => {
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return `${date.toLocaleDateString('ja-JP')} ${date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+  const datePart = date.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  const timePart = date.toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Asia/Tokyo',
+    timeZoneName: 'short',
+  });
+  return `${datePart} ${timePart}`;
 };
 
 const StartTimesPanel = (): JSX.Element => {
@@ -116,7 +124,7 @@ const StartTimesPanel = (): JSX.Element => {
     <section aria-labelledby="start-times-heading">
       <header>
         <h2 id="start-times-heading">スタート時間の算出と確定</h2>
-        <p className="muted">レーン割り当てとクラス順序に基づいてスタート時間を計算します。</p>
+        <p className="muted">レーン割り当てとクラス順序に基づいてスタート時間を計算します。ここで表示される時刻はすべて日本時間 (JST) です。</p>
       </header>
       <div className="actions-row">
         <button type="button" onClick={handleRecalculate} disabled={!ready}>
