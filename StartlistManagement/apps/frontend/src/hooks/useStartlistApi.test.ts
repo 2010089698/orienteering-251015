@@ -29,8 +29,10 @@ describe('useStartlistApi', () => {
       settings: {
         eventId: 'event',
         startTime,
-        laneClassInterval: { milliseconds: 60000 },
-        classPlayerInterval: { milliseconds: 45000 },
+        intervals: {
+          laneClass: { milliseconds: 60000 },
+          classPlayer: { milliseconds: 45000 },
+        },
         laneCount: 2,
       },
     });
@@ -43,8 +45,8 @@ describe('useStartlistApi', () => {
     expect(init?.body).toContain('event');
     const body = JSON.parse(init?.body as string);
     expect(body.startTime).toBe(startTime.toISOString());
-    expect(body.laneClassInterval).toEqual({ milliseconds: 60000 });
-    expect(body.classPlayerInterval).toEqual({ milliseconds: 45000 });
+    expect(body.intervals.laneClass).toEqual({ milliseconds: 60000 });
+    expect(body.intervals.classPlayer).toEqual({ milliseconds: 45000 });
   });
 
   it('normalizes legacy interval fields when fetching snapshots', async () => {
@@ -66,8 +68,11 @@ describe('useStartlistApi', () => {
 
     const response = await result.current.fetchSnapshot({ startlistId: 'SL-1' });
     const settings = response.settings as Record<string, unknown>;
-    expect(settings?.laneClassInterval).toEqual({ milliseconds: 60000 });
-    expect(settings?.classPlayerInterval).toEqual({ milliseconds: 60000 });
+    expect(settings?.intervals).toBeDefined();
+    expect(settings?.intervals).toEqual({
+      laneClass: { milliseconds: 60000 },
+      classPlayer: { milliseconds: 60000 },
+    });
   });
 
   it('appends optional reason when reassigning lane order manually', async () => {

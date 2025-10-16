@@ -28,7 +28,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
       setStatus(dispatch, 'lanes', createStatus('参加者を1人以上登録してください。', 'error'));
       return;
     }
-    const intervalMs = settings.laneClassInterval?.milliseconds ?? 0;
+    const intervalMs = settings.intervals?.laneClass?.milliseconds ?? 0;
     if (!intervalMs) {
       setStatus(dispatch, 'lanes', createStatus('スタート間隔が正しく設定されていません。', 'error'));
       return;

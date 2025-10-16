@@ -22,7 +22,7 @@ const ClassOrderPanel = (): JSX.Element => {
       setStatus(dispatch, 'classes', createStatus('先に基本情報を入力してください。', 'error'));
       return;
     }
-    const interval = settings.classPlayerInterval?.milliseconds ?? 0;
+    const interval = settings.intervals?.classPlayer?.milliseconds ?? 0;
     const assignments = createDefaultClassAssignments(entries, interval);
     updateClassAssignments(dispatch, assignments);
     if (assignments.length === 0) {

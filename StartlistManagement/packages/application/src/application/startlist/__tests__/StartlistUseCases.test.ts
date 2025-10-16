@@ -78,8 +78,10 @@ describe('Startlist application use cases', () => {
       settings: {
         eventId: 'event-1',
         startTime: new Date().toISOString(),
-        laneClassInterval: { milliseconds: 60000 },
-        classPlayerInterval: { milliseconds: 45000 },
+        intervals: {
+          laneClass: { milliseconds: 60000 },
+          classPlayer: { milliseconds: 45000 },
+        },
         laneCount: 4,
       },
     });

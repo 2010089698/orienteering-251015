@@ -2,11 +2,15 @@ export interface DurationDto {
   milliseconds: number;
 }
 
+export interface StartlistIntervalsDto {
+  laneClass: DurationDto;
+  classPlayer: DurationDto;
+}
+
 export interface StartlistSettingsDto {
   eventId: string;
   startTime: Date | string;
-  laneClassInterval: DurationDto;
-  classPlayerInterval: DurationDto;
+  intervals: StartlistIntervalsDto;
   laneCount: number;
 }
 

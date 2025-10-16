@@ -6,8 +6,10 @@ const STARTLIST_ID = 'startlist-1';
 const SETTINGS_PAYLOAD = {
   eventId: 'event-1',
   startTime: '2024-01-01T10:00:00.000Z',
-  laneClassInterval: { milliseconds: 600000 },
-  classPlayerInterval: { milliseconds: 300000 },
+  intervals: {
+    laneClass: { milliseconds: 600000 },
+    classPlayer: { milliseconds: 300000 },
+  },
   laneCount: 2,
 };
 
@@ -123,8 +125,8 @@ describe('startlistRoutes', () => {
     expect(body.status).toBe('START_TIMES_ASSIGNED');
     expect(body.startTimes).toHaveLength(START_TIMES.length);
     expect(body.settings.eventId).toBe(SETTINGS_PAYLOAD.eventId);
-    expect(body.settings.laneClassInterval).toEqual(SETTINGS_PAYLOAD.laneClassInterval);
-    expect(body.settings.classPlayerInterval).toEqual(SETTINGS_PAYLOAD.classPlayerInterval);
+    expect(body.settings.intervals.laneClass).toEqual(SETTINGS_PAYLOAD.intervals.laneClass);
+    expect(body.settings.intervals.classPlayer).toEqual(SETTINGS_PAYLOAD.intervals.classPlayer);
   });
 
   it('accepts legacy interval payloads and returns the expanded structure', async () => {
@@ -141,8 +143,8 @@ describe('startlistRoutes', () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body.settings.laneClassInterval).toEqual({ milliseconds: 600000 });
-    expect(body.settings.classPlayerInterval).toEqual({ milliseconds: 600000 });
+    expect(body.settings.intervals.laneClass).toEqual({ milliseconds: 600000 });
+    expect(body.settings.intervals.classPlayer).toEqual({ milliseconds: 600000 });
   });
 
   it('returns 404 when querying a missing startlist', async () => {

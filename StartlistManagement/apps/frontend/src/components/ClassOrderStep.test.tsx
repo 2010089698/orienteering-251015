@@ -7,8 +7,10 @@ import { renderWithStartlist } from '../test/test-utils';
 const settings = {
   eventId: 'event-1',
   startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
-  laneClassInterval: { milliseconds: 60000 },
-  classPlayerInterval: { milliseconds: 60000 },
+  intervals: {
+    laneClass: { milliseconds: 60000 },
+    classPlayer: { milliseconds: 60000 },
+  },
   laneCount: 1,
 };
 

@@ -162,10 +162,8 @@ export const calculateStartTimes = ({
     return [];
   }
   const baseTime = new Date(settings.startTime).getTime();
-  const defaultLaneInterval =
-    settings.laneClassInterval?.milliseconds ?? settings.classPlayerInterval?.milliseconds ?? 0;
-  const defaultPlayerInterval =
-    settings.classPlayerInterval?.milliseconds ?? settings.laneClassInterval?.milliseconds ?? 0;
+  const defaultLaneInterval = settings.intervals?.laneClass?.milliseconds ?? 0;
+  const defaultPlayerInterval = settings.intervals?.classPlayer?.milliseconds ?? 0;
   if (!Number.isFinite(baseTime) || defaultPlayerInterval <= 0) {
     return [];
   }
@@ -177,13 +175,14 @@ export const calculateStartTimes = ({
 
   laneAssignments.forEach((lane) => {
     let offset = 0;
-    lane.classOrder.forEach((classId) => {
+    lane.classOrder.forEach((classId, classIndex) => {
       const assignment = classMap.get(classId);
-      const interval =
-        assignment?.interval?.milliseconds ??
-        lane.interval?.milliseconds ??
-        defaultPlayerInterval;
-      if (!interval || interval <= 0) {
+      const playerInterval = assignment?.interval?.milliseconds ?? defaultPlayerInterval;
+      if (!playerInterval || playerInterval <= 0) {
+        const laneGap = lane.interval?.milliseconds ?? defaultLaneInterval;
+        if (laneGap > 0) {
+          offset += laneGap;
+        }
         return;
       }
       const playerOrder = assignment?.playerOrder?.length
@@ -197,11 +196,13 @@ export const calculateStartTimes = ({
         const start = new Date(baseTime + offset).toISOString();
         results.push({ playerId, startTime: start, laneNumber: lane.laneNumber });
         seenPlayers.add(playerId);
-        offset += interval;
+        offset += playerInterval;
       });
-      const laneGap = lane.interval?.milliseconds ?? defaultLaneInterval;
-      if (laneGap > 0) {
-        offset += laneGap;
+      if (classIndex < lane.classOrder.length - 1) {
+        const laneGap = lane.interval?.milliseconds ?? defaultLaneInterval;
+        if (laneGap > 0) {
+          offset += laneGap;
+        }
       }
     });
   });
