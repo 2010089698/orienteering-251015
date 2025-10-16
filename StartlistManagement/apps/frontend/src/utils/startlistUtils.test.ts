@@ -103,9 +103,9 @@ describe('calculateStartTimes', () => {
     const settings = {
       eventId: 'event',
       startTime: new Date('2024-01-01T09:00:00.000Z').toISOString(),
-      interval: { milliseconds: 60000 },
+      laneClassInterval: { milliseconds: 90000 },
+      classPlayerInterval: { milliseconds: 60000 },
       laneCount: 2,
-      intervalType: 'player' as const,
     };
 
     const result = calculateStartTimes({ settings, laneAssignments, classAssignments, entries });

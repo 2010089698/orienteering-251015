@@ -22,8 +22,10 @@ describe('SettingsForm', () => {
     await userEvent.type(screen.getByLabelText('スタートリスト ID'), 'SL-100');
     await userEvent.type(screen.getByLabelText('大会メモ（任意）'), '春の大会');
     fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '2024-01-01T09:00' } });
-    await userEvent.clear(screen.getByLabelText('インターバル (秒)'));
-    await userEvent.type(screen.getByLabelText('インターバル (秒)'), '30');
+    await userEvent.clear(screen.getByLabelText('レーン間隔 (秒)'));
+    await userEvent.type(screen.getByLabelText('レーン間隔 (秒)'), '90');
+    await userEvent.clear(screen.getByLabelText('選手間隔 (秒)'));
+    await userEvent.type(screen.getByLabelText('選手間隔 (秒)'), '45');
 
     await userEvent.click(screen.getByRole('button', { name: '基本情報を保存' }));
 

@@ -5,9 +5,9 @@ export interface DurationDto {
 export interface StartlistSettingsDto {
   eventId: string;
   startTime: Date | string;
-  interval: DurationDto;
+  laneClassInterval: DurationDto;
+  classPlayerInterval: DurationDto;
   laneCount: number;
-  intervalType: 'class' | 'player';
 }
 
 export interface LaneAssignmentDto {

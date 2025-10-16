@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Startlist, StartlistRepository } from '@startlist-management/domain';
+import { Duration, Startlist, StartlistRepository } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { AssignLaneOrderService } from '../commands/AssignLaneOrderUseCase.js';
@@ -78,9 +78,9 @@ describe('Startlist application use cases', () => {
       settings: {
         eventId: 'event-1',
         startTime: new Date().toISOString(),
-        interval: { milliseconds: 60000 },
+        laneClassInterval: { milliseconds: 60000 },
+        classPlayerInterval: { milliseconds: 45000 },
         laneCount: 4,
-        intervalType: 'player',
       },
     });
 
@@ -107,7 +107,11 @@ describe('Startlist application use cases', () => {
   it('AssignLaneOrderService maps lane assignments with lane count', async () => {
     const assignLaneOrder = vi.fn();
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({ laneCount: 3, intervalType: 'player' })),
+      getSettings: vi.fn(() => ({
+        laneCount: 3,
+        laneClassInterval: Duration.fromMilliseconds(60000),
+        classPlayerInterval: Duration.fromMilliseconds(45000),
+      })),
       assignLaneOrderAndIntervals: assignLaneOrder,
     });
     const service = new AssignLaneOrderService(repository, transactionManager, publisher);
@@ -142,7 +146,11 @@ describe('Startlist application use cases', () => {
   it('ManuallyReassignLaneOrderService maps assignments and reason', async () => {
     const manual = vi.fn();
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({ laneCount: 2, intervalType: 'player' })),
+      getSettings: vi.fn(() => ({
+        laneCount: 2,
+        laneClassInterval: Duration.fromMilliseconds(60000),
+        classPlayerInterval: Duration.fromMilliseconds(45000),
+      })),
       manuallyReassignLaneOrder: manual,
     });
     const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);

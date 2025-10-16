@@ -27,11 +27,15 @@ type LaneAssignmentStepProps = {
   onConfirm: () => void;
 };
 
-const ensureLaneRecords = (assignments: LaneAssignmentDto[], laneCount: number) => {
+const ensureLaneRecords = (assignments: LaneAssignmentDto[], laneCount: number, intervalMs: number) => {
   const lanes = [...assignments];
   for (let laneNumber = 1; laneNumber <= laneCount; laneNumber += 1) {
     if (!lanes.some((lane) => lane.laneNumber === laneNumber)) {
-      lanes.push({ laneNumber, classOrder: [], interval: assignments[0]?.interval });
+      lanes.push({
+        laneNumber,
+        classOrder: [],
+        interval: { milliseconds: intervalMs },
+      });
     }
   }
   return lanes.sort((a, b) => a.laneNumber - b.laneNumber);
@@ -124,7 +128,9 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
   const dispatch = useStartlistDispatch();
 
   const laneCount = settings?.laneCount ?? laneAssignments.length;
-  const intervalMs = settings?.interval?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
+  const laneIntervalMs =
+    settings?.laneClassInterval?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
+  const playerIntervalMs = settings?.classPlayerInterval?.milliseconds ?? 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -141,11 +147,11 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
   }, [laneCount]);
 
   const handleLaneChange = (classId: string, nextLane: number) => {
-    if (!intervalMs) {
+    if (!laneIntervalMs) {
       setStatus(dispatch, 'lanes', createStatus('スタート間隔を設定してください。', 'error'));
       return;
     }
-    const updated = moveClassBetweenLanes(laneAssignments, classId, nextLane, intervalMs);
+    const updated = moveClassBetweenLanes(laneAssignments, classId, nextLane, laneIntervalMs);
     updateLaneAssignments(dispatch, updated);
     setStatus(dispatch, 'lanes', createStatus(`クラス「${classId}」をレーン ${nextLane} に移動しました。`, 'info'));
   };
@@ -157,7 +163,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       return;
     }
     const activeLane = laneAssignments.find((lane) => lane.classOrder.includes(activeId));
-    if (!activeLane || !intervalMs) {
+    if (!activeLane || !laneIntervalMs) {
       return;
     }
 
@@ -166,7 +172,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       if (!Number.isFinite(laneNumber) || laneNumber === activeLane.laneNumber) {
         return;
       }
-      const updated = moveClassBetweenLanes(laneAssignments, activeId, laneNumber, intervalMs);
+      const updated = moveClassBetweenLanes(laneAssignments, activeId, laneNumber, laneIntervalMs);
       updateLaneAssignments(dispatch, updated);
       setStatus(dispatch, 'lanes', createStatus(`クラス「${activeId}」をレーン ${laneNumber} に移動しました。`, 'info'));
       return;
@@ -188,7 +194,13 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       return;
     }
     const targetIndex = targetLane.classOrder.indexOf(overId);
-    const updated = moveClassBetweenLanes(laneAssignments, activeId, targetLane.laneNumber, intervalMs, targetIndex);
+    const updated = moveClassBetweenLanes(
+      laneAssignments,
+      activeId,
+      targetLane.laneNumber,
+      laneIntervalMs,
+      targetIndex,
+    );
     updateLaneAssignments(dispatch, updated);
     setStatus(
       dispatch,
@@ -206,7 +218,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       setStatus(dispatch, 'lanes', createStatus('レーン割り当てを確認してください。', 'error'));
       return;
     }
-    const classAssignments = createDefaultClassAssignments(entries, intervalMs);
+    const classAssignments = createDefaultClassAssignments(entries, playerIntervalMs || laneIntervalMs);
     updateClassAssignments(dispatch, classAssignments);
     if (classAssignments.length === 0) {
       setStatus(dispatch, 'classes', createStatus('クラス内順序を作成できませんでした。', 'error'));
@@ -229,7 +241,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     onConfirm();
   };
 
-  const lanesWithPlaceholders = ensureLaneRecords(laneAssignments, laneCount);
+  const lanesWithPlaceholders = ensureLaneRecords(laneAssignments, laneCount, laneIntervalMs);
 
   return (
     <section aria-labelledby="step2-heading">

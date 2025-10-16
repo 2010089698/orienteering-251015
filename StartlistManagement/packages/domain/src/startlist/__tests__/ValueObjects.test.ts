@@ -98,21 +98,39 @@ describe('StartTime', () => {
       (error: unknown) => error instanceof DomainError,
     );
   });
+
+  test('create supports legacy interval parameter', () => {
+    const interval = Duration.fromSeconds(90);
+    const startTime = new Date('2024-04-01T10:00:00Z');
+
+    const settings = StartlistSettings.create({
+      eventId: 'legacy',
+      startTime,
+      interval,
+      laneCount: 2,
+    });
+
+    assert.strictEqual(settings.laneClassInterval, interval);
+    assert.strictEqual(settings.classPlayerInterval, interval);
+  });
 });
 
 describe('StartlistSettings', () => {
   test('create copies mutable inputs and stores values', () => {
-    const interval = Duration.fromMinutes(2);
+    const laneClassInterval = Duration.fromMinutes(2);
+    const classPlayerInterval = Duration.fromSeconds(45);
     const startTime = new Date('2024-04-01T10:00:00Z');
     const settings = StartlistSettings.create({
       eventId: 'event-1',
       startTime,
-      interval,
+      laneClassInterval,
+      classPlayerInterval,
       laneCount: 3,
     });
 
     assert.strictEqual(settings.eventId, 'event-1');
-    assert.strictEqual(settings.interval, interval);
+    assert.strictEqual(settings.laneClassInterval, laneClassInterval);
+    assert.strictEqual(settings.classPlayerInterval, classPlayerInterval);
     assert.strictEqual(settings.laneCount, 3);
     assert.notStrictEqual(settings.startTime, startTime);
     assert.strictEqual(settings.startTime.toISOString(), startTime.toISOString());
@@ -122,7 +140,8 @@ describe('StartlistSettings', () => {
   });
 
   test('create validates inputs', () => {
-    const interval = Duration.fromSeconds(30);
+    const laneClassInterval = Duration.fromSeconds(30);
+    const classPlayerInterval = Duration.fromSeconds(45);
     const startTime = new Date('2024-04-01T10:00:00Z');
 
     assert.throws(
@@ -130,7 +149,8 @@ describe('StartlistSettings', () => {
         StartlistSettings.create({
           eventId: '',
           startTime,
-          interval,
+          laneClassInterval,
+          classPlayerInterval,
           laneCount: 1,
         }),
       (error: unknown) => error instanceof DomainError,
@@ -140,7 +160,8 @@ describe('StartlistSettings', () => {
         StartlistSettings.create({
           eventId: 'event-1',
           startTime: new Date('invalid'),
-          interval,
+          laneClassInterval,
+          classPlayerInterval,
           laneCount: 1,
         }),
       (error: unknown) => error instanceof DomainError,
@@ -150,7 +171,8 @@ describe('StartlistSettings', () => {
         StartlistSettings.create({
           eventId: 'event-1',
           startTime,
-          interval,
+          laneClassInterval,
+          classPlayerInterval,
           laneCount: 0,
         }),
       (error: unknown) => error instanceof DomainError,
@@ -160,7 +182,8 @@ describe('StartlistSettings', () => {
         StartlistSettings.create({
           eventId: 'event-1',
           startTime,
-          interval,
+          laneClassInterval,
+          classPlayerInterval,
           laneCount: 2.5,
         }),
       (error: unknown) => error instanceof DomainError,

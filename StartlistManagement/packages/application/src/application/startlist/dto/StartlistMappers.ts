@@ -31,9 +31,9 @@ export const toStartlistSettings = (dto: StartlistSettingsDto): StartlistSetting
   return StartlistSettings.create({
     eventId: dto.eventId,
     startTime: toDate(dto.startTime),
-    interval: toDuration(dto.interval),
+    laneClassInterval: toDuration(dto.laneClassInterval),
+    classPlayerInterval: toDuration(dto.classPlayerInterval),
     laneCount: dto.laneCount,
-    intervalType: dto.intervalType,
   });
 };
 
