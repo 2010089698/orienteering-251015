@@ -2,18 +2,21 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+const projectRoot = path.resolve(__dirname);
+const srcRoot = path.resolve(projectRoot, 'src');
+
 export default defineConfig({
-  root: __dirname,
+  root: projectRoot,
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': srcRoot,
     },
   },
   test: {
     name: 'frontend',
     environment: 'jsdom',
-    setupFiles: path.resolve(__dirname, 'src/test/setup.ts'),
+    setupFiles: path.resolve(srcRoot, 'test/setup.ts'),
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     globals: true,
     css: false,
