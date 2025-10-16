@@ -6,9 +6,9 @@ const STARTLIST_ID = 'startlist-1';
 const SETTINGS_PAYLOAD = {
   eventId: 'event-1',
   startTime: '2024-01-01T10:00:00.000Z',
-  interval: { milliseconds: 600000 },
+  laneClassInterval: { milliseconds: 600000 },
+  classPlayerInterval: { milliseconds: 300000 },
   laneCount: 2,
-  intervalType: 'player' as const,
 };
 
 const LANE_ASSIGNMENTS = [

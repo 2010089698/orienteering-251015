@@ -12,7 +12,8 @@ export const DurationSchema = Type.Object({
 export const StartlistSettingsSchema = Type.Object({
   eventId: Type.String({ minLength: 1 }),
   startTime: Type.String({ format: 'date-time' }),
-  interval: DurationSchema,
+  laneClassInterval: DurationSchema,
+  classPlayerInterval: DurationSchema,
   laneCount: Type.Integer({ minimum: 1 }),
 });
 
@@ -37,7 +38,8 @@ export const StartTimeSchema = Type.Object({
 const StartlistSettingsResponseSchema = Type.Object({
   eventId: Type.String(),
   startTime: Type.String({ format: 'date-time' }),
-  interval: DurationSchema,
+  laneClassInterval: DurationSchema,
+  classPlayerInterval: DurationSchema,
   laneCount: Type.Integer({ minimum: 1 }),
 });
 

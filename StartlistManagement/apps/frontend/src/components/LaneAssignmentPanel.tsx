@@ -22,7 +22,7 @@ const LaneAssignmentPanel = (): JSX.Element => {
       setStatus(dispatch, 'lanes', createStatus('先に基本情報を保存してください。', 'error'));
       return;
     }
-    const interval = settings.interval?.milliseconds ?? 0;
+    const interval = settings.laneClassInterval?.milliseconds ?? 0;
     const assignments = generateLaneAssignments(entries, settings.laneCount, interval);
     updateLaneAssignments(dispatch, assignments);
     if (assignments.length === 0) {

@@ -5,9 +5,9 @@ export class StartlistSettings {
   private constructor(
     public readonly eventId: string,
     public readonly startTime: Date,
-    public readonly interval: Duration,
+    public readonly laneClassInterval: Duration,
+    public readonly classPlayerInterval: Duration,
     public readonly laneCount: number,
-    public readonly intervalType: 'class' | 'player',
   ) {
     Object.freeze(this);
   }
@@ -15,9 +15,13 @@ export class StartlistSettings {
   static create(params: {
     eventId: string;
     startTime: Date;
-    interval: Duration;
+    laneClassInterval?: Duration;
+    classPlayerInterval?: Duration;
     laneCount: number;
-    intervalType?: 'class' | 'player';
+    /**
+     * @deprecated Legacy interval support. Use laneClassInterval/classPlayerInterval instead.
+     */
+    interval?: Duration;
   }): StartlistSettings {
     if (!params.eventId || params.eventId.trim().length === 0) {
       throw new DomainError('eventId is required.');
@@ -28,16 +32,19 @@ export class StartlistSettings {
     if (params.laneCount < 1 || !Number.isInteger(params.laneCount)) {
       throw new DomainError('laneCount must be an integer greater than or equal to 1.');
     }
-    const intervalType = params.intervalType ?? 'player';
-    if (intervalType !== 'class' && intervalType !== 'player') {
-      throw new DomainError('intervalType must be either "class" or "player".');
+    const laneClassInterval = params.laneClassInterval ?? params.interval;
+    const classPlayerInterval = params.classPlayerInterval ?? params.interval;
+
+    if (!laneClassInterval || !classPlayerInterval) {
+      throw new DomainError('Both laneClassInterval and classPlayerInterval are required.');
     }
+
     return new StartlistSettings(
       params.eventId,
       new Date(params.startTime.getTime()),
-      params.interval,
+      laneClassInterval,
+      classPlayerInterval,
       params.laneCount,
-      intervalType,
     );
   }
 }

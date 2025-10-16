@@ -8,12 +8,15 @@ describe('Startlist mappers', () => {
     const settings = toStartlistSettings({
       eventId: 'event-1',
       startTime: validDate,
-      interval: { milliseconds: 60000 },
+      laneClassInterval: { milliseconds: 90000 },
+      classPlayerInterval: { milliseconds: 60000 },
       laneCount: 4,
     });
 
     expect(settings.eventId).toBe('event-1');
     expect(settings.laneCount).toBe(4);
+    expect(settings.laneClassInterval.value).toBe(90000);
+    expect(settings.classPlayerInterval.value).toBe(60000);
   });
 
   it('throws for invalid start time', () => {
@@ -21,7 +24,8 @@ describe('Startlist mappers', () => {
       toStartlistSettings({
         eventId: 'event-1',
         startTime: 'invalid-date',
-        interval: { milliseconds: 60000 },
+        laneClassInterval: { milliseconds: 90000 },
+        classPlayerInterval: { milliseconds: 60000 },
         laneCount: 4,
       }),
     ).toThrow('Invalid date value: invalid-date');

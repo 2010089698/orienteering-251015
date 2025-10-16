@@ -36,9 +36,9 @@ describe('StartlistContext', () => {
     const settings = {
       eventId: 'event',
       startTime: new Date('2024-01-01T00:00:00.000Z').toISOString(),
-      interval: { milliseconds: 60000 },
+      laneClassInterval: { milliseconds: 60000 },
+      classPlayerInterval: { milliseconds: 45000 },
       laneCount: 2,
-      intervalType: 'player' as const,
     };
 
     act(() => {

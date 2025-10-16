@@ -43,9 +43,9 @@ const compareCardNumbers = (a: string, b: string): number => {
 export const generateLaneAssignments = (
   entries: Entry[],
   laneCount: number,
-  intervalMs: number,
+  laneIntervalMs: number,
 ): LaneAssignmentDto[] => {
-  if (!laneCount || laneCount <= 0 || intervalMs <= 0) {
+  if (!laneCount || laneCount <= 0 || laneIntervalMs <= 0) {
     return [];
   }
   const grouped = Array.from(groupEntriesByClass(entries).entries()).map<ClassGroup>(([classId, value]) => ({
@@ -88,7 +88,7 @@ export const generateLaneAssignments = (
     .map<LaneAssignmentDto>((lane) => ({
       laneNumber: lane.laneNumber,
       classOrder: lane.classOrder,
-      interval: { milliseconds: intervalMs },
+      interval: { milliseconds: laneIntervalMs },
     }));
 };
 
@@ -114,14 +114,14 @@ export const reorderLaneClass = (
 
 export const createDefaultClassAssignments = (
   entries: Entry[],
-  intervalMs: number,
+  playerIntervalMs: number,
 ): ClassAssignmentDto[] => {
   return Array.from(groupEntriesByClass(entries).entries()).map<ClassAssignmentDto>(([classId, groupEntries]) => ({
     classId,
     playerOrder: [...groupEntries]
       .map((entry) => entry.cardNo)
       .sort((a, b) => compareCardNumbers(a, b)),
-    interval: { milliseconds: intervalMs },
+    interval: { milliseconds: playerIntervalMs },
   }));
 };
 
@@ -162,8 +162,11 @@ export const calculateStartTimes = ({
     return [];
   }
   const baseTime = new Date(settings.startTime).getTime();
-  const defaultInterval = settings.interval?.milliseconds ?? 0;
-  if (!Number.isFinite(baseTime) || defaultInterval <= 0) {
+  const defaultLaneInterval =
+    settings.laneClassInterval?.milliseconds ?? settings.classPlayerInterval?.milliseconds ?? 0;
+  const defaultPlayerInterval =
+    settings.classPlayerInterval?.milliseconds ?? settings.laneClassInterval?.milliseconds ?? 0;
+  if (!Number.isFinite(baseTime) || defaultPlayerInterval <= 0) {
     return [];
   }
 
@@ -176,7 +179,10 @@ export const calculateStartTimes = ({
     let offset = 0;
     lane.classOrder.forEach((classId) => {
       const assignment = classMap.get(classId);
-      const interval = assignment?.interval?.milliseconds ?? lane.interval?.milliseconds ?? defaultInterval;
+      const interval =
+        assignment?.interval?.milliseconds ??
+        lane.interval?.milliseconds ??
+        defaultPlayerInterval;
       if (!interval || interval <= 0) {
         return;
       }
@@ -193,6 +199,10 @@ export const calculateStartTimes = ({
         seenPlayers.add(playerId);
         offset += interval;
       });
+      const laneGap = lane.interval?.milliseconds ?? defaultLaneInterval;
+      if (laneGap > 0) {
+        offset += laneGap;
+      }
     });
   });
 

@@ -14,7 +14,8 @@ export interface DurationResponse {
 export interface StartlistSettingsResponse {
   eventId: string;
   startTime: string;
-  interval: DurationResponse;
+  laneClassInterval: DurationResponse;
+  classPlayerInterval: DurationResponse;
   laneCount: number;
 }
 
@@ -56,7 +57,8 @@ const mapSettings = (settings: StartlistSettings | undefined): StartlistSettings
   return {
     eventId: settings.eventId,
     startTime: settings.startTime.toISOString(),
-    interval: toDurationResponse(settings.interval),
+    laneClassInterval: toDurationResponse(settings.laneClassInterval),
+    classPlayerInterval: toDurationResponse(settings.classPlayerInterval),
     laneCount: settings.laneCount,
   };
 };
