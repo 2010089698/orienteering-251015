@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import {
@@ -21,6 +21,7 @@ import {
 } from '../state/StartlistContext';
 import { calculateStartTimes, updateClassPlayerOrder } from '../utils/startlistUtils';
 import type { ClassAssignmentDto } from '@startlist-management/application';
+import { Tabs } from '../../../components/tabs';
 
 type ClassOrderStepProps = {
   onBack: () => void;
@@ -47,6 +48,28 @@ const parsePlayerItemId = (value: string): { classId: string; playerId: string }
     return undefined;
   }
   return { classId, playerId };
+};
+
+type StartTimeRow = {
+  playerId: string;
+  cardNo: string;
+  name: string;
+  classId: string;
+  laneNumber: number;
+  startTimeIso: string;
+  startTimeLabel: string;
+  startTimeMs: number;
+};
+
+const createTabKey = (value: string): string => {
+  const sanitized = value
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .toLowerCase();
+  const hash = Array.from(value).reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) >>> 0, 0).toString(16);
+  return `class-${sanitized || 'id'}-${hash}`;
 };
 
 const ClassPlayerCard = ({
@@ -96,19 +119,112 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     return new Map(entries.map((entry) => [entry.id, entry]));
   }, [entries]);
 
-  const startTimeRows = useMemo(() => {
-    return startTimes.map((item) => {
+  const { rows: startTimeRows, byClass: startTimeRowsByClass } = useMemo(() => {
+    const rows: StartTimeRow[] = [];
+    const byClass = new Map<string, StartTimeRow[]>();
+    startTimes.forEach((item) => {
       const entry = entryMap.get(item.playerId);
-      const isoValue = typeof item.startTime === 'string' ? item.startTime : new Date(item.startTime).toISOString();
-      return {
+      const isoValue =
+        typeof item.startTime === 'string' ? item.startTime : new Date(item.startTime).toISOString();
+      const timestamp = new Date(isoValue).getTime();
+      const row: StartTimeRow = {
         playerId: item.playerId,
+        cardNo: entry?.cardNo ?? item.playerId,
         name: entry?.name ?? '（名前未入力）',
         classId: entry?.classId ?? '不明',
         laneNumber: item.laneNumber,
-        startTime: formatStartTime(isoValue),
+        startTimeIso: isoValue,
+        startTimeLabel: formatStartTime(isoValue),
+        startTimeMs: Number.isNaN(timestamp) ? Number.NaN : timestamp,
       };
+      rows.push(row);
+      const list = byClass.get(row.classId);
+      if (list) {
+        list.push(row);
+      } else {
+        byClass.set(row.classId, [row]);
+      }
     });
+    return { rows, byClass };
   }, [startTimes, entryMap]);
+
+  const classSummaries = useMemo(
+    () =>
+      classAssignments.reduce(
+        (acc, assignment) => {
+          const rows = startTimeRowsByClass.get(assignment.classId) ?? [];
+          let firstRow: StartTimeRow | undefined;
+          let lastRow: StartTimeRow | undefined;
+          rows.forEach((row) => {
+            if (Number.isNaN(row.startTimeMs)) {
+              return;
+            }
+            if (!firstRow || row.startTimeMs < firstRow.startTimeMs) {
+              firstRow = row;
+            }
+            if (!lastRow || row.startTimeMs > lastRow.startTimeMs) {
+              lastRow = row;
+            }
+          });
+          acc.set(assignment.classId, {
+            count: assignment.playerOrder.length,
+            firstStart: firstRow?.startTimeLabel,
+            lastStart: lastRow?.startTimeLabel ?? firstRow?.startTimeLabel,
+          });
+          return acc;
+        },
+        new Map<string, { count: number; firstStart?: string; lastStart?: string }>(),
+      ),
+    [classAssignments, startTimeRowsByClass],
+  );
+
+  const classTabItems = useMemo(
+    () =>
+      classAssignments.map((assignment) => {
+        const summary = classSummaries.get(assignment.classId);
+        const metaParts = [`${assignment.playerOrder.length}人`];
+        if (summary?.firstStart) {
+          if (summary.lastStart && summary.lastStart !== summary.firstStart) {
+            metaParts.push(`${summary.firstStart}〜${summary.lastStart}`);
+          } else {
+            metaParts.push(summary.firstStart);
+          }
+        }
+        const label = `${assignment.classId}（${metaParts.join('・')}）`;
+        const tabId = createTabKey(assignment.classId);
+        return {
+          tabId,
+          panelId: `${tabId}-panel`,
+          label,
+          assignment,
+        };
+      }),
+    [classAssignments, classSummaries],
+  );
+
+  const tabItems = useMemo(
+    () => [
+      { id: 'overview', label: '一覧', panelId: 'class-panel-overview' },
+      ...classTabItems.map((item) => ({ id: item.tabId, label: item.label, panelId: item.panelId })),
+    ],
+    [classTabItems],
+  );
+
+  const classTabMap = useMemo(
+    () => new Map(classTabItems.map((item) => [item.tabId, item])),
+    [classTabItems],
+  );
+
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      return;
+    }
+    if (!classTabMap.has(activeTab)) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, classTabMap]);
 
   const reorderWithinClass = (classId: string, fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) {
@@ -178,61 +294,190 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     <section aria-labelledby="step3-heading">
       <header>
         <h2 id="step3-heading">STEP 3 クラス内順序とスタート時間</h2>
-        <p className="muted">並び順をドラッグ＆ドロップまたはボタンで変更すると、スタート時間が自動で計算し直されます。スタート時刻はすべて日本時間 (JST) です。</p>
+        <p className="muted">
+          並び順をドラッグ＆ドロップまたはボタンで変更すると、スタート時間が自動で計算し直されます。スタート時刻はすべて日本時間 (JST)
+          です。
+        </p>
       </header>
       {classAssignments.length === 0 ? (
         <p className="muted">クラス内順序がまだ作成されていません。STEP 2 から進めてください。</p>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="class-order-grid">
-            {classAssignments.map((assignment) => (
-              <div key={assignment.classId} className="class-card">
-                <h3>{assignment.classId}</h3>
-                {assignment.playerOrder.length === 0 ? (
-                  <p className="muted">参加者が登録されていません。</p>
-                ) : (
-                  <SortableContext
-                    items={assignment.playerOrder.map((playerId) => playerItemId(assignment.classId, playerId))}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <DroppableList assignment={assignment}>
-                      {assignment.playerOrder.map((playerId, index) => {
-                        const entry = entryMap.get(playerId);
-                        return (
-                          <ClassPlayerCard key={playerId} classId={assignment.classId} playerId={playerId}>
-                            <div className="order-row">
-                              <span>
-                                {entry?.name || '（名前未入力）'} / {entry?.cardNo ?? playerId}
-                              </span>
-                              <span className="inline-buttons">
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  onClick={() => handleMove(assignment.classId, index, -1)}
-                                  disabled={index === 0}
-                                >
-                                  ↑
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  onClick={() => handleMove(assignment.classId, index, 1)}
-                                  disabled={index === assignment.playerOrder.length - 1}
-                                >
-                                  ↓
-                                </button>
-                              </span>
-                            </div>
-                          </ClassPlayerCard>
-                        );
-                      })}
-                    </DroppableList>
-                  </SortableContext>
-                )}
-              </div>
-            ))}
+        <>
+          <div className="class-order-tabs">
+            <Tabs
+              activeId={activeTab}
+              items={tabItems}
+              onChange={setActiveTab}
+              idPrefix="class-tab"
+              ariaLabel="クラス別の表示切り替え"
+            />
           </div>
-        </DndContext>
+          <div className="class-order-panels">
+            {tabItems.map((item) => {
+              const isActive = item.id === activeTab;
+              if (item.id === 'overview') {
+                return (
+                  <div
+                    key={item.id}
+                    id={item.panelId}
+                    role="tabpanel"
+                    aria-labelledby={`class-tab-${item.id}`}
+                    hidden={!isActive}
+                    className="class-order-panel class-order-panel--overview"
+                  >
+                    {startTimeRows.length > 0 ? (
+                      <div className="table-wrapper">
+                        <table>
+                          <caption>スタート時間一覧</caption>
+                          <thead>
+                            <tr>
+                              <th>クラス</th>
+                              <th>名前 / カード番号</th>
+                              <th>レーン</th>
+                              <th>スタート時刻</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {startTimeRows.map((row) => (
+                              <tr key={`${row.playerId}-${row.laneNumber}`}>
+                                <td>{row.classId}</td>
+                                <td>
+                                  {row.name} / {row.cardNo}
+                                </td>
+                                <td>{row.laneNumber}</td>
+                                <td>{row.startTimeLabel}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="muted">スタート時間がまだ計算されていません。</p>
+                    )}
+                  </div>
+                );
+              }
+
+              const tabInfo = classTabMap.get(item.id);
+              if (!tabInfo) {
+                return null;
+              }
+              const rows = startTimeRowsByClass.get(tabInfo.assignment.classId) ?? [];
+              const summary = classSummaries.get(tabInfo.assignment.classId);
+              const metaParts = [`参加者 ${summary?.count ?? tabInfo.assignment.playerOrder.length}人`];
+              if (summary?.firstStart) {
+                if (summary.lastStart && summary.lastStart !== summary.firstStart) {
+                  metaParts.push(`${summary.firstStart}〜${summary.lastStart}`);
+                } else {
+                  metaParts.push(summary.firstStart);
+                }
+              }
+              const metaText = metaParts.join(' / ');
+
+              return (
+                <div
+                  key={item.id}
+                  id={item.panelId}
+                  role="tabpanel"
+                  aria-labelledby={`class-tab-${item.id}`}
+                  hidden={!isActive}
+                  className="class-order-panel class-order-panel--detail"
+                >
+                  {isActive ? (
+                    <div className="class-order-layout">
+                      <div className="class-order-layout__list">
+                        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                          <div className="class-card">
+                            <div className="class-card__header">
+                              <h3>{tabInfo.assignment.classId}</h3>
+                              <p className="muted class-card__meta">{metaText}</p>
+                            </div>
+                            {tabInfo.assignment.playerOrder.length === 0 ? (
+                              <p className="muted">参加者が登録されていません。</p>
+                            ) : (
+                              <SortableContext
+                                items={tabInfo.assignment.playerOrder.map((playerId) =>
+                                  playerItemId(tabInfo.assignment.classId, playerId),
+                                )}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                <DroppableList assignment={tabInfo.assignment}>
+                                  {tabInfo.assignment.playerOrder.map((playerId, index) => {
+                                    const entry = entryMap.get(playerId);
+                                    return (
+                                      <ClassPlayerCard
+                                        key={playerId}
+                                        classId={tabInfo.assignment.classId}
+                                        playerId={playerId}
+                                      >
+                                        <div className="order-row">
+                                          <span>
+                                            {entry?.name || '（名前未入力）'} / {entry?.cardNo ?? playerId}
+                                          </span>
+                                          <span className="inline-buttons">
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={() => handleMove(tabInfo.assignment.classId, index, -1)}
+                                              disabled={index === 0}
+                                            >
+                                              ↑
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={() => handleMove(tabInfo.assignment.classId, index, 1)}
+                                              disabled={index === tabInfo.assignment.playerOrder.length - 1}
+                                            >
+                                              ↓
+                                            </button>
+                                          </span>
+                                        </div>
+                                      </ClassPlayerCard>
+                                    );
+                                  })}
+                                </DroppableList>
+                              </SortableContext>
+                            )}
+                          </div>
+                        </DndContext>
+                      </div>
+                      <div className="class-order-layout__table">
+                        {rows.length > 0 ? (
+                          <div className="table-wrapper">
+                            <table>
+                              <caption>{`${tabInfo.assignment.classId} のスタート時間`}</caption>
+                              <thead>
+                                <tr>
+                                  <th>名前 / カード番号</th>
+                                  <th>レーン</th>
+                                  <th>スタート時刻</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rows.map((row) => (
+                                  <tr key={`${row.playerId}-${row.laneNumber}`}>
+                                    <td>
+                                      {row.name} / {row.cardNo}
+                                    </td>
+                                    <td>{row.laneNumber}</td>
+                                    <td>{row.startTimeLabel}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="muted">スタート時間がまだ計算されていません。</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
       <div className="actions-row step-actions">
         <button type="button" className="secondary" onClick={onBack}>
@@ -241,33 +486,6 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
       </div>
       <StatusMessage tone={statuses.classes.level} message={statuses.classes.text} />
       <StatusMessage tone={statuses.startTimes.level} message={statuses.startTimes.text} />
-      {startTimeRows.length > 0 && (
-        <div className="table-wrapper">
-          <table>
-            <caption>スタート時間一覧</caption>
-            <thead>
-              <tr>
-                <th>クラス</th>
-                <th>名前 / カード番号</th>
-                <th>レーン</th>
-                <th>スタート時刻</th>
-              </tr>
-            </thead>
-            <tbody>
-              {startTimeRows.map((row) => (
-                <tr key={`${row.playerId}-${row.laneNumber}`}>
-                  <td>{row.classId}</td>
-                  <td>
-                    {row.name} / {row.playerId}
-                  </td>
-                  <td>{row.laneNumber}</td>
-                  <td>{row.startTime}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </section>
   );
 };
