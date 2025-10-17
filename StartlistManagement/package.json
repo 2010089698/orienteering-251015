@@ -9,7 +9,6 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run",
-    "test:frontend": "npm --prefix .. run test:run --workspace @orienteering/startlist-frontend",
     "dev:backend": "npm run start --workspace @startlist-management/backend"
   },
   "devDependencies": {
