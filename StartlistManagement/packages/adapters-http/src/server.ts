@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import { Type } from '@sinclair/typebox';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import frontendRoutes from './fastify/frontendRoutes.js';
 import startlistRoutes, { StartlistRoutesOptions } from './fastify/startlistRoutes.js';
 
 export interface CreateServerOptions {
@@ -11,7 +12,17 @@ export interface CreateServerOptions {
 export const createServer = (options: CreateServerOptions) => {
   const fastify = Fastify({ logger: options.logger ?? false }).withTypeProvider<TypeBoxTypeProvider>();
 
-  fastify.register(frontendRoutes);
+  void fastify.register(cors, { origin: true });
+
+  fastify.get(
+    '/health',
+    {
+      schema: {
+        response: { 200: Type.Object({ status: Type.Literal('ok') }) },
+      },
+    },
+    async () => ({ status: 'ok' }),
+  );
   fastify.register(startlistRoutes, options.startlist);
 
   return fastify;

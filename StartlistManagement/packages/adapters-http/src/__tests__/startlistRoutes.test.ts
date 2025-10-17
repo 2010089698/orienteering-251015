@@ -101,6 +101,13 @@ describe('startlistRoutes', () => {
     });
   };
 
+  it('responds to health checks', async () => {
+    const response = await server.inject({ method: 'GET', url: '/health' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ok' });
+  });
+
   it('creates a startlist and returns the snapshot state', async () => {
     const settingsResponse = await enterSettings();
     expect(settingsResponse.statusCode).toBe(200);

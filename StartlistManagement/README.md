@@ -1,7 +1,7 @@
 # StartlistManagement
 
 ## プロジェクト概要
-StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / HTTP アダプタの 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成に加え、React + Vite 製のウィザード UI で API ワークフローを体験できます。
+StartlistManagement は、オリエンテーリング大会のスタートリストを管理するための学習用サービスです。Fastify と TypeScript で構築した HTTP API と、Domain / Application / Infrastructure / HTTP アダプタの 4 層に分かれたドメイン駆動設計のアーキテクチャを採用しています。スタートリスト集約のライフサイクル（設定入力から確定まで）と、手動操作による再割当て時のドメインイベント処理を段階的に理解できる構成に加え、共通フロントエンド（`apps/frontend`）から API ワークフローを体験できます。
 
 ## 主な機能
 - スタートリスト設定（イベント ID・開始時刻・レーン数・インターバル）の入力とドメインイベント発行
@@ -14,7 +14,7 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
 - **言語/ランタイム**: Node.js、TypeScript、ts-node
 - **Web フレームワーク**: Fastify + @fastify/type-provider-typebox
 - **スキーマ定義**: @sinclair/typebox
-- **フロントエンド**: React, Vite, TypeScript
+- **フロントエンド**: React, Vite, TypeScript（共通フロントエンドから API を呼び出す）
 - **テスト**: Vitest
 
 ## クイックスタート
@@ -31,7 +31,7 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
    ```bash
    npm run dev --workspace @orienteering/startlist-frontend
    ```
-   Vite がバックエンド API を `http://localhost:3000` へアクセスすることを想定しています。
+   フロントエンドは環境変数 `VITE_STARTLIST_API_BASE_URL` を使用してバックエンド API のベース URL（例: `http://localhost:3000/api/startlists`）を解決します。未設定の場合は同一オリジンの `/api/startlists` が利用されます。
 4. ユニットテストを実行します。
    ```bash
    npm test
@@ -42,7 +42,7 @@ StartlistManagement は、オリエンテーリング大会のスタートリス
 StartlistManagement/
 ├── apps/
 │   ├── backend/            # Fastify バックエンドアプリ (HTTP エントリポイント)
-│   └── frontend/           # フロントエンドアプリ (React + Vite スタートリストウィザード) [移設済み -> /apps/frontend]
+│   └── frontend/           # （廃止）フロントエンドは /apps/frontend へ統合済み
 ├── packages/
 │   ├── domain/             # 集約とドメインイベント、値オブジェクト
 │   ├── application/        # ユースケース、DTO、クエリサービス、プロセスマネージャ
@@ -75,10 +75,11 @@ StartlistManagement/
 - `createStartlistModule` はこれらの実装を束ね、イベント購読をセットアップします。
 
 ## プレゼンテーション層（HTTP API）
-`/api/startlists/:id` 配下に以下のエンドポイントを提供します。
+`/health` および `/api/startlists/:id` 配下に以下のエンドポイントを提供します。
 
 | 用途 | メソッド | パス | 説明 |
 | ---- | -------- | ---- | ---- |
+| ヘルスチェック | GET | `/health` | 稼働状態を確認し `{ status: 'ok' }` を返す |
 | 設定入力 | POST | `/api/startlists/:id/settings` | スタートリスト設定を登録しスナップショットを返す |
 | レーン割り当て | POST | `/api/startlists/:id/lane-order` | レーン配列とクラス順、間隔を設定 |
 | プレイヤー順決定 | POST | `/api/startlists/:id/player-order` | クラス内の選手順と間隔を設定 |
@@ -89,12 +90,12 @@ StartlistManagement/
 | スタート時間無効化 | POST | `/api/startlists/:id/start-times/invalidate` | 手動理由を受け取りスタート時間を無効化 |
 | 取得 | GET | `/api/startlists/:id` | 現在のスタートリストスナップショットを返す |
 
-各ハンドラは TypeBox でバリデーションされたリクエストボディをユースケースに委譲し、標準化されたエラーハンドリングを提供します。
+各ハンドラは TypeBox でバリデーションされたリクエストボディをユースケースに委譲し、標準化されたエラーハンドリングを提供します。HTTP サーバーは `@fastify/cors` を利用してクロスオリジンからの API アクセスを許可しています。
 
-## フロントエンドウィザード
+## フロントエンド統合
 - `apps/frontend` に Vite + React + TypeScript の単一ページアプリとして実装しています。
 - 左カラムのステップナビゲーションと右カラムのスナップショットビューを備え、設定 → エントリー入力 → レーン割当 → クラス順調整 → スタート時間確定の流れをガイドします。
-- `src/features/startlist/state/StartlistContext.tsx` で設定・エントリー・割り当て情報を一元管理し、`src/features/startlist/api/useStartlistApi.ts` 経由でバックエンドと連携します。
+- `src/features/startlist/api/useStartlistApi.ts` が `VITE_STARTLIST_API_BASE_URL` を参照して HTTP アダプタのエンドポイントへアクセスします。
 - 共通 UI として `@orienteering/shared-ui` の `StatusMessage` や `Tag` コンポーネントを利用します。
 
 ## ドメインイベントとプロセスマネージャ
