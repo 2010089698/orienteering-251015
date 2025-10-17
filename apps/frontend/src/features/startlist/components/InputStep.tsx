@@ -1,7 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import SettingsForm from './SettingsForm';
 import EntryForm from './EntryForm';
-import EntryTable from './EntryTable';
+import EntryTablePanel from './EntryTablePanel';
 import {
   createStatus,
   setStatus,
@@ -18,6 +19,33 @@ type InputStepProps = {
 const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
   const { entries, settings, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
+
+  const [activeTab, setActiveTab] = useState<string>('all');
+
+  const { tabs, classIds } = useMemo(() => {
+    const counts = new Map<string, number>();
+    entries.forEach((entry) => {
+      const key = entry.classId;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    const sortedClassIds = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'ja'));
+    const tabList = [
+      { id: 'all', label: 'すべて', count: entries.length },
+      ...sortedClassIds.map((classId) => ({ id: classId, label: classId, count: counts.get(classId) ?? 0 })),
+    ];
+    return { tabs: tabList, classIds: sortedClassIds };
+  }, [entries]);
+
+  useEffect(() => {
+    if (activeTab !== 'all' && !classIds.includes(activeTab)) {
+      setActiveTab('all');
+    }
+  }, [activeTab, classIds]);
+
+  const filteredEntries = useMemo(
+    () => (activeTab === 'all' ? entries : entries.filter((entry) => entry.classId === activeTab)),
+    [activeTab, entries],
+  );
 
   const handleComplete = () => {
     if (!settings) {
@@ -56,10 +84,14 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
         <h2 id="step1-heading">STEP 1 入力内容の整理</h2>
         <p className="muted">大会の基本情報と参加者を登録し、「入力完了」ボタンで次のステップへ進みます。</p>
       </header>
-      <div className="step-grid">
-        <SettingsForm />
-        <EntryForm />
-        <EntryTable />
+      <div className="input-step__layout">
+        <div className="input-step__column input-step__column--forms">
+          <SettingsForm />
+          <EntryForm />
+        </div>
+        <div className="input-step__column input-step__column--table">
+          <EntryTablePanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} entries={filteredEntries} />
+        </div>
       </div>
       <div className="actions-row step-actions step-actions--sticky">
         <button type="button" onClick={handleComplete}>
