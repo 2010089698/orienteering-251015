@@ -131,8 +131,15 @@ const EntryForm = (): JSX.Element => {
           />
         </label>
         <p className="muted small">
-          ヘッダーに <code>name</code>・<code>club</code>・<code>class</code>・<code>card number</code> を含む CSV をアップロードしてください。
+          ヘッダーに <code>name</code>・<code>club</code>・<code>class</code>・<code>card number</code> を含む CSV または
+          日本語の二段ヘッダー（例: 1 行目 <code>チーム名(氏名)</code>・<code>所属</code>・<code>クラス</code>・<code>カード番号</code>）
+          をアップロードしてください。列の順番が <code>名前</code> → <code>所属</code> → <code>クラス</code> → <code>カード番号</code>
+          になるサンプルは下記です。
         </p>
+        <pre className="muted small">
+チーム名(氏名),所属,クラス,カード番号
+山田 太郎,TOKYO OL,M21E,123456
+        </pre>
       </div>
       <StatusMessage tone={statuses.entries.level} message={statuses.entries.text} />
     </section>
