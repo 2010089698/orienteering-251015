@@ -26,6 +26,31 @@ describe('parseEntriesFromCsvText', () => {
     );
   });
 
+  it('parses two-row headers from Japanese team CSV exports', () => {
+    const csv = [
+      'チーム(組),予備,1人目',
+      'チーム名(氏名),所属,クラス,カード番号',
+      '田中 太郎,東京OL,M21E,12345',
+    ].join('\n');
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: '田中 太郎', club: '東京OL', classId: 'M21E', cardNo: '12345' },
+    ]);
+  });
+
+  it('throws for Japanese team CSV exports without the second header row', () => {
+    const csv = [
+      'チーム(組),予備,1人目',
+      '田中 太郎,東京OL,M21E,12345',
+    ].join('\n');
+
+    expect(() => parseEntriesFromCsvText(csv, existingEntries)).toThrow(
+      'CSV ファイルに必須列 (name, class, card number) が含まれていません。',
+    );
+  });
+
   it('throws when required fields are empty', () => {
     const csv = 'name,club,class,card number\n,,M21,123\n';
 
