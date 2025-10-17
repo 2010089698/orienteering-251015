@@ -61,7 +61,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
         <EntryForm />
         <EntryTable />
       </div>
-      <div className="actions-row step-actions">
+      <div className="actions-row step-actions step-actions--sticky">
         <button type="button" onClick={handleComplete}>
           入力完了（レーンを自動作成）
         </button>
