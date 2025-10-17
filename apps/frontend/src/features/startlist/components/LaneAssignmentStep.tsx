@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import { DndContext, PointerSensor, type DragEndEvent, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
@@ -16,6 +16,7 @@ import {
 import { calculateStartTimes, createDefaultClassAssignments } from '../utils/startlistUtils';
 import type { LaneAssignmentDto } from '@startlist-management/application';
 import { reorderLaneClass } from '../utils/startlistUtils';
+import { Tabs } from '../../../components/tabs';
 
 interface LaneRow {
   classId: string;
@@ -116,7 +117,11 @@ const ClassCard = ({
 const LaneColumn = ({ lane, children }: { lane: LaneAssignmentDto; children: ReactNode }): JSX.Element => {
   const { setNodeRef, isOver } = useDroppable({ id: laneContainerId(lane.laneNumber) });
   return (
-    <div ref={setNodeRef} className={`lane-card droppable-card${isOver ? ' is-over' : ''}`}>
+    <div
+      ref={setNodeRef}
+      className={`lane-card droppable-card${isOver ? ' is-over' : ''}`}
+      data-testid={`lane-column-${lane.laneNumber}`}
+    >
       <h3>レーン {lane.laneNumber}</h3>
       {children}
     </div>
@@ -241,7 +246,40 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     onConfirm();
   };
 
-  const lanesWithPlaceholders = ensureLaneRecords(laneAssignments, laneCount, laneIntervalMs);
+  const lanesWithPlaceholders = useMemo(
+    () => ensureLaneRecords(laneAssignments, laneCount, laneIntervalMs),
+    [laneAssignments, laneCount, laneIntervalMs],
+  );
+
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const tabItems = useMemo(
+    () => [
+      { id: 'overview', label: 'すべてのレーン', panelId: 'lane-panel-overview' },
+      ...lanesWithPlaceholders.map((lane) => ({
+        id: `lane-${lane.laneNumber}`,
+        label: `レーン ${lane.laneNumber}`,
+        panelId: `lane-panel-${lane.laneNumber}`,
+      })),
+    ],
+    [lanesWithPlaceholders],
+  );
+
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      return;
+    }
+    const exists = tabItems.some((item) => item.id === activeTab);
+    if (!exists) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, tabItems]);
+
+  const focusedLaneNumber = activeTab === 'overview' ? undefined : Number(activeTab.replace('lane-', ''));
+  const focusedLane = focusedLaneNumber
+    ? lanesWithPlaceholders.find((lane) => lane.laneNumber === focusedLaneNumber)
+    : undefined;
+  const activePanelId = tabItems.find((item) => item.id === activeTab)?.panelId ?? 'lane-panel-overview';
 
   return (
     <section aria-labelledby="step2-heading">
@@ -252,31 +290,111 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       {laneRows.length === 0 ? (
         <p className="muted">まだレーンが作成されていません。STEP 1 から進めてください。</p>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="lane-board">
-            {lanesWithPlaceholders.map((lane) => (
-              <LaneColumn key={lane.laneNumber} lane={lane}>
-                <SortableContext items={lane.classOrder} strategy={verticalListSortingStrategy}>
-                  <div className="lane-stack">
-                    {lane.classOrder.length === 0 ? (
-                      <p className="muted small-text">クラスをドラッグして割り当ててください。</p>
+        <>
+          <div className="lane-tabs">
+            <Tabs
+              activeId={activeTab}
+              items={tabItems}
+              onChange={setActiveTab}
+              idPrefix="lanes"
+              ariaLabel="レーン表示の切り替え"
+            />
+          </div>
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div
+              className={activeTab === 'overview' ? 'lane-view lane-view--overview' : 'lane-view lane-view--focused'}
+              role="tabpanel"
+              id={activePanelId}
+              aria-labelledby={`lanes-${activeTab}`}
+              data-testid="lane-view"
+            >
+              {activeTab === 'overview' ? (
+                <>
+                  <div className="lane-board" data-testid="lane-board">
+                    {lanesWithPlaceholders.map((lane) => (
+                      <LaneColumn key={lane.laneNumber} lane={lane}>
+                        <SortableContext items={lane.classOrder} strategy={verticalListSortingStrategy}>
+                          <div className="lane-stack">
+                            {lane.classOrder.length === 0 ? (
+                              <p className="muted small-text">クラスをドラッグして割り当ててください。</p>
+                            ) : (
+                              lane.classOrder.map((classId) => (
+                                <ClassCard
+                                  key={classId}
+                                  classId={classId}
+                                  laneNumber={lane.laneNumber}
+                                  onLaneChange={handleLaneChange}
+                                  laneOptions={laneOptions}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </SortableContext>
+                      </LaneColumn>
+                    ))}
+                  </div>
+                  <div className="lane-preview">
+                    {lanesWithPlaceholders.map((lane) => (
+                      <div key={lane.laneNumber} className="lane-card">
+                        <h3>レーン {lane.laneNumber}</h3>
+                        {lane.classOrder.length === 0 ? (
+                          <p className="muted">クラス未設定</p>
+                        ) : (
+                          <ul className="list-reset">
+                            {lane.classOrder.map((classId) => (
+                              <li key={classId}>{classId}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="lane-focused-layout">
+                  <div className="lane-board lane-board--single" data-testid="lane-board">
+                    {focusedLane ? (
+                      <LaneColumn lane={focusedLane}>
+                        <SortableContext items={focusedLane.classOrder} strategy={verticalListSortingStrategy}>
+                          <div className="lane-stack">
+                            {focusedLane.classOrder.length === 0 ? (
+                              <p className="muted small-text">クラスをドラッグして割り当ててください。</p>
+                            ) : (
+                              focusedLane.classOrder.map((classId) => (
+                                <ClassCard
+                                  key={classId}
+                                  classId={classId}
+                                  laneNumber={focusedLane.laneNumber}
+                                  onLaneChange={handleLaneChange}
+                                  laneOptions={laneOptions}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </SortableContext>
+                      </LaneColumn>
                     ) : (
-                      lane.classOrder.map((classId) => (
-                        <ClassCard
-                          key={classId}
-                          classId={classId}
-                          laneNumber={lane.laneNumber}
-                          onLaneChange={handleLaneChange}
-                          laneOptions={laneOptions}
-                        />
-                      ))
+                      <p className="muted small-text">このレーンは現在利用できません。</p>
                     )}
                   </div>
-                </SortableContext>
-              </LaneColumn>
-            ))}
-          </div>
-        </DndContext>
+                  <aside className="lane-preview lane-preview--compact" data-testid="lane-preview">
+                    <h3 className="lane-preview__title">割り当てプレビュー</h3>
+                    <ul className="lane-preview__list">
+                      {lanesWithPlaceholders.map((lane) => (
+                        <li key={lane.laneNumber} className="lane-preview__item">
+                          <span className="lane-preview__lane-label">レーン {lane.laneNumber}</span>
+                          <span className="lane-preview__lane-classes">
+                            {lane.classOrder.length === 0 ? 'クラス未設定' : lane.classOrder.join(', ')}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </aside>
+                </div>
+              )}
+            </div>
+          </DndContext>
+        </>
       )}
       <div className="actions-row step-actions">
         <button type="button" className="secondary" onClick={onBack}>
@@ -289,24 +407,6 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       <StatusMessage tone={statuses.lanes.level} message={statuses.lanes.text} />
       <StatusMessage tone={statuses.classes.level} message={statuses.classes.text} />
       <StatusMessage tone={statuses.startTimes.level} message={statuses.startTimes.text} />
-      {lanesWithPlaceholders.length > 0 && (
-        <div className="lane-preview">
-          {lanesWithPlaceholders.map((lane) => (
-            <div key={lane.laneNumber} className="lane-card">
-              <h3>レーン {lane.laneNumber}</h3>
-              {lane.classOrder.length === 0 ? (
-                <p className="muted">クラス未設定</p>
-              ) : (
-                <ul className="list-reset">
-                  {lane.classOrder.map((classId) => (
-                    <li key={classId}>{classId}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 };
