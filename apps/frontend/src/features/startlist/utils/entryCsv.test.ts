@@ -123,6 +123,20 @@ describe('parseEntriesFromCsvText', () => {
     ]);
   });
 
+  it('retains earlier numbered card values when later columns are blank', () => {
+    const csv = [
+      '名前,所属,クラス,1人目/カード番号,2人目/カード番号',
+      '名前,所属,クラス,カード番号,カード番号',
+      '山田 太郎,東京OL,M21E,12345,',
+    ].join('\n');
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: '山田 太郎', club: '東京OL', classId: 'M21E', cardNo: '12345' },
+    ]);
+  });
+
   it('parses tab-delimited entries when reading from a File object', async () => {
     const file = new File(
       ['名前\t所属\tクラス\tカード番号\n佐藤 花子\t大阪OL\tF21A\t54321\n'],
