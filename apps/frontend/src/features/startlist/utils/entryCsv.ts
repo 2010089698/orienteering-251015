@@ -179,11 +179,12 @@ const createEntryFromRow = (
     }
 
     const raw = row[index] ?? '';
-    if (key === 'cardNo') {
-      entry[key] = normalizeCardNo(raw);
-    } else {
-      entry[key] = normalizeText(raw);
+    const normalized = key === 'cardNo' ? normalizeCardNo(raw) : normalizeText(raw);
+    if (!normalized) {
+      return;
     }
+
+    entry[key] = normalized;
   });
 
   if (!entry.cardNo) {
