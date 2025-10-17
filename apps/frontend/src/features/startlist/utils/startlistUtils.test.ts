@@ -12,9 +12,9 @@ import {
 describe('groupEntriesByClass', () => {
   it('groups entries by classId trimming whitespace', () => {
     const entries: Entry[] = [
-      { name: 'A', club: 'X', classId: 'M21', cardNo: '1' },
-      { name: 'B', club: 'Y', classId: ' M21 ', cardNo: '2' },
-      { name: 'C', club: 'Z', classId: 'W21', cardNo: '3' },
+      { id: 'entry-1', name: 'A', club: 'X', classId: 'M21', cardNo: '1' },
+      { id: 'entry-2', name: 'B', club: 'Y', classId: ' M21 ', cardNo: '2' },
+      { id: 'entry-3', name: 'C', club: 'Z', classId: 'W21', cardNo: '3' },
     ];
 
     const result = groupEntriesByClass(entries);
@@ -26,10 +26,10 @@ describe('groupEntriesByClass', () => {
 
 describe('generateLaneAssignments', () => {
   const entries: Entry[] = [
-    { name: 'A', classId: 'M21', cardNo: '1' },
-    { name: 'B', classId: 'M21', cardNo: '2' },
-    { name: 'C', classId: 'W21', cardNo: '3' },
-    { name: 'D', classId: 'M18', cardNo: '4' },
+    { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
+    { id: 'entry-2', name: 'B', classId: 'M21', cardNo: '2' },
+    { id: 'entry-3', name: 'C', classId: 'W21', cardNo: '3' },
+    { id: 'entry-4', name: 'D', classId: 'M18', cardNo: '4' },
   ];
 
   it('returns empty when lane count or interval invalid', () => {
@@ -78,9 +78,9 @@ describe('updateClassPlayerOrder', () => {
 
 describe('calculateStartTimes', () => {
   const entries: Entry[] = [
-    { name: 'A', classId: 'M21', cardNo: '1001' },
-    { name: 'B', classId: 'M21', cardNo: '1002' },
-    { name: 'C', classId: 'W21', cardNo: '2001' },
+    { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1001' },
+    { id: 'entry-2', name: 'B', classId: 'M21', cardNo: '1002' },
+    { id: 'entry-3', name: 'C', classId: 'W21', cardNo: '2001' },
   ];
 
   it('returns empty when settings missing startTime or interval', () => {
@@ -113,6 +113,7 @@ describe('calculateStartTimes', () => {
 
     expect(result).toHaveLength(3);
     const [first, second, third] = result;
+    expect(result.map((item) => item.playerId)).toEqual(['entry-1', 'entry-2', 'entry-3']);
     expect(first.laneNumber).toBe(1);
     expect(new Date(first.startTime).toISOString()).toBe(settings.startTime);
     expect(new Date(second.startTime).toISOString()).toBe(

@@ -5,9 +5,9 @@ const EntryTable = (): JSX.Element => {
   const { entries } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
-  const handleRemove = (cardNo: string) => {
+  const handleRemove = (id: string) => {
     const remaining = Math.max(entries.length - 1, 0);
-    removeEntry(dispatch, cardNo);
+    removeEntry(dispatch, id);
     setStatus(dispatch, 'entries', createStatus(`${remaining} 件のエントリーがあります。`, 'info'));
   };
 
@@ -31,7 +31,7 @@ const EntryTable = (): JSX.Element => {
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.cardNo}>
+              <tr key={entry.id}>
                 <td>{entry.name || '（未入力）'}</td>
                 <td>{entry.club || '—'}</td>
                 <td>
@@ -39,7 +39,7 @@ const EntryTable = (): JSX.Element => {
                 </td>
                 <td>{entry.cardNo}</td>
                 <td>
-                  <button type="button" className="secondary" onClick={() => handleRemove(entry.cardNo)}>
+                  <button type="button" className="secondary" onClick={() => handleRemove(entry.id)}>
                     削除
                   </button>
                 </td>

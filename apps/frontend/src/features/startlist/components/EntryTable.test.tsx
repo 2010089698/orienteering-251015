@@ -15,8 +15,8 @@ describe('EntryTable', () => {
     renderWithStartlist(<EntryTable />, {
       initialState: {
         entries: [
-          { name: 'A', classId: 'M21', cardNo: '123' },
-          { name: 'B', classId: 'W21', cardNo: '456' },
+          { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123' },
+          { id: 'entry-2', name: 'B', classId: 'W21', cardNo: '456' },
         ],
       },
     });

@@ -93,7 +93,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
   );
 
   const entryMap = useMemo(() => {
-    return new Map(entries.map((entry) => [entry.cardNo, entry]));
+    return new Map(entries.map((entry) => [entry.id, entry]));
   }, [entries]);
 
   const startTimeRows = useMemo(() => {
@@ -202,7 +202,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                           <ClassPlayerCard key={playerId} classId={assignment.classId} playerId={playerId}>
                             <div className="order-row">
                               <span>
-                                {entry?.name || '（名前未入力）'} / {playerId}
+                                {entry?.name || '（名前未入力）'} / {entry?.cardNo ?? playerId}
                               </span>
                               <span className="inline-buttons">
                                 <button

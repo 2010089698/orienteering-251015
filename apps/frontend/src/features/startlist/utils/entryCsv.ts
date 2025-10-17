@@ -1,6 +1,6 @@
-import type { Entry } from '../state/types';
+import { RENTAL_CARD_LABEL, type Entry, type EntryDraft } from '../state/types';
 
-const headerMap: Record<string, keyof Entry> = {
+const headerMap: Record<string, keyof EntryDraft> = {
   name: 'name',
   名前: 'name',
   氏名: 'name',
@@ -109,7 +109,7 @@ const parseCsv = (text: string): string[][] => {
   return rows.filter((cells) => cells.some((cell) => cell.trim().length > 0));
 };
 
-const mapHeaderValue = (value: string): keyof Entry | undefined => {
+const mapHeaderValue = (value: string): keyof EntryDraft | undefined => {
   const normalized = compactHeaderKey(value);
   return headerMap[normalized as keyof typeof headerMap];
 };
@@ -118,7 +118,7 @@ const mapHeaders = (
   rows: string[][],
   startRow: number,
   endRow: number,
-): { headers: (keyof Entry | undefined)[]; lastHeaderRow: number } => {
+): { headers: (keyof EntryDraft | undefined)[]; lastHeaderRow: number } => {
   const columnCount = rows
     .slice(startRow, endRow)
     .reduce((max, row) => Math.max(max, row.length), 0);
@@ -148,13 +148,14 @@ const mapHeaders = (
   return { headers, lastHeaderRow };
 };
 
-const requiredFields: (keyof Entry)[] = ['name', 'classId', 'cardNo'];
+const requiredColumns: (keyof EntryDraft)[] = ['name', 'classId', 'cardNo'];
+const requiredRowFields: (keyof EntryDraft)[] = ['name', 'classId'];
 
 const HEADER_SCAN_LIMIT = 10;
 
-const ensureRequiredColumns = (mappedHeaders: (keyof Entry | undefined)[]): void => {
+const ensureRequiredColumns = (mappedHeaders: (keyof EntryDraft | undefined)[]): void => {
   const present = new Set(mappedHeaders.filter(Boolean));
-  const missing = requiredFields.filter((field) => !present.has(field));
+  const missing = requiredColumns.filter((field) => !present.has(field));
   if (missing.length > 0) {
     throw new Error('CSV ファイルに必須列 (name, class, card number) が含まれていません。');
   }
@@ -162,10 +163,10 @@ const ensureRequiredColumns = (mappedHeaders: (keyof Entry | undefined)[]): void
 
 const createEntryFromRow = (
   row: string[],
-  headers: (keyof Entry | undefined)[],
+  headers: (keyof EntryDraft | undefined)[],
   rowNumber: number,
-): Entry => {
-  const entry: Entry = {
+): EntryDraft => {
+  const entry: EntryDraft = {
     name: '',
     club: '',
     classId: '',
@@ -185,19 +186,28 @@ const createEntryFromRow = (
     }
   });
 
-  for (const field of requiredFields) {
+  for (const field of requiredRowFields) {
     if (!entry[field] || entry[field]?.toString().length === 0) {
       throw new Error(`CSV ${rowNumber} 行目で必須項目 ${field} が空です。`);
     }
   }
 
+  if (!entry.cardNo) {
+    entry.cardNo = RENTAL_CARD_LABEL;
+  }
+
   return entry;
 };
 
-const ensureNoDuplicates = (entries: Entry[], existingEntries: Entry[]): void => {
-  const existingCards = new Set<string>(existingEntries.map((entry) => entry.cardNo.trim()));
+const ensureNoDuplicates = (entries: EntryDraft[], existingEntries: Entry[]): void => {
+  const existingCards = new Set<string>(
+    existingEntries.filter((entry) => entry.cardNo !== RENTAL_CARD_LABEL).map((entry) => entry.cardNo.trim()),
+  );
 
   for (const entry of entries) {
+    if (entry.cardNo === RENTAL_CARD_LABEL) {
+      continue;
+    }
     if (existingCards.has(entry.cardNo)) {
       throw new Error(`カード番号 ${entry.cardNo} はすでに登録されています。`);
     }
@@ -205,6 +215,9 @@ const ensureNoDuplicates = (entries: Entry[], existingEntries: Entry[]): void =>
 
   const withinFile = new Set<string>();
   for (const entry of entries) {
+    if (entry.cardNo === RENTAL_CARD_LABEL) {
+      continue;
+    }
     if (withinFile.has(entry.cardNo)) {
       throw new Error(`CSV 内に重複したカード番号 ${entry.cardNo} が含まれています。`);
     }
@@ -212,14 +225,14 @@ const ensureNoDuplicates = (entries: Entry[], existingEntries: Entry[]): void =>
   }
 };
 
-export const parseEntriesFromCsvText = (text: string, existingEntries: Entry[]): Entry[] => {
+export const parseEntriesFromCsvText = (text: string, existingEntries: Entry[]): EntryDraft[] => {
   const rows = parseCsv(text.replace(/^\ufeff/, ''));
   if (rows.length === 0) {
     return [];
   }
   const findHeaderRow = (): {
     headerIndex: number;
-    mappedHeaders: (keyof Entry | undefined)[];
+    mappedHeaders: (keyof EntryDraft | undefined)[];
   } => {
     const scanLimit = Math.min(rows.length, HEADER_SCAN_LIMIT);
     for (let startRow = 0; startRow < scanLimit; startRow += 1) {
@@ -263,7 +276,7 @@ export const parseEntriesFromCsvText = (text: string, existingEntries: Entry[]):
 export const parseEntriesFromCsvFile = async (
   file: File,
   existingEntries: Entry[],
-): Promise<Entry[]> => {
+): Promise<EntryDraft[]> => {
   const readFileText = async (): Promise<string> => {
     if (typeof file.text === 'function') {
       try {

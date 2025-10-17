@@ -14,12 +14,20 @@ export interface StatusMessageState {
 
 export type StatusKey = 'settings' | 'entries' | 'lanes' | 'classes' | 'startTimes' | 'snapshot';
 
-export interface Entry {
+interface EntryBase {
   name: string;
   club?: string;
   classId: string;
   cardNo: string;
 }
+
+export interface Entry extends EntryBase {
+  id: string;
+}
+
+export type EntryDraft = EntryBase;
+
+export const RENTAL_CARD_LABEL = 'レンタル';
 
 export interface StartlistState {
   startlistId: string;

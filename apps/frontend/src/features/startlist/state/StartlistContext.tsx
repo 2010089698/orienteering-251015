@@ -5,7 +5,7 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
-import type { Entry, StartlistState, StatusKey, StatusMessageState } from './types';
+import type { Entry, EntryDraft, StartlistState, StatusKey, StatusMessageState } from './types';
 
 const statusKeys: StatusKey[] = ['settings', 'entries', 'lanes', 'classes', 'startTimes', 'snapshot'];
 
@@ -34,6 +34,37 @@ const initialState: StartlistState = {
   loading: {},
 };
 
+type EntryInput = Entry | EntryDraft;
+
+const hasEntryId = (entry: EntryInput): entry is Entry =>
+  typeof (entry as Entry).id === 'string' && (entry as Entry).id.length > 0;
+
+let entryIdCounter = 0;
+
+export const generateEntryId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch (error) {
+      // fall back to incremental IDs below
+    }
+  }
+  entryIdCounter += 1;
+  return `entry-${Date.now()}-${entryIdCounter}`;
+};
+
+export const ensureEntryId = (entry: EntryInput): Entry => {
+  if (hasEntryId(entry)) {
+    return entry;
+  }
+  return {
+    ...entry,
+    id: generateEntryId(),
+  };
+};
+
+export const ensureEntryIds = (entries: EntryInput[]): Entry[] => entries.map((entry) => ensureEntryId(entry));
+
 type StartlistAction =
   | {
       type: 'SET_SETTINGS';
@@ -41,7 +72,7 @@ type StartlistAction =
     }
   | { type: 'SET_SNAPSHOT'; payload?: unknown }
   | { type: 'ADD_ENTRY'; payload: Entry }
-  | { type: 'REMOVE_ENTRY'; payload: { cardNo: string } }
+  | { type: 'REMOVE_ENTRY'; payload: { id: string } }
   | { type: 'SET_ENTRIES'; payload: Entry[] }
   | { type: 'SET_LANE_ASSIGNMENTS'; payload: LaneAssignmentDto[] }
   | { type: 'SET_CLASS_ASSIGNMENTS'; payload: ClassAssignmentDto[] }
@@ -65,7 +96,7 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
     case 'REMOVE_ENTRY':
       return {
         ...state,
-        entries: state.entries.filter((entry) => entry.cardNo !== action.payload.cardNo),
+        entries: state.entries.filter((entry) => entry.id !== action.payload.id),
       };
     case 'SET_ENTRIES':
       return { ...state, entries: action.payload };
@@ -150,23 +181,23 @@ export const setLoading = (
 
 export const appendEntry = (
   dispatch: React.Dispatch<StartlistAction>,
-  entry: Entry,
+  entry: EntryInput,
 ): void => {
-  dispatch({ type: 'ADD_ENTRY', payload: entry });
+  dispatch({ type: 'ADD_ENTRY', payload: ensureEntryId(entry) });
 };
 
 export const removeEntry = (
   dispatch: React.Dispatch<StartlistAction>,
-  cardNo: string,
+  id: string,
 ): void => {
-  dispatch({ type: 'REMOVE_ENTRY', payload: { cardNo } });
+  dispatch({ type: 'REMOVE_ENTRY', payload: { id } });
 };
 
 export const updateEntries = (
   dispatch: React.Dispatch<StartlistAction>,
-  entries: Entry[],
+  entries: EntryInput[],
 ): void => {
-  dispatch({ type: 'SET_ENTRIES', payload: entries });
+  dispatch({ type: 'SET_ENTRIES', payload: ensureEntryIds(entries) });
 };
 
 export const updateLaneAssignments = (

@@ -3,7 +3,7 @@ import type { Entry } from '../state/types';
 import { parseEntriesFromCsvFile, parseEntriesFromCsvText } from './entryCsv';
 
 const existingEntries: Entry[] = [
-  { name: 'Existing', club: 'Club', classId: 'M21E', cardNo: '999' },
+  { id: 'existing-1', name: 'Existing', club: 'Club', classId: 'M21E', cardNo: '999' },
 ];
 
 describe('parseEntriesFromCsvText', () => {
@@ -123,6 +123,17 @@ describe('parseEntriesFromCsvText', () => {
 
     await expect(parseEntriesFromCsvFile(file, [])).resolves.toEqual([
       { name: '佐藤 花子', club: '大阪OL', classId: 'F21A', cardNo: '54321' },
+    ]);
+  });
+
+  it('defaults missing card numbers to レンタル without treating them as duplicates', () => {
+    const csv = 'name,class,card number\nAlice,M21,\nBob,M21,\n';
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: 'Alice', club: '', classId: 'M21', cardNo: 'レンタル' },
+      { name: 'Bob', club: '', classId: 'M21', cardNo: 'レンタル' },
     ]);
   });
 });
