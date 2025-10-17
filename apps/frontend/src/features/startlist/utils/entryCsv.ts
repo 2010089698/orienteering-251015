@@ -149,7 +149,7 @@ const mapHeaders = (
 };
 
 const requiredColumns: (keyof EntryDraft)[] = ['name', 'classId', 'cardNo'];
-const requiredRowFields: (keyof EntryDraft)[] = ['name', 'classId'];
+const requiredRowFields: (keyof EntryDraft)[] = ['name', 'classId', 'cardNo'];
 
 const HEADER_SCAN_LIMIT = 10;
 
@@ -186,42 +186,62 @@ const createEntryFromRow = (
     }
   });
 
+  if (!entry.cardNo) {
+    entry.cardNo = RENTAL_CARD_LABEL;
+  }
+
   for (const field of requiredRowFields) {
     if (!entry[field] || entry[field]?.toString().length === 0) {
       throw new Error(`CSV ${rowNumber} 行目で必須項目 ${field} が空です。`);
     }
   }
 
-  if (!entry.cardNo) {
-    entry.cardNo = RENTAL_CARD_LABEL;
-  }
-
   return entry;
 };
 
+const isRentalCard = (cardNo: string): boolean => {
+  const normalized = cardNo.trim();
+  return normalized.length === 0 || normalized === RENTAL_CARD_LABEL;
+};
+
+const createCardComparisonKey = (cardNo: string): string | null => {
+  const normalized = cardNo.trim();
+  if (normalized.length === 0 || normalized === RENTAL_CARD_LABEL) {
+    return null;
+  }
+  return normalized;
+};
+
 const ensureNoDuplicates = (entries: EntryDraft[], existingEntries: Entry[]): void => {
-  const existingCards = new Set<string>(
-    existingEntries.filter((entry) => entry.cardNo !== RENTAL_CARD_LABEL).map((entry) => entry.cardNo.trim()),
-  );
+  const existingCards = new Set<string>();
+
+  existingEntries.forEach((entry) => {
+    const key = createCardComparisonKey(entry.cardNo);
+    if (key) {
+      existingCards.add(key);
+    }
+  });
 
   for (const entry of entries) {
-    if (entry.cardNo === RENTAL_CARD_LABEL) {
+    if (isRentalCard(entry.cardNo)) {
       continue;
     }
-    if (existingCards.has(entry.cardNo)) {
-      throw new Error(`カード番号 ${entry.cardNo} はすでに登録されています。`);
+    const normalizedCardNo = entry.cardNo.trim();
+    if (existingCards.has(normalizedCardNo)) {
+      throw new Error(`カード番号 ${normalizedCardNo} はすでに登録されています。`);
     }
   }
 
   const withinFile = new Set<string>();
   for (const entry of entries) {
-    if (entry.cardNo === RENTAL_CARD_LABEL) {
+    if (isRentalCard(entry.cardNo)) {
       continue;
     }
-    if (withinFile.has(entry.cardNo)) {
-      throw new Error(`CSV 内に重複したカード番号 ${entry.cardNo} が含まれています。`);
+    const normalizedCardNo = entry.cardNo.trim();
+    if (withinFile.has(normalizedCardNo)) {
+      throw new Error(`CSV 内に重複したカード番号 ${normalizedCardNo} が含まれています。`);
     }
-    withinFile.add(entry.cardNo);
+    withinFile.add(normalizedCardNo);
   }
 };
 

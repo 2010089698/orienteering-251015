@@ -15,6 +15,7 @@ import {
   updateClassAssignments,
   updateStartTimes,
   updateSnapshot,
+  updateEntries,
 } from './StartlistContext';
 
 describe('StartlistContext', () => {
@@ -81,5 +82,29 @@ describe('StartlistContext', () => {
 
     expect(result.current.state.entries).toHaveLength(0);
     expect(result.current.state.loading.entries).toBe(false);
+  });
+
+  it('assigns unique ids when merging entries containing レンタル card numbers', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => <StartlistProvider>{children}</StartlistProvider>;
+    const { result } = renderHook(
+      () => ({
+        state: useStartlistState(),
+        dispatch: useStartlistDispatch(),
+      }),
+      { wrapper },
+    );
+
+    act(() => {
+      updateEntries(result.current.dispatch, [
+        { id: 'existing-rental', name: 'Existing Rental', classId: 'M21', cardNo: 'レンタル' },
+        { name: 'New Rental', classId: 'M21', cardNo: 'レンタル' },
+      ]);
+    });
+
+    expect(result.current.state.entries).toHaveLength(2);
+    const [first, second] = result.current.state.entries;
+    expect(first.cardNo).toBe('レンタル');
+    expect(second.cardNo).toBe('レンタル');
+    expect(first.id).not.toBe(second.id);
   });
 });

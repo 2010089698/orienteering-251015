@@ -4,6 +4,7 @@ import { parseEntriesFromCsvFile, parseEntriesFromCsvText } from './entryCsv';
 
 const existingEntries: Entry[] = [
   { id: 'existing-1', name: 'Existing', club: 'Club', classId: 'M21E', cardNo: '999' },
+  { id: 'existing-2', name: 'Rental Existing', club: 'Club', classId: 'M21E', cardNo: 'レンタル' },
 ];
 
 describe('parseEntriesFromCsvText', () => {
@@ -81,6 +82,14 @@ describe('parseEntriesFromCsvText', () => {
     );
   });
 
+  it('throws when duplicates exist within the CSV even with whitespace differences', () => {
+    const csv = 'name,club,class,card number\nAlice,,M21, 123 \nBob,,M21,123\n';
+
+    expect(() => parseEntriesFromCsvText(csv, existingEntries)).toThrow(
+      'CSV 内に重複したカード番号 123 が含まれています。',
+    );
+  });
+
   it('throws when duplicates exist with existing entries', () => {
     const csv = 'name,club,class,card number\nAlice,,M21,999\n';
 
@@ -134,6 +143,17 @@ describe('parseEntriesFromCsvText', () => {
     expect(result).toEqual([
       { name: 'Alice', club: '', classId: 'M21', cardNo: 'レンタル' },
       { name: 'Bob', club: '', classId: 'M21', cardNo: 'レンタル' },
+    ]);
+  });
+
+  it('treats whitespace-only card numbers as レンタル and allows duplicates with existing rentals', () => {
+    const csv = 'name,class,card number\nCharlie,M21,   \nDana,M21,\n';
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: 'Charlie', club: '', classId: 'M21', cardNo: 'レンタル' },
+      { name: 'Dana', club: '', classId: 'M21', cardNo: 'レンタル' },
     ]);
   });
 });
