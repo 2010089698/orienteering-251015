@@ -2,18 +2,25 @@ import type { Entry } from '../state/types';
 
 const headerMap: Record<string, keyof Entry> = {
   name: 'name',
+  名前: 'name',
+  氏名: 'name',
+  選手名: 'name',
   club: 'club',
+  所属: 'club',
   class: 'classId',
   classid: 'classId',
   class_id: 'classId',
   classname: 'classId',
+  クラス: 'classId',
+  クラス名: 'classId',
+  カテゴリ: 'classId',
   'チーム名(氏名)': 'name',
   'チーム名（氏名）': 'name',
-  '所属': 'club',
-  'クラス': 'classId',
   'カード番号': 'cardNo',
   'カード番号:': 'cardNo',
   'カード番号：': 'cardNo',
+  カードno: 'cardNo',
+  カードﾅﾝﾊﾞｰ: 'cardNo',
   'cardnumber': 'cardNo',
   'card number': 'cardNo',
   card: 'cardNo',
@@ -21,7 +28,15 @@ const headerMap: Record<string, keyof Entry> = {
   card_no: 'cardNo',
 };
 
-const normalizeHeader = (value: string): string => value.trim().toLowerCase().replace(/[\s_-]+/g, ' ').replace(/\s+/g, ' ');
+const stripHeaderPrefixes = (value: string): string =>
+  value.replace(/^[\ufeff]+/, '').replace(/^(?:[0-9０-９]+)\s*(?:人目|名|番目)?\s*/iu, '');
+
+const normalizeHeader = (value: string): string =>
+  stripHeaderPrefixes(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
 
 const compactHeaderKey = (value: string): string => normalizeHeader(value).replace(/\s+/g, '');
 
@@ -72,11 +87,43 @@ const parseCsv = (text: string): string[][] => {
   return rows.filter((cells) => cells.some((cell) => cell.trim().length > 0));
 };
 
-const mapHeaders = (headers: string[]): (keyof Entry | undefined)[] => {
-  return headers.map((header) => {
-    const normalized = compactHeaderKey(header.replace(/^[\ufeff]+/, ''));
-    return headerMap[normalized as keyof typeof headerMap];
-  });
+const mapHeaderValue = (value: string): keyof Entry | undefined => {
+  const normalized = compactHeaderKey(value);
+  return headerMap[normalized as keyof typeof headerMap];
+};
+
+const mapHeaders = (
+  rows: string[][],
+  startRow: number,
+  endRow: number,
+): { headers: (keyof Entry | undefined)[]; lastHeaderRow: number } => {
+  const columnCount = rows
+    .slice(startRow, endRow)
+    .reduce((max, row) => Math.max(max, row.length), 0);
+
+  const headers: (keyof Entry | undefined)[] = Array.from({ length: columnCount }, () => undefined);
+  const headerRowByColumn: number[] = Array.from({ length: columnCount }, () => startRow);
+
+  for (let rowIndex = startRow; rowIndex < endRow; rowIndex += 1) {
+    const row = rows[rowIndex] ?? [];
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const cell = row[columnIndex] ?? '';
+      const mapped = mapHeaderValue(cell);
+      if (mapped) {
+        headers[columnIndex] = mapped;
+        headerRowByColumn[columnIndex] = rowIndex;
+      }
+    }
+  }
+
+  const lastHeaderRow = headerRowByColumn.reduce((max, rowIndex, index) => {
+    if (headers[index]) {
+      return Math.max(max, rowIndex);
+    }
+    return max;
+  }, startRow);
+
+  return { headers, lastHeaderRow };
 };
 
 const requiredFields: (keyof Entry)[] = ['name', 'classId', 'cardNo'];
@@ -153,23 +200,28 @@ export const parseEntriesFromCsvText = (text: string, existingEntries: Entry[]):
     mappedHeaders: (keyof Entry | undefined)[];
   } => {
     const scanLimit = Math.min(rows.length, HEADER_SCAN_LIMIT);
-    for (let index = 0; index < scanLimit; index += 1) {
-      const potentialHeaders = mapHeaders(rows[index]);
+    for (let startRow = 0; startRow < scanLimit; startRow += 1) {
+      const { headers, lastHeaderRow } = mapHeaders(rows, startRow, scanLimit);
       try {
-        ensureRequiredColumns(potentialHeaders);
+        ensureRequiredColumns(headers);
         return {
-          headerIndex: index,
-          mappedHeaders: potentialHeaders,
+          headerIndex: lastHeaderRow,
+          mappedHeaders: headers,
         };
       } catch (error) {
         // continue searching for a valid header row
       }
     }
 
-    const fallbackHeaders = mapHeaders(rows[0] ?? []);
+    const fallbackLimit = Math.min(rows.length, HEADER_SCAN_LIMIT || rows.length);
+    const { headers: fallbackHeaders, lastHeaderRow: fallbackHeaderIndex } = mapHeaders(
+      rows,
+      0,
+      Math.max(fallbackLimit, 1),
+    );
     ensureRequiredColumns(fallbackHeaders);
     return {
-      headerIndex: 0,
+      headerIndex: fallbackHeaderIndex,
       mappedHeaders: fallbackHeaders,
     };
   };

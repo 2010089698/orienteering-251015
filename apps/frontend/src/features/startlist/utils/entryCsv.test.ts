@@ -40,6 +40,20 @@ describe('parseEntriesFromCsvText', () => {
     ]);
   });
 
+  it('prefers lower header labels when multi-row header uses numbering prefixes', () => {
+    const csv = [
+      '1人目,1人目,1人目,1人目',
+      '氏名,所属,クラス,カード番号',
+      '佐藤 花子,大阪OL,F21A,54321',
+    ].join('\n');
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: '佐藤 花子', club: '大阪OL', classId: 'F21A', cardNo: '54321' },
+    ]);
+  });
+
   it('throws for Japanese team CSV exports without the second header row', () => {
     const csv = [
       'チーム(組),予備,1人目',
