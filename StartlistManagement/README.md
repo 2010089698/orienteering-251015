@@ -80,10 +80,7 @@ StartlistManagement/
 各ハンドラは TypeBox でバリデーションされたリクエストボディをユースケースに委譲し、標準化されたエラーハンドリングを提供します。HTTP サーバーは `@fastify/cors` を利用してクロスオリジンからの API アクセスを許可しています。
 
 ### フロントエンド統合
-- `apps/frontend` に Vite + React + TypeScript の単一ページアプリとして実装しています。
-- 左カラムのステップナビゲーションと右カラムのスナップショットビューを備え、設定 → エントリー入力 → レーン割当 → クラス順調整 → スタート時間確定の流れをガイドします。
-- `src/features/startlist/api/useStartlistApi.ts` が `VITE_STARTLIST_API_BASE_URL` を参照して HTTP アダプタのエンドポイントへアクセスします。
-- 共通 UI として `@orienteering/shared-ui` の `StatusMessage` や `Tag` コンポーネントを利用します。
+フロントエンドの画面構成やバックエンド連携手順は [apps/frontend/README.md](../apps/frontend/README.md) に集約しています。スタートリストウィザードの操作方法や `VITE_STARTLIST_API_BASE_URL` の設定方法を確認したい場合はそちらを参照してください。
 
 ### ドメインイベントとプロセスマネージャ
 - 手動レーン再割当てまたはクラス順手動確定のイベントを購読し、スタート時間の再計算が必要な状態を自動的に作ります。
