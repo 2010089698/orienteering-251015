@@ -44,10 +44,32 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim
 
 const normalizeCardNo = (value: string): string => value.replace(/\s+/g, '').trim();
 
+const detectDelimiter = (text: string): ',' | '\t' => {
+  let inQuotes = false;
+  const newlineIndex = text.search(/\r\n|\n|\r/);
+  const endIndex = newlineIndex === -1 ? text.length : newlineIndex;
+
+  for (let i = 0; i < endIndex; i += 1) {
+    const char = text[i];
+    if (char === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (!inQuotes && (char === ',' || char === '\t')) {
+      return char as ',' | '\t';
+    }
+  }
+
+  return ',';
+};
+
 const parseCsv = (text: string): string[][] => {
   const rows: string[][] = [];
   let current = '';
   let inQuotes = false;
+  const delimiter = detectDelimiter(text);
   const pushCell = (row: string[]) => {
     row.push(current);
     current = '';
@@ -65,7 +87,7 @@ const parseCsv = (text: string): string[][] => {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       pushCell(row);
     } else if ((char === '\n' || char === '\r') && !inQuotes) {
       if (char === '\r' && text[i + 1] === '\n') {

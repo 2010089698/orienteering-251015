@@ -100,4 +100,29 @@ describe('parseEntriesFromCsvText', () => {
       { name: 'Alice', club: 'Tokyo', classId: 'M21', cardNo: '123' },
     ]);
   });
+
+  it('parses tab-delimited entries from text', () => {
+    const csv = [
+      '名前\t所属\tクラス\tカード番号',
+      '山田 太郎\t東京OL\tM21E\t12345',
+    ].join('\n');
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: '山田 太郎', club: '東京OL', classId: 'M21E', cardNo: '12345' },
+    ]);
+  });
+
+  it('parses tab-delimited entries when reading from a File object', async () => {
+    const file = new File(
+      ['名前\t所属\tクラス\tカード番号\n佐藤 花子\t大阪OL\tF21A\t54321\n'],
+      'entries.tsv',
+      { type: 'text/tab-separated-values' },
+    );
+
+    await expect(parseEntriesFromCsvFile(file, [])).resolves.toEqual([
+      { name: '佐藤 花子', club: '大阪OL', classId: 'F21A', cardNo: '54321' },
+    ]);
+  });
 });
