@@ -7,7 +7,7 @@
 | パス | 役割 |
 | ---- | ---- |
 | `apps/backend` | EntryManagement の Fastify HTTP エントリポイント。`EntryManagement/packages/*` を組み合わせた API サーバーを起動します。 |
-| `apps/frontend` | Vite + React 製のスタートリスト操作 UI。`StartlistManagement` のユースケースを呼び出すワークフローを提供します。 |
+| `apps/frontend` | Vite + React 製のスタートリスト操作 UI。`StartlistManagement` のユースケースを呼び出すワークフローを提供します。詳しくは [apps/frontend/README.md](./apps/frontend/README.md) を参照してください。 |
 | `apps/shared-ui-components` | フロントエンド間で共有する UI コンポーネント群。 |
 | `StartlistManagement` | スタートリストドメインの各レイヤ（domain/application/infrastructure/http 等）を収めたパッケージ群。詳細は [StartlistManagement/README.md](./StartlistManagement/README.md) を参照してください。 |
 | `EntryManagement` | エントリー登録ドメインのレイヤ構造（domain/application/infrastructure/adapters-http）を提供します。レイヤ概要は [EntryManagement/README.md](./EntryManagement/README.md) にまとめています。 |
@@ -37,7 +37,7 @@ Monorepo のルートで実行すると、すべてのワークスペースの�
   ```bash
   npm run dev --workspace @orienteering/startlist-frontend
   ```
-  必要に応じて `apps/frontend/.env` などで `VITE_STARTLIST_API_BASE_URL` を設定し、バックエンドのベース URL を指定します。
+  UI の利用手順や `VITE_STARTLIST_API_BASE_URL` の設定方法は [apps/frontend/README.md](./apps/frontend/README.md) を参照してください。
 - EntryManagement のバックエンド API
   ```bash
   npm run start --workspace @entry-management/backend
@@ -57,4 +57,5 @@ Monorepo のルートで実行すると、すべてのワークスペースの�
 ## ドキュメント
 
 - [StartlistManagement ドメイン詳細](./StartlistManagement/README.md#startlistmanagement-ドメイン詳細)
+- [スタートリスト UI と連携ガイド](./apps/frontend/README.md)
 - [EntryManagement レイヤ概要と起動フロー](./EntryManagement/README.md)
