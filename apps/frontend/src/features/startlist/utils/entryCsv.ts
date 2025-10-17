@@ -7,6 +7,13 @@ const headerMap: Record<string, keyof Entry> = {
   classid: 'classId',
   class_id: 'classId',
   classname: 'classId',
+  'チーム名(氏名)': 'name',
+  'チーム名（氏名）': 'name',
+  '所属': 'club',
+  'クラス': 'classId',
+  'カード番号': 'cardNo',
+  'カード番号:': 'cardNo',
+  'カード番号：': 'cardNo',
   'cardnumber': 'cardNo',
   'card number': 'cardNo',
   card: 'cardNo',
@@ -74,6 +81,8 @@ const mapHeaders = (headers: string[]): (keyof Entry | undefined)[] => {
 
 const requiredFields: (keyof Entry)[] = ['name', 'classId', 'cardNo'];
 
+const HEADER_SCAN_LIMIT = 10;
+
 const ensureRequiredColumns = (mappedHeaders: (keyof Entry | undefined)[]): void => {
   const present = new Set(mappedHeaders.filter(Boolean));
   const missing = requiredFields.filter((field) => !present.has(field));
@@ -139,12 +148,38 @@ export const parseEntriesFromCsvText = (text: string, existingEntries: Entry[]):
   if (rows.length === 0) {
     return [];
   }
-  const [headerRow, ...dataRows] = rows;
-  const mappedHeaders = mapHeaders(headerRow);
+  const findHeaderRow = (): {
+    headerIndex: number;
+    mappedHeaders: (keyof Entry | undefined)[];
+  } => {
+    const scanLimit = Math.min(rows.length, HEADER_SCAN_LIMIT);
+    for (let index = 0; index < scanLimit; index += 1) {
+      const potentialHeaders = mapHeaders(rows[index]);
+      try {
+        ensureRequiredColumns(potentialHeaders);
+        return {
+          headerIndex: index,
+          mappedHeaders: potentialHeaders,
+        };
+      } catch (error) {
+        // continue searching for a valid header row
+      }
+    }
 
-  ensureRequiredColumns(mappedHeaders);
+    const fallbackHeaders = mapHeaders(rows[0] ?? []);
+    ensureRequiredColumns(fallbackHeaders);
+    return {
+      headerIndex: 0,
+      mappedHeaders: fallbackHeaders,
+    };
+  };
 
-  const entries = dataRows.map((row, index) => createEntryFromRow(row, mappedHeaders, index + 2));
+  const { headerIndex, mappedHeaders } = findHeaderRow();
+  const dataRows = rows.slice(headerIndex + 1);
+
+  const entries = dataRows.map((row, index) =>
+    createEntryFromRow(row, mappedHeaders, headerIndex + index + 2),
+  );
 
   ensureNoDuplicates(entries, existingEntries);
 
