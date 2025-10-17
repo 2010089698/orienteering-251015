@@ -15,8 +15,8 @@ const baseSettings = {
 };
 
 const sampleEntries = [
-  { name: 'A', classId: 'M21', cardNo: '1' },
-  { name: 'B', classId: 'W21', cardNo: '2' },
+  { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
+  { id: 'entry-2', name: 'B', classId: 'W21', cardNo: '2' },
 ];
 
 describe('InputStep', () => {

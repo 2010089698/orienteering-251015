@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { ClassAssignmentDto } from '@startlist-management/application';
 import { useStartlistApi } from '../api/useStartlistApi';
@@ -16,6 +17,8 @@ const ClassOrderPanel = (): JSX.Element => {
   const { entries, settings, classAssignments, startlistId, statuses, loading } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
+
+  const entryMap = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
 
   const handleGenerate = () => {
     if (!settings) {
@@ -92,19 +95,23 @@ const ClassOrderPanel = (): JSX.Element => {
                 {assignment.classId} ({assignment.playerOrder.length} 人)
               </summary>
               <ol>
-                {assignment.playerOrder.map((playerId, index) => (
-                  <li key={playerId}>
-                    {playerId}
-                    <span className="inline-buttons">
-                      <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, -1)}>
-                        ↑
-                      </button>
-                      <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, 1)}>
-                        ↓
-                      </button>
-                    </span>
-                  </li>
-                ))}
+                {assignment.playerOrder.map((playerId, index) => {
+                  const entry = entryMap.get(playerId);
+                  const cardLabel = entry?.cardNo ?? playerId;
+                  return (
+                    <li key={playerId}>
+                      {cardLabel}
+                      <span className="inline-buttons">
+                        <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, -1)}>
+                          ↑
+                        </button>
+                        <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, 1)}>
+                          ↓
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </details>
           ))}

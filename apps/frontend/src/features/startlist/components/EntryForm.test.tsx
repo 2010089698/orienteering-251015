@@ -13,14 +13,14 @@ describe('EntryForm', () => {
     await user.type(screen.getByLabelText('カード番号'), ' ');
     await user.click(screen.getByRole('button', { name: '参加者を追加' }));
 
-    expect(await screen.findByText('クラスとカード番号を入力してください。')).toBeInTheDocument();
+    expect(await screen.findByText('クラスを入力してください。')).toBeInTheDocument();
   });
 
   it('prevents duplicate card numbers', async () => {
     const user = userEvent.setup();
     renderWithStartlist(<EntryForm />, {
       initialState: {
-        entries: [{ name: 'A', classId: 'M21', cardNo: '123' }],
+        entries: [{ id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123' }],
       },
     });
 
@@ -64,7 +64,7 @@ describe('EntryForm', () => {
     const user = userEvent.setup();
     renderWithStartlist(<EntryForm />, {
       initialState: {
-        entries: [{ name: '登録済み', classId: 'M21', cardNo: '123' }],
+        entries: [{ id: 'entry-1', name: '登録済み', classId: 'M21', cardNo: '123' }],
       },
     });
 
@@ -75,5 +75,22 @@ describe('EntryForm', () => {
     await user.upload(screen.getByLabelText('CSV から参加者を一括登録'), file);
 
     expect(await screen.findByText('カード番号 123 はすでに登録されています。')).toBeInTheDocument();
+  });
+
+  it('allows submitting without a card number and counts rentals separately', async () => {
+    const user = userEvent.setup();
+    renderWithStartlist(<EntryForm />);
+
+    await user.type(screen.getByLabelText('選手名'), 'レンタル太郎');
+    await user.type(screen.getByLabelText('クラス'), 'M21');
+    await user.click(screen.getByRole('button', { name: '参加者を追加' }));
+
+    expect(await screen.findByText('1 人の参加者を登録しました。')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('選手名'), 'レンタル花子');
+    await user.type(screen.getByLabelText('クラス'), 'W21');
+    await user.click(screen.getByRole('button', { name: '参加者を追加' }));
+
+    expect(await screen.findByText('2 人の参加者を登録しました。')).toBeInTheDocument();
   });
 });

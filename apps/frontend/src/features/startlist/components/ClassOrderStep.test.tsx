@@ -17,17 +17,17 @@ const settings = {
 const laneAssignments = [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }];
 
 const classAssignments = [
-  { classId: 'M21', playerOrder: ['1', '2'], interval: { milliseconds: 60000 } },
+  { classId: 'M21', playerOrder: ['entry-1', 'entry-2'], interval: { milliseconds: 60000 } },
 ];
 
 const entries = [
-  { name: 'A', classId: 'M21', cardNo: '1' },
-  { name: 'B', classId: 'M21', cardNo: '2' },
+  { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
+  { id: 'entry-2', name: 'B', classId: 'M21', cardNo: '2' },
 ];
 
 const startTimes = [
-  { playerId: '1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 },
-  { playerId: '2', startTime: new Date('2024-01-01T09:01:00Z').toISOString(), laneNumber: 1 },
+  { playerId: 'entry-1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 },
+  { playerId: 'entry-2', startTime: new Date('2024-01-01T09:01:00Z').toISOString(), laneNumber: 1 },
 ];
 
 describe('ClassOrderStep', () => {

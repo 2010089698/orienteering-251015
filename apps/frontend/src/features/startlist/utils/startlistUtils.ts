@@ -119,8 +119,8 @@ export const createDefaultClassAssignments = (
   return Array.from(groupEntriesByClass(entries).entries()).map<ClassAssignmentDto>(([classId, groupEntries]) => ({
     classId,
     playerOrder: [...groupEntries]
-      .map((entry) => entry.cardNo)
-      .sort((a, b) => compareCardNumbers(a, b)),
+      .sort((a, b) => compareCardNumbers(a.cardNo, b.cardNo))
+      .map((entry) => entry.id),
     interval: { milliseconds: playerIntervalMs },
   }));
 };
@@ -187,7 +187,7 @@ export const calculateStartTimes = ({
       }
       const playerOrder = assignment?.playerOrder?.length
         ? assignment.playerOrder
-        : (groupedEntries.get(classId) ?? []).map((entry) => entry.cardNo);
+        : (groupedEntries.get(classId) ?? []).map((entry) => entry.id);
 
       playerOrder.forEach((playerId) => {
         if (!playerId || seenPlayers.has(playerId)) {

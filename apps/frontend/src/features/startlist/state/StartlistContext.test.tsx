@@ -46,16 +46,21 @@ describe('StartlistContext', () => {
     act(() => {
       updateSettings(result.current.dispatch, { startlistId: 'SL-1', settings });
       appendEntry(result.current.dispatch, { name: 'A', classId: 'M21', cardNo: '1' });
+    });
+
+    const entryId = result.current.state.entries[0]?.id ?? '';
+
+    act(() => {
       setStatus(result.current.dispatch, 'entries', createStatus('ok', 'success'));
       setLoading(result.current.dispatch, 'entries', true);
       updateLaneAssignments(result.current.dispatch, [
         { laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } },
       ]);
       updateClassAssignments(result.current.dispatch, [
-        { classId: 'M21', playerOrder: ['1'], interval: { milliseconds: 60000 } },
+        { classId: 'M21', playerOrder: [entryId], interval: { milliseconds: 60000 } },
       ]);
       updateStartTimes(result.current.dispatch, [
-        { playerId: '1', laneNumber: 1, startTime: settings.startTime },
+        { playerId: entryId, laneNumber: 1, startTime: settings.startTime },
       ]);
       updateSnapshot(result.current.dispatch, { foo: 'bar' });
     });
@@ -70,7 +75,7 @@ describe('StartlistContext', () => {
     expect(result.current.state.snapshot).toEqual({ foo: 'bar' });
 
     act(() => {
-      removeEntry(result.current.dispatch, '1');
+      removeEntry(result.current.dispatch, entryId);
       setLoading(result.current.dispatch, 'entries', false);
     });
 

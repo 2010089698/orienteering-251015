@@ -8,10 +8,10 @@ import {
   useStartlistDispatch,
   useStartlistState,
 } from '../state/StartlistContext';
-import type { Entry } from '../state/types';
+import { RENTAL_CARD_LABEL, type EntryDraft } from '../state/types';
 import { parseEntriesFromCsvFile } from '../utils/entryCsv';
 
-const emptyEntry: Entry = {
+const emptyEntry: EntryDraft = {
   name: '',
   club: '',
   classId: '',
@@ -21,7 +21,7 @@ const emptyEntry: Entry = {
 const EntryForm = (): JSX.Element => {
   const { entries, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
-  const [form, setForm] = useState<Entry>({ ...emptyEntry });
+  const [form, setForm] = useState<EntryDraft>({ ...emptyEntry });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,22 +31,25 @@ const EntryForm = (): JSX.Element => {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.classId.trim() || !form.cardNo.trim()) {
-      setStatus(dispatch, 'entries', createStatus('クラスとカード番号を入力してください。', 'error'));
+    const classId = form.classId.trim();
+    if (!classId) {
+      setStatus(dispatch, 'entries', createStatus('クラスを入力してください。', 'error'));
       return;
     }
     const normalizedCard = form.cardNo.trim();
-    const duplicate = entries.some((entry) => entry.cardNo === normalizedCard);
+    const cardNo = normalizedCard || RENTAL_CARD_LABEL;
+    const duplicate =
+      cardNo !== RENTAL_CARD_LABEL && entries.some((entry) => entry.cardNo === cardNo);
     if (duplicate) {
       setStatus(dispatch, 'entries', createStatus('同じカード番号の参加者が登録されています。', 'error'));
       return;
     }
 
-    const entry: Entry = {
+    const entry: EntryDraft = {
       name: form.name.trim(),
       club: form.club?.trim() ?? '',
-      classId: form.classId.trim(),
-      cardNo: normalizedCard,
+      classId,
+      cardNo,
     };
 
     appendEntry(dispatch, entry);
@@ -75,7 +78,6 @@ const EntryForm = (): JSX.Element => {
         );
         return;
       }
-
       updateEntries(dispatch, [...entries, ...newEntries]);
       setStatus(
         dispatch,
@@ -113,7 +115,7 @@ const EntryForm = (): JSX.Element => {
         </label>
         <label>
           カード番号
-          <input name="cardNo" value={form.cardNo} onChange={handleChange} placeholder="123456" required />
+          <input name="cardNo" value={form.cardNo} onChange={handleChange} placeholder="123456" />
         </label>
         <div className="actions-row">
           <button type="submit">参加者を追加</button>
