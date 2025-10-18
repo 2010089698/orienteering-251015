@@ -43,7 +43,8 @@ export type StatusKey =
   | 'classes'
   | 'startTimes'
   | 'snapshot'
-  | 'startOrder';
+  | 'startOrder'
+  | 'classSplit';
 
 interface EntryBase {
   name: string;
