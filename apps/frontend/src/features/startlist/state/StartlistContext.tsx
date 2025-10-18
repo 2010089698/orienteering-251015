@@ -7,6 +7,14 @@ import type {
 } from '@startlist-management/application';
 import type { Entry, EntryDraft, StartlistState, StatusKey, StatusMessageState } from './types';
 
+export const createDefaultStartlistId = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `SL-${year}${month}${day}`;
+};
+
 const statusKeys: StatusKey[] = ['settings', 'entries', 'lanes', 'classes', 'startTimes', 'snapshot'];
 
 const defaultStatus = (text = '待機中です。', level: StatusMessageState['level'] = 'idle'): StatusMessageState => ({
@@ -23,7 +31,7 @@ const initialStatuses: StartlistState['statuses'] = statusKeys.reduce(
 );
 
 const initialState: StartlistState = {
-  startlistId: '',
+  startlistId: createDefaultStartlistId(),
   settings: undefined,
   entries: [],
   laneAssignments: [],

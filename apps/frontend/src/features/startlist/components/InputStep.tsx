@@ -87,11 +87,13 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
         <p className="muted">大会の基本情報と参加者を登録し、「入力完了」ボタンで次のステップへ進みます。</p>
       </header>
       <div className="input-step__layout">
-        <div className="input-step__column input-step__column--forms">
+        <div className="input-step__cell input-step__cell--settings">
           <SettingsForm ref={settingsFormRef} />
+        </div>
+        <div className="input-step__cell input-step__cell--entry">
           <EntryForm />
         </div>
-        <div className="input-step__column input-step__column--table">
+        <div className="input-step__cell input-step__cell--table">
           <EntryTablePanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} entries={filteredEntries} />
         </div>
       </div>

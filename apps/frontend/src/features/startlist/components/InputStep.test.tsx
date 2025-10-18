@@ -31,10 +31,10 @@ describe('InputStep', () => {
   it('shows validation errors from the settings form when inputs are invalid', async () => {
     renderWithStartlist(<InputStep onComplete={() => {}} />);
 
-    await userEvent.clear(screen.getByLabelText('スタートリスト ID'));
+    await userEvent.clear(screen.getByLabelText('開始時刻'));
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
-    expect(await screen.findByText('スタートリスト ID を入力してください。')).toBeInTheDocument();
+    expect(await screen.findByText('開始時刻を入力してください。')).toBeInTheDocument();
   });
 
   it('generates lane assignments and calls onComplete', async () => {

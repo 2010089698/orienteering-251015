@@ -6,14 +6,12 @@ import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
 import { renderWithStartlist } from '../test/test-utils';
 
 describe('SettingsForm', () => {
-  it('provides a default startlist ID and saves settings via the imperative handle', async () => {
+  it('saves settings via the imperative handle without requiring manual startlist ID input', async () => {
     const ref = createRef<SettingsFormHandle>();
     renderWithStartlist(<SettingsForm ref={ref} />);
 
-    const startlistIdInput = screen.getByLabelText('スタートリスト ID') as HTMLInputElement;
-    expect(startlistIdInput.value).not.toBe('');
+    expect(screen.queryByLabelText('スタートリスト ID')).not.toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText('大会メモ（任意）'), '春の大会');
     fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '2024-01-01T09:00' } });
     await userEvent.selectOptions(screen.getByLabelText('レーン内クラス間隔'), '120000');
     await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
@@ -31,14 +29,13 @@ describe('SettingsForm', () => {
     const ref = createRef<SettingsFormHandle>();
     renderWithStartlist(<SettingsForm ref={ref} />);
 
-    const startlistIdInput = screen.getByLabelText('スタートリスト ID');
-    await userEvent.clear(startlistIdInput);
+    await userEvent.clear(screen.getByLabelText('開始時刻'));
 
     await act(async () => {
       const result = ref.current?.validateAndSave();
       expect(result).toBeNull();
     });
 
-    expect(await screen.findByText('スタートリスト ID を入力してください。')).toBeInTheDocument();
+    expect(await screen.findByText('開始時刻を入力してください。')).toBeInTheDocument();
   });
 });

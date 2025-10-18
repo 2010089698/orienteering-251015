@@ -92,10 +92,11 @@ describe('exportRowToCsvLine', () => {
       startNumber: '001',
       name: 'Alice "Fast" Runner',
       club: 'Club,Team',
+      startTimeLabel: '2024-05-01T00:30:00Z',
       cardNo: '',
     });
 
-    expect(line).toBe('M21,001,"Alice ""Fast"" Runner","Club,Team",');
+    expect(line).toBe('M21,001,"Alice ""Fast"" Runner","Club,Team",2024-05-01T00:30:00Z,');
   });
 });
 
@@ -192,7 +193,8 @@ describe('downloadStartlistCsv', () => {
 
       const csvArrayBuffer = await createdBlobs[0].arrayBuffer();
       const csvText = new TextDecoder('utf-8').decode(csvArrayBuffer);
-      expect(csvText).toContain('クラス,スタート番号,氏名,クラブ,カード番号');
+      expect(csvText).toContain('クラス,スタート番号,氏名,所属,スタート時刻,カード番号');
+      expect(csvText).toContain('M21,001,Alice,Alpha,');
     } finally {
       (globalThis as unknown as { Blob: typeof Blob }).Blob = originalBlob;
     }

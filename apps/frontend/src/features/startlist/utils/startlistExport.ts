@@ -12,6 +12,7 @@ export type StartlistExportRow = {
   startNumber: string;
   name: string;
   club: string;
+  startTimeLabel: string;
   cardNo: string;
 };
 
@@ -104,7 +105,7 @@ export const buildStartlistExportRows = ({
   const rows: StartlistExportRow[] = [];
   const usedStartNumbers = new Set<string>();
 
-  startTimeEntries.forEach(({ item }, sortedIndex) => {
+  startTimeEntries.forEach(({ item, normalized }, sortedIndex) => {
     const entry = entryMap.get(item.playerId);
     const classId = entry?.classId ?? playerClassMap.get(item.playerId) ?? '不明';
     const name = entry?.name ?? '（名前未入力）';
@@ -130,6 +131,7 @@ export const buildStartlistExportRows = ({
       startNumber,
       name,
       club,
+      startTimeLabel: normalized.label ?? '',
       cardNo,
     });
   });
@@ -138,7 +140,14 @@ export const buildStartlistExportRows = ({
 };
 
 export const exportRowToCsvLine = (row: StartlistExportRow): string => {
-  const values = [row.classId, row.startNumber, row.name, row.club ?? '', row.cardNo ?? ''];
+  const values = [
+    row.classId,
+    row.startNumber,
+    row.name,
+    row.club ?? '',
+    row.startTimeLabel ?? '',
+    row.cardNo ?? '',
+  ];
   return values.map((value) => escapeCsvValue(value)).join(',');
 };
 
@@ -185,7 +194,7 @@ export const downloadStartlistCsv = ({
   const { createObjectURL, revokeObjectURL, document: doc } = resolveDownloadContext(contextOverride);
 
   const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
-  const header = ['クラス', 'スタート番号', '氏名', 'クラブ', 'カード番号'];
+  const header = ['クラス', 'スタート番号', '氏名', '所属', 'スタート時刻', 'カード番号'];
   const csvLines = [header.join(','), ...rows.map((row) => exportRowToCsvLine(row))];
   const csvContent = `\ufeff${csvLines.join('\r\n')}`;
 
