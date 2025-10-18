@@ -17,6 +17,13 @@ import { StartTimesInvalidatedEvent } from './events/StartTimesInvalidatedEvent.
 import { StartlistFinalizedEvent } from './events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from './events/StartlistSettingsEnteredEvent.js';
 
+export class NoStartTimesAssignedError extends DomainError {
+  constructor(message = 'No start times are assigned to invalidate.') {
+    super(message);
+    this.name = 'NoStartTimesAssignedError';
+  }
+}
+
 export class Startlist {
   private settings?: StartlistSettings;
   private laneAssignments: LaneAssignment[] = [];
@@ -221,7 +228,7 @@ export class Startlist {
 
   invalidateStartTimes(reason: string): void {
     if (this.startTimes.length === 0) {
-      throw new DomainError('No start times are assigned to invalidate.');
+      throw new NoStartTimesAssignedError();
     }
     this.startTimes = [];
     this.status = StartlistStatus.PLAYER_ORDER_ASSIGNED;

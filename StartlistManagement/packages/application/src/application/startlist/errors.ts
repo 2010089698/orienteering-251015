@@ -1,4 +1,4 @@
-import { DomainError } from '@startlist-management/domain';
+import { DomainError, NoStartTimesAssignedError } from '@startlist-management/domain';
 
 export class StartlistApplicationError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -21,6 +21,13 @@ export class InvalidCommandError extends StartlistApplicationError {
   }
 }
 
+export class NoStartTimesAssignedInvalidCommandError extends InvalidCommandError {
+  constructor(cause?: unknown) {
+    super('No start times are assigned to invalidate.', cause);
+    this.name = 'NoStartTimesAssignedInvalidCommandError';
+  }
+}
+
 export class PersistenceError extends StartlistApplicationError {
   constructor(message: string, cause?: unknown) {
     super(message, cause);
@@ -31,6 +38,9 @@ export class PersistenceError extends StartlistApplicationError {
 export const mapToApplicationError = (error: unknown): StartlistApplicationError => {
   if (error instanceof StartlistApplicationError) {
     return error;
+  }
+  if (error instanceof NoStartTimesAssignedError) {
+    return new NoStartTimesAssignedInvalidCommandError(error);
   }
   if (error instanceof DomainError) {
     return new InvalidCommandError(error.message, error);
