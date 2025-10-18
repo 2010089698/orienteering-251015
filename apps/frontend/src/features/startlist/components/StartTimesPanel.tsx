@@ -10,6 +10,7 @@ import {
   useStartlistState,
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
+import { buildStartlistExportRows, exportRowToCsvLine } from '../utils/startlistExport';
 
 const formatDateTime = (iso: string): string => {
   const date = new Date(iso);
@@ -73,6 +74,62 @@ const StartTimesPanel = (): JSX.Element => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (startTimes.length === 0) {
+      return;
+    }
+
+    setLoading(dispatch, 'startTimes', true);
+
+    let url: string | undefined;
+    let link: HTMLAnchorElement | undefined;
+
+    try {
+      const rows = buildStartlistExportRows({
+        entries,
+        startTimes,
+        classAssignments,
+      });
+
+      const header = ['class', 'start number', 'name', 'club', 'card number'];
+      const csvLines = [header.join(','), ...rows.map((row) => exportRowToCsvLine(row))];
+      const csvContent = csvLines.join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      url = URL.createObjectURL(blob);
+
+      link = document.createElement('a');
+      link.href = url;
+
+      const now = new Date();
+      const year = String(now.getFullYear());
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      link.download = `startlist-${year}${month}${day}.csv`;
+      link.style.display = 'none';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setStatus(
+        dispatch,
+        'startTimes',
+        createStatus(`${rows.length} 件のスタート時間をエクスポートしました。`, 'info'),
+      );
+    } catch (error) {
+      if (link && link.isConnected) {
+        link.remove();
+      }
+      const message = error instanceof Error ? error.message : 'CSV のエクスポートに失敗しました。';
+      setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
+    } finally {
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+      setLoading(dispatch, 'startTimes', false);
+    }
+  };
+
   const handleFinalize = async () => {
     if (!startlistId) {
       setStatus(dispatch, 'startTimes', createStatus('スタートリスト ID を設定してください。', 'error'));
@@ -132,6 +189,14 @@ const StartTimesPanel = (): JSX.Element => {
         </button>
         <button type="button" className="secondary" onClick={handlePersist} disabled={loading.startTimes}>
           API に送信
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={handleExportCsv}
+          disabled={startTimes.length === 0 || Boolean(loading.startTimes)}
+        >
+          CSV をエクスポート
         </button>
         <button type="button" className="secondary" onClick={handleFinalize} disabled={loading.startTimes}>
           スタートリストを確定
