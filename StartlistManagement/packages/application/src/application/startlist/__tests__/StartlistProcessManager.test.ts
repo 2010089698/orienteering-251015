@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   LaneOrderManuallyReassignedEvent,
   ClassStartOrderManuallyFinalizedEvent,
+  NoStartTimesAssignedError,
 } from '@startlist-management/domain';
 import { InvalidateStartTimesUseCase } from '../commands/InvalidateStartTimesUseCase.js';
-import { InvalidCommandError } from '../errors.js';
+import { InvalidCommandError, NoStartTimesAssignedInvalidCommandError } from '../errors.js';
 import { StartlistProcessManager } from '../process-manager/StartlistProcessManager.js';
 
 const createEvent = (EventCtor: new (...args: any[]) => any, startlistId: string) => {
@@ -42,9 +43,9 @@ describe('StartlistProcessManager', () => {
     });
   });
 
-  it('suppresses no-op invalid command errors', async () => {
+  it('suppresses invalid command errors when no start times are assigned', async () => {
     const invalidate: InvalidateStartTimesUseCase = {
-      execute: vi.fn().mockRejectedValue(new InvalidCommandError('No start times are assigned to invalidate.')),
+      execute: vi.fn().mockRejectedValue(new NoStartTimesAssignedError()),
     };
     const manager = new StartlistProcessManager(invalidate);
     const event = createEvent(LaneOrderManuallyReassignedEvent, 'startlist-1');
@@ -61,5 +62,16 @@ describe('StartlistProcessManager', () => {
     const event = createEvent(LaneOrderManuallyReassignedEvent, 'startlist-1');
 
     await expect(manager.handle(event)).rejects.toBe(error);
+  });
+
+  it('also suppresses dedicated invalid command errors', async () => {
+    const error = new NoStartTimesAssignedInvalidCommandError();
+    const invalidate: InvalidateStartTimesUseCase = {
+      execute: vi.fn().mockRejectedValue(error),
+    };
+    const manager = new StartlistProcessManager(invalidate);
+    const event = createEvent(ClassStartOrderManuallyFinalizedEvent, 'startlist-2');
+
+    await expect(manager.handle(event)).resolves.toBeUndefined();
   });
 });

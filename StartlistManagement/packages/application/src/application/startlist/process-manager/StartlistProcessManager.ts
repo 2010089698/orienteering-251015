@@ -4,10 +4,8 @@ import {
   LaneOrderManuallyReassignedEvent,
 } from '@startlist-management/domain';
 import { InvalidateStartTimesCommand } from '../dto/StartlistDtos.js';
-import { InvalidCommandError, mapToApplicationError } from '../errors.js';
+import { NoStartTimesAssignedInvalidCommandError, mapToApplicationError } from '../errors.js';
 import { InvalidateStartTimesUseCase } from '../commands/InvalidateStartTimesUseCase.js';
-
-const NO_START_TIMES_MESSAGE = 'No start times are assigned to invalidate.';
 
 export class StartlistProcessManager {
   constructor(private readonly invalidateStartTimes: InvalidateStartTimesUseCase) {}
@@ -29,7 +27,7 @@ export class StartlistProcessManager {
       await this.invalidateStartTimes.execute(command);
     } catch (error) {
       const appError = mapToApplicationError(error);
-      if (appError instanceof InvalidCommandError && appError.message === NO_START_TIMES_MESSAGE) {
+      if (appError instanceof NoStartTimesAssignedInvalidCommandError) {
         return;
       }
       throw appError;
