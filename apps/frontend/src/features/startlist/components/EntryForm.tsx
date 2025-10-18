@@ -16,6 +16,7 @@ const emptyEntry: EntryDraft = {
   club: '',
   classId: '',
   cardNo: '',
+  iofId: '',
 };
 
 const EntryForm = (): JSX.Element => {
@@ -51,6 +52,11 @@ const EntryForm = (): JSX.Element => {
       classId,
       cardNo,
     };
+
+    const normalizedIofId = form.iofId?.replace(/\s+/g, '').toUpperCase() ?? '';
+    if (normalizedIofId) {
+      entry.iofId = normalizedIofId;
+    }
 
     appendEntry(dispatch, entry);
     setStatus(
@@ -112,6 +118,10 @@ const EntryForm = (): JSX.Element => {
         <label>
           クラス
           <input name="classId" value={form.classId} onChange={handleChange} placeholder="M21E" required />
+        </label>
+        <label>
+          IOF ID
+          <input name="iofId" value={form.iofId} onChange={handleChange} placeholder="123456" />
         </label>
         <label>
           カード番号

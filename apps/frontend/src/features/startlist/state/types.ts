@@ -19,6 +19,7 @@ interface EntryBase {
   club?: string;
   classId: string;
   cardNo: string;
+  iofId?: string;
 }
 
 export interface Entry extends EntryBase {

@@ -11,12 +11,27 @@ describe('EntryTable', () => {
     expect(screen.getByText('登録済みの参加者はまだいません。')).toBeInTheDocument();
   });
 
+  it('renders IOF ID column when entries include values', () => {
+    renderWithStartlist(
+      <EntryTable
+        entries={[
+          { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123', iofId: 'ABC123' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'IOF ID' })).toBeInTheDocument();
+    const rows = screen.getAllByRole('row');
+    const firstDataRow = rows[1];
+    expect(within(firstDataRow).getByText('ABC123')).toBeInTheDocument();
+  });
+
   it('invokes onRemove when delete is pressed', async () => {
     const handleRemove = vi.fn();
     renderWithStartlist(
       <EntryTable
         entries={[
-          { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123' },
+          { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123', iofId: 'ABC123' },
           { id: 'entry-2', name: 'B', classId: 'W21', cardNo: '456' },
         ]}
         onRemove={handleRemove}

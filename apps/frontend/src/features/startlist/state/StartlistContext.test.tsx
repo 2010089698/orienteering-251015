@@ -46,7 +46,12 @@ describe('StartlistContext', () => {
 
     act(() => {
       updateSettings(result.current.dispatch, { startlistId: 'SL-1', settings });
-      appendEntry(result.current.dispatch, { name: 'A', classId: 'M21', cardNo: '1' });
+      appendEntry(result.current.dispatch, {
+        name: 'A',
+        classId: 'M21',
+        cardNo: '1',
+        iofId: 'IOF001',
+      });
     });
 
     const entryId = result.current.state.entries[0]?.id ?? '';
@@ -68,6 +73,7 @@ describe('StartlistContext', () => {
 
     expect(result.current.state.startlistId).toBe('SL-1');
     expect(result.current.state.entries).toHaveLength(1);
+    expect(result.current.state.entries[0]?.iofId).toBe('IOF001');
     expect(result.current.state.statuses.entries.text).toBe('ok');
     expect(result.current.state.loading.entries).toBe(true);
     expect(result.current.state.laneAssignments).toHaveLength(1);
