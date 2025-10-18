@@ -12,7 +12,14 @@ export interface StatusMessageState {
   text: string;
 }
 
-export type StatusKey = 'settings' | 'entries' | 'lanes' | 'classes' | 'startTimes' | 'snapshot';
+export type StatusKey =
+  | 'settings'
+  | 'entries'
+  | 'lanes'
+  | 'classes'
+  | 'startTimes'
+  | 'snapshot'
+  | 'worldRanking';
 
 interface EntryBase {
   name: string;
@@ -45,6 +52,10 @@ export interface ClassOrderPreferences {
   avoidConsecutiveClubs: boolean;
 }
 
+export type WorldRankingMap = Map<string, number>;
+
+export type WorldRankingTargetClassIds = Set<string>;
+
 export interface StartlistState {
   startlistId: string;
   settings?: StartlistSettingsDto;
@@ -58,4 +69,6 @@ export interface StartlistState {
   snapshot?: unknown;
   statuses: Record<StatusKey, StatusMessageState>;
   loading: Partial<Record<StatusKey, boolean>>;
+  worldRanking: WorldRankingMap;
+  worldRankingTargetClassIds: WorldRankingTargetClassIds;
 }
