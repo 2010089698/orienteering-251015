@@ -7,6 +7,7 @@ export const toEntryDto = (entry: Entry): EntryDto => ({
   classId: entry.classId,
   cardNumber: entry.cardNumber,
   club: entry.club,
+  iofId: entry.iofId,
   createdAt: entry.createdAt.toISOString(),
 });
 
@@ -16,4 +17,5 @@ export const toEntrySummaryDto = (entry: Entry): EntrySummaryDto => ({
   classId: entry.classId,
   cardNumber: entry.cardNumber,
   club: entry.club,
+  iofId: entry.iofId,
 });

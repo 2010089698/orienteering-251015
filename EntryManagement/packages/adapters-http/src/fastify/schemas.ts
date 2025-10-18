@@ -6,6 +6,7 @@ export const EntrySummarySchema = Type.Object({
   classId: Type.String(),
   cardNumber: Type.String(),
   club: Type.Optional(Type.String()),
+  iofId: Type.Optional(Type.String()),
 });
 
 export const EntryResponseSchema = Type.Intersect([
@@ -20,4 +21,5 @@ export const RegisterEntryBodySchema = Type.Object({
   classId: Type.String({ minLength: 1 }),
   cardNumber: Type.String({ minLength: 1 }),
   club: Type.Optional(Type.String()),
+  iofId: Type.Optional(Type.String()),
 });

@@ -8,6 +8,7 @@ export interface RegisterEntryParams {
   classId: string;
   cardNumber: string;
   club?: string;
+  iofId?: string;
 }
 
 export class EntryFactory {
@@ -21,6 +22,7 @@ export class EntryFactory {
       classId: params.classId,
       cardNumber: params.cardNumber,
       club: params.club,
+      iofId: params.iofId,
       createdAt: this.clock.now(),
     });
   }

@@ -4,7 +4,11 @@ export interface EntryDto {
   classId: string;
   cardNumber: string;
   club?: string;
+  iofId?: string;
   createdAt: string;
 }
 
-export type EntrySummaryDto = Pick<EntryDto, 'id' | 'name' | 'classId' | 'cardNumber' | 'club'>;
+export type EntrySummaryDto = Pick<
+  EntryDto,
+  'id' | 'name' | 'classId' | 'cardNumber' | 'club' | 'iofId'
+>;
