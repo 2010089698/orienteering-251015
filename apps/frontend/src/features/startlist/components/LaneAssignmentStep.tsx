@@ -219,6 +219,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     classOrderPreferences,
     startOrderRules,
     worldRankingByClass,
+    classSplitRules,
+    classSplitResult,
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
@@ -403,6 +405,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       return;
     }
     let nextClassAssignments = existingClassAssignments;
+    let nextSplitResult = classSplitResult;
     if (!nextClassAssignments.length) {
       const missingCsvClasses = startOrderRules
         .filter((rule) => rule.method === 'worldRanking' && rule.classId && !rule.csvName)
@@ -416,7 +419,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       const policy = classOrderPreferences.avoidConsecutiveClubs
         ? seededRandomClassOrderPolicy
         : seededRandomUnconstrainedClassOrderPolicy;
-      const { assignments, seed, warnings } = createDefaultClassAssignments({
+      const { assignments, seed, warnings, splitResult } = createDefaultClassAssignments({
         entries,
         playerIntervalMs: playerIntervalMs || laneIntervalMs,
         laneAssignments,
@@ -425,9 +428,12 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         policy,
         startOrderRules,
         worldRankingByClass,
+        splitRules: classSplitRules,
+        previousSplitResult: classSplitResult,
       });
       nextClassAssignments = assignments;
-      updateClassAssignments(dispatch, assignments, seed, warnings);
+      nextSplitResult = splitResult ?? nextSplitResult;
+      updateClassAssignments(dispatch, assignments, seed, warnings, splitResult);
       if (assignments.length === 0) {
         setStatus(dispatch, 'classes', createStatus('クラス内順序を作成できませんでした。', 'error'));
         return;
@@ -451,8 +457,10 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       laneAssignments,
       classAssignments: nextClassAssignments,
       entries,
+      splitRules: classSplitRules,
+      splitResult: nextSplitResult,
     });
-    updateStartTimes(dispatch, startTimes);
+    updateStartTimes(dispatch, startTimes, nextSplitResult);
     if (startTimes.length === 0) {
       setStatus(dispatch, 'startTimes', createStatus('スタート時間を作成できませんでした。', 'error'));
       return;

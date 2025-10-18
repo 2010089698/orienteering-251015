@@ -120,8 +120,9 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     loading,
     classOrderWarnings,
     classOrderPreferences,
-  } =
-    useStartlistState();
+    classSplitRules,
+    classSplitResult,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const sensors = useSensors(
@@ -275,9 +276,12 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     }
     const nextAssignments = updateClassPlayerOrder(classAssignments, classId, fromIndex, toIndex);
     const warnings = avoidConsecutiveClubs
-      ? deriveClassOrderWarnings(nextAssignments, entries)
+      ? deriveClassOrderWarnings(nextAssignments, entries, {
+          splitRules: classSplitRules,
+          previousSplitResult: classSplitResult,
+        })
       : [];
-    updateClassAssignments(dispatch, nextAssignments, undefined, warnings);
+    updateClassAssignments(dispatch, nextAssignments, undefined, warnings, classSplitResult);
     if (!settings) {
       return;
     }
@@ -286,8 +290,10 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
       laneAssignments,
       classAssignments: nextAssignments,
       entries,
+      splitRules: classSplitRules,
+      splitResult: classSplitResult,
     });
-    updateStartTimes(dispatch, nextStartTimes);
+    updateStartTimes(dispatch, nextStartTimes, classSplitResult);
     setStatus(dispatch, 'classes', createStatus('順番を更新しました。', 'info'));
     setStatus(dispatch, 'startTimes', createStatus('スタート時間を再計算しました。', 'info'));
   };

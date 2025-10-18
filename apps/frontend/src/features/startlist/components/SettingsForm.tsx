@@ -118,8 +118,16 @@ export type SettingsFormHandle = {
 };
 
 const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.Element => {
-  const { settings, startlistId, statuses, classOrderPreferences, classAssignments, entries } =
-    useStartlistState();
+  const {
+    settings,
+    startlistId,
+    statuses,
+    classOrderPreferences,
+    classAssignments,
+    entries,
+    classSplitRules,
+    classSplitResult,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
@@ -159,11 +167,14 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
     setAvoidConsecutiveClubs(nextValue);
     updateClassOrderPreferences(dispatch, { avoidConsecutiveClubs: nextValue });
     if (nextValue && classAssignments.length > 0) {
-      const warnings = deriveClassOrderWarnings(classAssignments, entries);
-      updateClassAssignments(dispatch, classAssignments, undefined, warnings);
+      const warnings = deriveClassOrderWarnings(classAssignments, entries, {
+        splitRules: classSplitRules,
+        previousSplitResult: classSplitResult,
+      });
+      updateClassAssignments(dispatch, classAssignments, undefined, warnings, classSplitResult);
     }
     if (!nextValue && classAssignments.length > 0) {
-      updateClassAssignments(dispatch, classAssignments, undefined, []);
+      updateClassAssignments(dispatch, classAssignments, undefined, [], classSplitResult);
     }
   };
 
