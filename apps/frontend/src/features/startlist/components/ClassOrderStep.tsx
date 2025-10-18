@@ -18,10 +18,12 @@ import {
   updateStartTimes,
   useStartlistDispatch,
   useStartlistState,
+  setLoading,
 } from '../state/StartlistContext';
 import { calculateStartTimes, updateClassPlayerOrder } from '../utils/startlistUtils';
 import type { ClassAssignmentDto } from '@startlist-management/application';
 import { Tabs } from '../../../components/tabs';
+import { downloadStartlistCsv } from '../utils/startlistExport';
 
 type ClassOrderStepProps = {
   onBack: () => void;
@@ -106,7 +108,8 @@ const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDt
 };
 
 const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
-  const { classAssignments, startTimes, settings, laneAssignments, entries, statuses } = useStartlistState();
+  const { classAssignments, startTimes, settings, laneAssignments, entries, statuses, loading } =
+    useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const sensors = useSensors(
@@ -288,6 +291,23 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
       return;
     }
     reorderWithinClass(active.classId, fromIndex, toIndex);
+  };
+
+  const handleExportCsv = () => {
+    if (startTimes.length === 0) {
+      return;
+    }
+
+    setLoading(dispatch, 'startTimes', true);
+    try {
+      const count = downloadStartlistCsv({ entries, startTimes, classAssignments });
+      setStatus(dispatch, 'startTimes', createStatus(`${count} 件のスタート時間をエクスポートしました。`, 'info'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'CSV のエクスポートに失敗しました。';
+      setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
+    } finally {
+      setLoading(dispatch, 'startTimes', false);
+    }
   };
 
   return (
@@ -480,6 +500,14 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         </>
       )}
       <div className="actions-row step-actions">
+        <button
+          type="button"
+          className="secondary"
+          onClick={handleExportCsv}
+          disabled={startTimes.length === 0 || Boolean(loading.startTimes)}
+        >
+          CSV をエクスポート
+        </button>
         <button type="button" className="secondary" onClick={onBack}>
           戻る
         </button>

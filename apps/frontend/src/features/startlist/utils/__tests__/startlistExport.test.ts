@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ClassAssignmentDto, StartTimeDto } from '@startlist-management/application';
 import { RENTAL_CARD_LABEL, type Entry } from '../../state/types';
-import { buildStartlistExportRows, exportRowToCsvLine } from '../startlistExport';
+import { buildStartlistExportRows, downloadStartlistCsv, exportRowToCsvLine } from '../startlistExport';
 
 const createStartTime = (playerId: string, startTime: StartTimeDto['startTime']): StartTimeDto => ({
   playerId,
@@ -96,5 +96,76 @@ describe('exportRowToCsvLine', () => {
     });
 
     expect(line).toBe('M21,001,"Alice ""Fast"" Runner","Club,Team",');
+  });
+});
+
+describe('downloadStartlistCsv', () => {
+  const baseEntries: Entry[] = [
+    { id: 'p1', name: 'Alice', classId: 'M21', cardNo: '1001', club: 'Alpha' },
+    { id: 'p2', name: 'Bob', classId: 'M21', cardNo: '1002', club: 'Beta' },
+  ];
+  const baseStartTimes: StartTimeDto[] = [
+    createStartTime('p1', '2024-05-01T00:30:00Z'),
+    createStartTime('p2', '2024-05-01T01:00:00Z'),
+  ];
+  const baseAssignments = [createAssignment('M21', ['p1', 'p2'])];
+
+  it('creates a Blob URL and triggers anchor click', () => {
+    const createObjectURLMock = vi.fn(() => 'blob:mock');
+    const revokeObjectURLMock = vi.fn();
+    const clickMock = vi.fn();
+    const removeMock = vi.fn(function (this: { isConnected: boolean }) {
+      this.isConnected = false;
+    });
+
+    const link = {
+      href: '',
+      download: '',
+      style: { display: '' },
+      click: clickMock,
+      remove: removeMock,
+      isConnected: false,
+    } as unknown as HTMLAnchorElement & { isConnected: boolean };
+
+    const appendChildMock = vi.fn(() => {
+      link.isConnected = true;
+    });
+
+    const docMock = {
+      createElement: vi.fn(() => link),
+      body: {
+        appendChild: appendChildMock,
+      },
+    } as unknown as Document;
+
+    const count = downloadStartlistCsv({
+      entries: baseEntries,
+      startTimes: baseStartTimes,
+      classAssignments: baseAssignments,
+      fileNamePrefix: 'custom',
+      context: {
+        document: docMock,
+        createObjectURL: createObjectURLMock,
+        revokeObjectURL: revokeObjectURLMock,
+      },
+    });
+
+    expect(count).toBe(2);
+    expect(docMock.createElement).toHaveBeenCalledWith('a');
+    expect(appendChildMock).toHaveBeenCalledWith(link);
+    expect(clickMock).toHaveBeenCalledTimes(1);
+    expect(removeMock).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');
+    expect(link.download).toMatch(/^custom-\d{8}\.csv$/);
+  });
+
+  it('throws when start times are missing', () => {
+    expect(() =>
+      downloadStartlistCsv({
+        entries: baseEntries,
+        startTimes: [],
+        classAssignments: baseAssignments,
+      }),
+    ).toThrowError('スタート時間が存在しません。');
   });
 });

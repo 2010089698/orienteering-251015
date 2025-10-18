@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import type { ForwardedRef } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { DurationDto, StartlistSettingsDto } from '@startlist-management/application';
 import {
@@ -65,77 +66,120 @@ const getNextSundayAtTenJst = (): string => {
   return new Date(targetUtc - TOKYO_OFFSET_MS).toISOString();
 };
 
-const extractInterval = (interval?: DurationDto) => {
-  const milliseconds = interval?.milliseconds ?? 60000;
-  const minutes = Math.floor(milliseconds / 60000);
-  const seconds = Math.floor((milliseconds % 60000) / 1000);
-  return { minutes, seconds };
+const DEFAULT_INTERVAL_MS = 60000;
+const THIRTY_SECONDS_MS = 30000;
+
+const formatIntervalLabel = (milliseconds: number): string => {
+  const totalSeconds = Math.round(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes && seconds) {
+    return `${minutes}分${seconds}秒`;
+  }
+  if (minutes) {
+    return `${minutes}分`;
+  }
+  return `${seconds}秒`;
 };
 
-const SettingsForm = (): JSX.Element => {
+type IntervalOption = { label: string; value: number };
+
+const createIntervalOptions = (maxMinutes: number): IntervalOption[] => {
+  return [
+    { label: '30秒', value: THIRTY_SECONDS_MS },
+    ...Array.from({ length: maxMinutes }, (_, index) => {
+      const minutes = index + 1;
+      return { label: `${minutes}分`, value: minutes * 60000 };
+    }),
+  ];
+};
+
+const ensureIntervalOption = (options: IntervalOption[], value: number): IntervalOption[] => {
+  if (options.some((option) => option.value === value)) {
+    return options;
+  }
+  return [...options, { label: formatIntervalLabel(value), value }];
+};
+
+const createDefaultStartlistId = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `SL-${year}${month}${day}`;
+};
+
+export type SettingsFormHandle = {
+  validateAndSave: () => StartlistSettingsDto | null;
+};
+
+const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.Element => {
   const { settings, startlistId, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
-  const [startlistIdInput, setStartlistIdInput] = useState(startlistId);
+  const fallbackStartlistId = useMemo(() => createDefaultStartlistId(), []);
+  const [startlistIdInput, setStartlistIdInput] = useState<string>(() => startlistId || fallbackStartlistId);
   const [eventId, setEventId] = useState(settings?.eventId ?? '');
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-  const initialLaneInterval = useMemo(() => extractInterval(settings?.intervals?.laneClass), [settings]);
-  const [laneIntervalMinutes, setLaneIntervalMinutes] = useState(initialLaneInterval.minutes);
-  const [laneIntervalSeconds, setLaneIntervalSeconds] = useState(initialLaneInterval.seconds);
-  const initialPlayerInterval = useMemo(() => extractInterval(settings?.intervals?.classPlayer), [settings]);
-  const [playerIntervalMinutes, setPlayerIntervalMinutes] = useState(initialPlayerInterval.minutes);
-  const [playerIntervalSeconds, setPlayerIntervalSeconds] = useState(initialPlayerInterval.seconds);
+  const [laneIntervalMs, setLaneIntervalMs] = useState<number>(() => settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_INTERVAL_MS);
+  const [playerIntervalMs, setPlayerIntervalMs] = useState<number>(
+    () => settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_INTERVAL_MS,
+  );
   const [laneCount, setLaneCount] = useState(settings?.laneCount ?? 1);
 
+  const laneIntervalOptions = useMemo(
+    () => ensureIntervalOption(createIntervalOptions(60), laneIntervalMs),
+    [laneIntervalMs],
+  );
+  const playerIntervalOptions = useMemo(
+    () => ensureIntervalOption(createIntervalOptions(5), playerIntervalMs),
+    [playerIntervalMs],
+  );
+
   useEffect(() => {
-    setStartlistIdInput(startlistId);
+    if (startlistId) {
+      setStartlistIdInput(startlistId);
+    }
   }, [startlistId]);
 
   useEffect(() => {
     setEventId(settings?.eventId ?? '');
     setStartTime(toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-    const nextLaneInterval = extractInterval(settings?.intervals?.laneClass);
-    setLaneIntervalMinutes(nextLaneInterval.minutes);
-    setLaneIntervalSeconds(nextLaneInterval.seconds);
-    const nextPlayerInterval = extractInterval(settings?.intervals?.classPlayer);
-    setPlayerIntervalMinutes(nextPlayerInterval.minutes);
-    setPlayerIntervalSeconds(nextPlayerInterval.seconds);
+    setLaneIntervalMs(settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_INTERVAL_MS);
+    setPlayerIntervalMs(settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_INTERVAL_MS);
     setLaneCount(settings?.laneCount ?? 1);
   }, [settings]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const validateAndSave = (): StartlistSettingsDto | null => {
     if (!startlistIdInput.trim()) {
       setStatus(dispatch, 'settings', createStatus('スタートリスト ID を入力してください。', 'error'));
-      return;
+      return null;
     }
     if (!startTime) {
       setStatus(dispatch, 'settings', createStatus('開始時刻を入力してください。', 'error'));
-      return;
+      return null;
     }
 
     const normalizedStartTime = fromTokyoInputValue(startTime);
     if (!normalizedStartTime) {
       setStatus(dispatch, 'settings', createStatus('開始時刻の形式が正しくありません。', 'error'));
-      return;
+      return null;
     }
 
-    const laneIntervalMs = (Number(laneIntervalMinutes) * 60 + Number(laneIntervalSeconds)) * 1000;
     if (!Number.isFinite(laneIntervalMs) || laneIntervalMs <= 0) {
       setStatus(dispatch, 'settings', createStatus('レーン内クラス間隔は 1 秒以上で設定してください。', 'error'));
-      return;
+      return null;
     }
 
-    const playerIntervalMs = (Number(playerIntervalMinutes) * 60 + Number(playerIntervalSeconds)) * 1000;
     if (!Number.isFinite(playerIntervalMs) || playerIntervalMs <= 0) {
       setStatus(dispatch, 'settings', createStatus('クラス内選手間隔は 1 秒以上で設定してください。', 'error'));
-      return;
+      return null;
     }
 
     if (!Number.isInteger(laneCount) || laneCount <= 0) {
       setStatus(dispatch, 'settings', createStatus('レーン数は 1 以上の整数で入力してください。', 'error'));
-      return;
+      return null;
     }
 
     const nextSettings: StartlistSettingsDto = {
@@ -150,7 +194,11 @@ const SettingsForm = (): JSX.Element => {
 
     updateSettings(dispatch, { startlistId: startlistIdInput.trim(), settings: nextSettings });
     setStatus(dispatch, 'settings', createStatus('基本情報を保存しました。', 'success'));
+
+    return nextSettings;
   };
+
+  useImperativeHandle(ref, () => ({ validateAndSave }));
 
   return (
     <section aria-labelledby="settings-heading">
@@ -158,7 +206,7 @@ const SettingsForm = (): JSX.Element => {
         <h2 id="settings-heading">スタートリストの基本情報</h2>
         <p className="muted">大会名や開始時刻など、スタートリスト作成に必要な内容を入力してください。すべての時刻は日本時間 (JST) で取り扱われます。</p>
       </header>
-      <form onSubmit={handleSubmit} className="form-grid" noValidate>
+      <form onSubmit={(event) => event.preventDefault()} className="form-grid" noValidate>
         <label>
           スタートリスト ID
           <input
@@ -178,65 +226,46 @@ const SettingsForm = (): JSX.Element => {
         </label>
         <fieldset className="interval-type-fieldset">
           <legend>レーン内クラス間隔</legend>
-          <div className="form-grid columns-2">
-            <label>
-              レーン間隔 (分)
-              <input
-                type="number"
-                min={0}
-                value={laneIntervalMinutes}
-                onChange={(event) => setLaneIntervalMinutes(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              レーン間隔 (秒)
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={laneIntervalSeconds}
-                onChange={(event) => setLaneIntervalSeconds(Number(event.target.value))}
-              />
-            </label>
-          </div>
+          <label>
+            レーン内クラス間隔
+            <select value={laneIntervalMs} onChange={(event) => setLaneIntervalMs(Number(event.target.value))}>
+              {laneIntervalOptions
+                .slice()
+                .sort((a, b) => a.value - b.value)
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+            </select>
+          </label>
           <p className="muted small-text">各レーンで次のクラスがスタートするまでの間隔を設定します。</p>
         </fieldset>
         <fieldset className="interval-type-fieldset">
           <legend>クラス内選手間隔</legend>
-          <div className="form-grid columns-2">
-            <label>
-              選手間隔 (分)
-              <input
-                type="number"
-                min={0}
-                value={playerIntervalMinutes}
-                onChange={(event) => setPlayerIntervalMinutes(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              選手間隔 (秒)
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={playerIntervalSeconds}
-                onChange={(event) => setPlayerIntervalSeconds(Number(event.target.value))}
-              />
-            </label>
-          </div>
+          <label>
+            クラス内選手間隔
+            <select value={playerIntervalMs} onChange={(event) => setPlayerIntervalMs(Number(event.target.value))}>
+              {playerIntervalOptions
+                .slice()
+                .sort((a, b) => a.value - b.value)
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+            </select>
+          </label>
           <p className="muted small-text">同じクラス内の選手が連続でスタートする間隔を設定します。</p>
         </fieldset>
         <label>
           レーン数
           <input type="number" min={1} value={laneCount} onChange={(event) => setLaneCount(Number(event.target.value))} />
         </label>
-        <div className="actions-row">
-          <button type="submit">基本情報を保存</button>
-        </div>
       </form>
       <StatusMessage tone={statuses.settings.level} message={statuses.settings.text} />
     </section>
   );
 };
 
-export default SettingsForm;
+export default forwardRef(SettingsForm);

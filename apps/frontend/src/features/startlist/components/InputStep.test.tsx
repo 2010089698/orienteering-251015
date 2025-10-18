@@ -20,12 +20,21 @@ const sampleEntries = [
 ];
 
 describe('InputStep', () => {
-  it('blocks progress when information is missing', async () => {
+  it('blocks progress when no entries are registered', async () => {
     renderWithStartlist(<InputStep onComplete={() => {}} />);
 
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
-    expect(await screen.findByText('基本情報を保存してから進んでください。')).toBeInTheDocument();
+    expect(await screen.findByText('参加者を1人以上登録してください。')).toBeInTheDocument();
+  });
+
+  it('shows validation errors from the settings form when inputs are invalid', async () => {
+    renderWithStartlist(<InputStep onComplete={() => {}} />);
+
+    await userEvent.clear(screen.getByLabelText('スタートリスト ID'));
+    await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
+
+    expect(await screen.findByText('スタートリスト ID を入力してください。')).toBeInTheDocument();
   });
 
   it('generates lane assignments and calls onComplete', async () => {

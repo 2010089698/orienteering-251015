@@ -1,6 +1,12 @@
 import type { ClassAssignmentDto, StartTimeDto } from '@startlist-management/application';
 import { RENTAL_CARD_LABEL, type Entry } from '../state/types';
 
+type DownloadContext = {
+  createObjectURL: typeof URL.createObjectURL;
+  revokeObjectURL: typeof URL.revokeObjectURL;
+  document: Document;
+};
+
 export type StartlistExportRow = {
   classId: string;
   startNumber: string;
@@ -133,4 +139,75 @@ export const buildStartlistExportRows = ({
 export const exportRowToCsvLine = (row: StartlistExportRow): string => {
   const values = [row.classId, row.startNumber, row.name, row.club ?? '', row.cardNo ?? ''];
   return values.map((value) => escapeCsvValue(value)).join(',');
+};
+
+export type DownloadStartlistCsvOptions = {
+  entries: Entry[];
+  startTimes: StartTimeDto[];
+  classAssignments: ClassAssignmentDto[];
+  fileNamePrefix?: string;
+  context?: Partial<DownloadContext>;
+};
+
+const DEFAULT_FILE_PREFIX = 'startlist';
+
+const resolveDownloadContext = (override?: Partial<DownloadContext>): DownloadContext => {
+  const globalDocument = typeof document === 'undefined' ? undefined : document;
+  const createObjectURL = override?.createObjectURL ?? URL.createObjectURL.bind(URL);
+  const revokeObjectURL = override?.revokeObjectURL ?? URL.revokeObjectURL.bind(URL);
+  const doc = override?.document ?? globalDocument;
+  if (!doc || typeof doc.createElement !== 'function' || !doc.body) {
+    throw new Error('document is not available for CSV download');
+  }
+  return { createObjectURL, revokeObjectURL, document: doc };
+};
+
+const buildDefaultFileName = (prefix: string): string => {
+  const now = new Date();
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${prefix}-${year}${month}${day}.csv`;
+};
+
+export const downloadStartlistCsv = ({
+  entries,
+  startTimes,
+  classAssignments,
+  fileNamePrefix = DEFAULT_FILE_PREFIX,
+  context: contextOverride,
+}: DownloadStartlistCsvOptions): number => {
+  if (startTimes.length === 0) {
+    throw new Error('スタート時間が存在しません。');
+  }
+
+  const { createObjectURL, revokeObjectURL, document: doc } = resolveDownloadContext(contextOverride);
+
+  const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
+  const header = ['class', 'start number', 'name', 'club', 'card number'];
+  const csvLines = [header.join(','), ...rows.map((row) => exportRowToCsvLine(row))];
+  const csvContent = csvLines.join('\r\n');
+
+  let link: HTMLAnchorElement | null = null;
+  let url: string | null = null;
+
+  try {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    url = createObjectURL(blob);
+    link = doc.createElement('a');
+    link.href = url;
+    link.download = buildDefaultFileName(fileNamePrefix);
+    link.style.display = 'none';
+    doc.body.appendChild(link);
+    link.click();
+  } finally {
+    if (link && link.isConnected) {
+      link.remove();
+    }
+    if (url) {
+      revokeObjectURL(url);
+    }
+  }
+
+  return rows.length;
 };

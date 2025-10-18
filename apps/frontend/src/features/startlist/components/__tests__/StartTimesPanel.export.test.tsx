@@ -4,20 +4,13 @@ import type { StartTimeDto } from '@startlist-management/application';
 import StartTimesPanel from '../StartTimesPanel';
 import { renderWithStartlist } from '../../test/test-utils';
 import { updateStartTimes } from '../../state/StartlistContext';
-import { buildStartlistExportRows, exportRowToCsvLine } from '../../utils/startlistExport';
-import type { StartlistExportRow } from '../../utils/startlistExport';
-
-type StartlistExportModule = typeof import('../../utils/startlistExport');
+import { downloadStartlistCsv } from '../../utils/startlistExport';
 
 vi.mock('../../utils/startlistExport', () => ({
-  buildStartlistExportRows: vi.fn(),
-  exportRowToCsvLine: vi.fn(),
+  downloadStartlistCsv: vi.fn(),
 }));
 
-const buildStartlistExportRowsMock =
-  buildStartlistExportRows as vi.MockedFunction<StartlistExportModule['buildStartlistExportRows']>;
-const exportRowToCsvLineMock =
-  exportRowToCsvLine as vi.MockedFunction<StartlistExportModule['exportRowToCsvLine']>;
+const downloadStartlistCsvMock = downloadStartlistCsv as vi.MockedFunction<typeof downloadStartlistCsv>;
 
 describe('StartTimesPanel CSV export status handling', () => {
   const sampleStartTimes: StartTimeDto[] = [
@@ -25,8 +18,7 @@ describe('StartTimesPanel CSV export status handling', () => {
   ];
 
   beforeEach(() => {
-    buildStartlistExportRowsMock.mockReset();
-    exportRowToCsvLineMock.mockReset();
+    downloadStartlistCsvMock.mockReset();
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       writable: true,
@@ -46,12 +38,7 @@ describe('StartTimesPanel CSV export status handling', () => {
   });
 
   it('sets info status when CSV export succeeds', async () => {
-    const rows: StartlistExportRow[] = [
-      { classId: 'M21', startNumber: '001', name: 'Alice', club: 'Alpha', cardNo: '1001' },
-    ];
-    buildStartlistExportRowsMock.mockReturnValue(rows);
-    exportRowToCsvLineMock.mockImplementation(() => 'line-1');
-    const clickMock = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    downloadStartlistCsvMock.mockReturnValue(1);
 
     renderWithStartlist(<StartTimesPanel />, {
       initialState: {
@@ -65,13 +52,13 @@ describe('StartTimesPanel CSV export status handling', () => {
 
     fireEvent.click(button);
 
-    await waitFor(() => expect(clickMock).toHaveBeenCalled());
+    await waitFor(() => expect(downloadStartlistCsvMock).toHaveBeenCalledTimes(1));
     const message = await screen.findByText('1 件のスタート時間をエクスポートしました。');
     expect(message.closest('p')).toHaveClass('status--info');
   });
 
   it('sets error status when CSV export throws', async () => {
-    buildStartlistExportRowsMock.mockImplementation(() => {
+    downloadStartlistCsvMock.mockImplementation(() => {
       throw new Error('unexpected failure');
     });
 

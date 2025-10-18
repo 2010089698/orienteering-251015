@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
-import SettingsForm from './SettingsForm';
+import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
 import EntryForm from './EntryForm';
 import EntryTablePanel from './EntryTablePanel';
 import {
@@ -17,10 +17,11 @@ type InputStepProps = {
 };
 
 const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
-  const { entries, settings, statuses } = useStartlistState();
+  const { entries, statuses } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const [activeTab, setActiveTab] = useState<string>('all');
+  const settingsFormRef = useRef<SettingsFormHandle>(null);
 
   const { tabs, classIds } = useMemo(() => {
     const counts = new Map<string, number>();
@@ -48,20 +49,21 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
   );
 
   const handleComplete = () => {
-    if (!settings) {
-      setStatus(dispatch, 'lanes', createStatus('基本情報を保存してから進んでください。', 'error'));
+    const nextSettings = settingsFormRef.current?.validateAndSave();
+
+    if (!nextSettings) {
       return;
     }
     if (!entries.length) {
       setStatus(dispatch, 'lanes', createStatus('参加者を1人以上登録してください。', 'error'));
       return;
     }
-    const intervalMs = settings.intervals?.laneClass?.milliseconds ?? 0;
+    const intervalMs = nextSettings.intervals?.laneClass?.milliseconds ?? 0;
     if (!intervalMs) {
       setStatus(dispatch, 'lanes', createStatus('スタート間隔が正しく設定されていません。', 'error'));
       return;
     }
-    const laneCount = settings.laneCount ?? 0;
+    const laneCount = nextSettings.laneCount ?? 0;
     if (!laneCount) {
       setStatus(dispatch, 'lanes', createStatus('レーン数を確認してください。', 'error'));
       return;
@@ -86,7 +88,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
       </header>
       <div className="input-step__layout">
         <div className="input-step__column input-step__column--forms">
-          <SettingsForm />
+          <SettingsForm ref={settingsFormRef} />
           <EntryForm />
         </div>
         <div className="input-step__column input-step__column--table">

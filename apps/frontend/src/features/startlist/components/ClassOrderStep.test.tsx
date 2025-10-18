@@ -1,8 +1,19 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import ClassOrderStep from './ClassOrderStep';
 import { renderWithStartlist } from '../test/test-utils';
+import { downloadStartlistCsv } from '../utils/startlistExport';
+
+vi.mock('../utils/startlistExport', () => ({
+  downloadStartlistCsv: vi.fn(),
+}));
+
+const downloadStartlistCsvMock = downloadStartlistCsv as vi.MockedFunction<typeof downloadStartlistCsv>;
+
+beforeEach(() => {
+  downloadStartlistCsvMock.mockReset();
+});
 
 const settings = {
   eventId: 'event-1',
@@ -96,5 +107,46 @@ describe('ClassOrderStep', () => {
     await userEvent.click(overviewTab);
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('table', { name: 'スタート時間一覧' })).toBeInTheDocument();
+  });
+
+  it('allows exporting CSV from the step actions row', async () => {
+    downloadStartlistCsvMock.mockReturnValue(3);
+
+    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        laneAssignments,
+        classAssignments,
+        entries,
+        startTimes,
+        statuses: { startTimes: { level: 'idle', text: '' }, classes: { level: 'idle', text: '' } },
+      },
+    });
+
+    const exportButton = screen.getByRole('button', { name: 'CSV をエクスポート' });
+    expect(exportButton).toBeEnabled();
+
+    await userEvent.click(exportButton);
+
+    expect(downloadStartlistCsvMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('3 件のスタート時間をエクスポートしました。')).toBeInTheDocument();
+  });
+
+  it('disables the export button when start times are unavailable', async () => {
+    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        laneAssignments,
+        classAssignments,
+        entries,
+        startTimes: [],
+        statuses: { startTimes: { level: 'idle', text: '' }, classes: { level: 'idle', text: '' } },
+      },
+    });
+
+    const exportButton = screen.getByRole('button', { name: 'CSV をエクスポート' });
+    expect(exportButton).toBeDisabled();
   });
 });
