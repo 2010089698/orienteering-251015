@@ -198,6 +198,66 @@ body {
   gap: 0.5rem;
 }
 
+.start-order-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.start-order-settings__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.start-order-settings__header,
+.start-order-settings__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.start-order-settings__cell {
+  min-width: 0;
+}
+
+.start-order-settings__header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.start-order-settings__cell select {
+  width: 100%;
+}
+
+.start-order-settings__cell--actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.start-order-settings__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .start-order-settings__header,
+  .start-order-settings__row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .start-order-settings__cell--actions {
+    justify-content: flex-start;
+  }
+}
+
 .lane-preview__item {
   display: flex;
   flex-direction: column;
