@@ -17,6 +17,7 @@ const headerMap: Record<string, 'iofId' | 'ranking'> = {
   ranking: 'ranking',
   'world ranking': 'ranking',
   'wr rank': 'ranking',
+  'wrs position': 'ranking',
   position: 'ranking',
 };
 
@@ -28,7 +29,7 @@ const normalizeHeader = (value: string): string =>
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ');
 
-const detectDelimiter = (text: string): ',' | '\t' => {
+const detectDelimiter = (text: string): ',' | '\t' | ';' => {
   let inQuotes = false;
   const newlineIndex = text.search(/\r\n|\n|\r/);
   const endIndex = newlineIndex === -1 ? text.length : newlineIndex;
@@ -41,8 +42,8 @@ const detectDelimiter = (text: string): ',' | '\t' => {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (!inQuotes && (char === ',' || char === '\t')) {
-      return char as ',' | '\t';
+    } else if (!inQuotes && (char === ',' || char === '\t' || char === ';')) {
+      return char as ',' | '\t' | ';';
     }
   }
 

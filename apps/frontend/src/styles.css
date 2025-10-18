@@ -365,6 +365,10 @@ body {
   gap: 0.75rem;
 }
 
+.class-order-config {
+  margin-top: 1.5rem;
+}
+
 .class-order-panels {
   margin-top: 1rem;
   display: flex;

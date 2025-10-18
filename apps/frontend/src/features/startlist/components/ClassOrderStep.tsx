@@ -24,6 +24,7 @@ import { calculateStartTimes, deriveClassOrderWarnings, updateClassPlayerOrder }
 import type { ClassAssignmentDto } from '@startlist-management/application';
 import { Tabs } from '../../../components/tabs';
 import { downloadStartlistCsv } from '../utils/startlistExport';
+import ClassOrderPanel from './ClassOrderPanel';
 
 type ClassOrderStepProps = {
   onBack: () => void;
@@ -357,6 +358,12 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           です。
         </p>
       </header>
+      <ClassOrderPanel
+        headingLevel="h3"
+        headingId="class-order-config-heading"
+        showAssignmentPreview={false}
+        className="class-order-config"
+      />
       {avoidConsecutiveClubs && warningSummaries.length > 0 && (
         <div className="class-order-warning">
           <StatusMessage
@@ -532,7 +539,6 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           戻る
         </button>
       </div>
-      <StatusMessage tone={statuses.classes.level} message={statuses.classes.text} />
       <StatusMessage tone={statuses.startTimes.level} message={statuses.startTimes.text} />
     </section>
   );

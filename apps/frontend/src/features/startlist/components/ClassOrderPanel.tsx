@@ -38,7 +38,19 @@ const readFileAsText = async (file: File): Promise<string> => {
   return new Response(file).text();
 };
 
-const ClassOrderPanel = (): JSX.Element => {
+type ClassOrderPanelProps = {
+  headingLevel?: 'h2' | 'h3' | 'h4';
+  headingId?: string;
+  showAssignmentPreview?: boolean;
+  className?: string;
+};
+
+const ClassOrderPanel = ({
+  headingLevel = 'h2',
+  headingId = 'class-heading',
+  showAssignmentPreview = true,
+  className,
+}: ClassOrderPanelProps): JSX.Element => {
   const {
     entries,
     settings,
@@ -200,10 +212,12 @@ const ClassOrderPanel = (): JSX.Element => {
     setStatus(dispatch, 'classes', createStatus('クラス内順序を更新しました。', 'info'));
   };
 
+  const HeadingTag = headingLevel;
+
   return (
-    <section aria-labelledby="class-heading">
+    <section aria-labelledby={headingId} className={className}>
       <header>
-        <h2 id="class-heading">クラス内順序</h2>
+        <HeadingTag id={headingId}>クラス内順序</HeadingTag>
         <p className="muted">カード番号順をベースに、必要に応じて微調整します。</p>
       </header>
       <div className="details-group">
@@ -252,37 +266,39 @@ const ClassOrderPanel = (): JSX.Element => {
         </button>
         <span className="muted">{classAssignments.length} クラスを編集中</span>
       </div>
-      {classAssignments.length === 0 ? (
-        <p className="muted">まだクラス順序が生成されていません。</p>
-      ) : (
-        <div className="details-group">
-          {classAssignments.map((assignment) => (
-            <details key={assignment.classId} open>
-              <summary>
-                {assignment.classId} ({assignment.playerOrder.length} 人)
-              </summary>
-              <ol>
-                {assignment.playerOrder.map((playerId, index) => {
-                  const entry = entryMap.get(playerId);
-                  const cardLabel = entry?.cardNo ?? playerId;
-                  return (
-                    <li key={playerId}>
-                      {cardLabel}
-                      <span className="inline-buttons">
-                        <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, -1)}>
-                          ↑
-                        </button>
-                        <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, 1)}>
-                          ↓
-                        </button>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </details>
-          ))}
-        </div>
+      {showAssignmentPreview && (
+        classAssignments.length === 0 ? (
+          <p className="muted">まだクラス順序が生成されていません。</p>
+        ) : (
+          <div className="details-group">
+            {classAssignments.map((assignment) => (
+              <details key={assignment.classId} open>
+                <summary>
+                  {assignment.classId} ({assignment.playerOrder.length} 人)
+                </summary>
+                <ol>
+                  {assignment.playerOrder.map((playerId, index) => {
+                    const entry = entryMap.get(playerId);
+                    const cardLabel = entry?.cardNo ?? playerId;
+                    return (
+                      <li key={playerId}>
+                        {cardLabel}
+                        <span className="inline-buttons">
+                          <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, -1)}>
+                            ↑
+                          </button>
+                          <button type="button" className="secondary" onClick={() => movePlayer(assignment, index, 1)}>
+                            ↓
+                          </button>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </details>
+            ))}
+          </div>
+        )
       )}
       <StatusMessage tone={statuses.classes.level} message={statuses.classes.text} />
     </section>

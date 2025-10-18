@@ -29,6 +29,20 @@ describe('parseWorldRankingCsv', () => {
     expect(ranking.get('IOF003')).toBe(12);
   });
 
+  it('parses semicolon separated CSVs with WRS Position header', () => {
+    const csv = [
+      'Name;WRS Position;IOF ID',
+      'Runner One;3;IOF-010',
+      'Runner Two;7;IOF-011',
+    ].join('\n');
+
+    const ranking = parseWorldRankingCsv(csv);
+
+    expect(ranking.size).toBe(2);
+    expect(ranking.get('IOF-010')).toBe(3);
+    expect(ranking.get('IOF-011')).toBe(7);
+  });
+
   it('returns an empty map when rows are empty', () => {
     expect(parseWorldRankingCsv('\n')).toEqual(new Map());
   });
