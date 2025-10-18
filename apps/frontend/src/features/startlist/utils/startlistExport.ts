@@ -50,11 +50,12 @@ const normalizeStartTime = (startTime: Date | string): { iso: string; timestamp:
 };
 
 const escapeCsvValue = (value: string): string => {
-  if (/[",\n\r]/.test(value)) {
-    const escaped = value.replace(/"/g, '""');
+  const normalized = value ?? '';
+  if (/[",\n\r]/.test(normalized)) {
+    const escaped = normalized.replace(/"/g, '""');
     return `"${escaped}"`;
   }
-  return value;
+  return normalized;
 };
 
 export const buildStartlistExportRows = ({
@@ -184,9 +185,9 @@ export const downloadStartlistCsv = ({
   const { createObjectURL, revokeObjectURL, document: doc } = resolveDownloadContext(contextOverride);
 
   const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
-  const header = ['class', 'start number', 'name', 'club', 'card number'];
+  const header = ['クラス', 'スタート番号', '氏名', 'クラブ', 'カード番号'];
   const csvLines = [header.join(','), ...rows.map((row) => exportRowToCsvLine(row))];
-  const csvContent = csvLines.join('\r\n');
+  const csvContent = `\ufeff${csvLines.join('\r\n')}`;
 
   let link: HTMLAnchorElement | null = null;
   let url: string | null = null;

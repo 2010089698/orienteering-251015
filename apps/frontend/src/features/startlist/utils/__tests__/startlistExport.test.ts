@@ -110,8 +110,35 @@ describe('downloadStartlistCsv', () => {
   ];
   const baseAssignments = [createAssignment('M21', ['p1', 'p2'])];
 
-  it('creates a Blob URL and triggers anchor click', () => {
-    const createObjectURLMock = vi.fn(() => 'blob:mock');
+  it('creates a Blob URL and triggers anchor click', async () => {
+    const createdBlobs: Blob[] = [];
+    const originalBlob = globalThis.Blob;
+    class RecordingBlob {
+      public readonly rawContent: string;
+      private readonly content: string;
+      public readonly type: string;
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        this.content = parts
+          .map((part) => (typeof part === 'string' ? part : String(part)))
+          .join('');
+        this.rawContent = this.content;
+        this.type = options?.type ?? '';
+      }
+      get size(): number {
+        return new TextEncoder().encode(this.content).length;
+      }
+      async arrayBuffer(): Promise<ArrayBuffer> {
+        return new TextEncoder().encode(this.content).buffer;
+      }
+      async text(): Promise<string> {
+        return this.content;
+      }
+    }
+    (globalThis as unknown as { Blob: typeof Blob }).Blob = RecordingBlob as unknown as typeof Blob;
+    const createObjectURLMock = vi.fn((blob: Blob) => {
+      createdBlobs.push(blob);
+      return 'blob:mock';
+    });
     const revokeObjectURLMock = vi.fn();
     const clickMock = vi.fn();
     const removeMock = vi.fn(function (this: { isConnected: boolean }) {
@@ -138,25 +165,37 @@ describe('downloadStartlistCsv', () => {
       },
     } as unknown as Document;
 
-    const count = downloadStartlistCsv({
-      entries: baseEntries,
-      startTimes: baseStartTimes,
-      classAssignments: baseAssignments,
-      fileNamePrefix: 'custom',
-      context: {
-        document: docMock,
-        createObjectURL: createObjectURLMock,
-        revokeObjectURL: revokeObjectURLMock,
-      },
-    });
+    try {
+      const count = downloadStartlistCsv({
+        entries: baseEntries,
+        startTimes: baseStartTimes,
+        classAssignments: baseAssignments,
+        fileNamePrefix: 'custom',
+        context: {
+          document: docMock,
+          createObjectURL: createObjectURLMock,
+          revokeObjectURL: revokeObjectURLMock,
+        },
+      });
 
-    expect(count).toBe(2);
-    expect(docMock.createElement).toHaveBeenCalledWith('a');
-    expect(appendChildMock).toHaveBeenCalledWith(link);
-    expect(clickMock).toHaveBeenCalledTimes(1);
-    expect(removeMock).toHaveBeenCalledTimes(1);
-    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');
-    expect(link.download).toMatch(/^custom-\d{8}\.csv$/);
+      expect(count).toBe(2);
+      expect(docMock.createElement).toHaveBeenCalledWith('a');
+      expect(appendChildMock).toHaveBeenCalledWith(link);
+      expect(clickMock).toHaveBeenCalledTimes(1);
+      expect(removeMock).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');
+      expect(link.download).toMatch(/^custom-\d{8}\.csv$/);
+      expect(createdBlobs).toHaveLength(1);
+
+      const rawContent = (createdBlobs[0] as unknown as { rawContent: string }).rawContent;
+      expect(rawContent.charCodeAt(0)).toBe(0xfeff);
+
+      const csvArrayBuffer = await createdBlobs[0].arrayBuffer();
+      const csvText = new TextDecoder('utf-8').decode(csvArrayBuffer);
+      expect(csvText).toContain('クラス,スタート番号,氏名,クラブ,カード番号');
+    } finally {
+      (globalThis as unknown as { Blob: typeof Blob }).Blob = originalBlob;
+    }
   });
 
   it('throws when start times are missing', () => {
