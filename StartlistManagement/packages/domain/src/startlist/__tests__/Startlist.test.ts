@@ -32,7 +32,8 @@ test('reconstitute clones provided state', () => {
   const settings = StartlistSettings.create({
     eventId: 'event-reconstitute',
     startTime: fixedDate,
-    interval,
+    laneClassInterval: interval,
+    classPlayerInterval: interval,
     laneCount: 2,
   });
   const laneAssignments = [
@@ -119,7 +120,8 @@ test('pullDomainEvents returns a copy and clears the queue', () => {
   const settings = StartlistSettings.create({
     eventId: 'event-events',
     startTime: fixedDate,
-    interval,
+    laneClassInterval: interval,
+    classPlayerInterval: interval,
     laneCount: 1,
   });
   startlist.enterSettings(settings);
@@ -164,7 +166,8 @@ test('assignStartTimes rejects players without class assignments', () => {
     StartlistSettings.create({
       eventId: 'event-1',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     }),
   );
@@ -212,7 +215,8 @@ describe('Startlist lifecycle scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-lifecycle-1',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     startlist.enterSettings(settings);
@@ -336,7 +340,8 @@ describe('Startlist lifecycle scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-lifecycle-2',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     startlist.enterSettings(settings);
@@ -484,7 +489,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-settings',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
 
@@ -512,7 +518,8 @@ describe('Startlist failure scenarios', () => {
     const laneAssignment = LaneAssignment.create({
       laneNumber: 1,
       classOrder: ['class-a'],
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
 
@@ -537,7 +544,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-lane-validation',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
 
@@ -547,7 +555,8 @@ describe('Startlist failure scenarios', () => {
     const exceedingLaneAssignment = LaneAssignment.create({
       laneNumber: 2,
       classOrder: ['class-a'],
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
 
@@ -588,7 +597,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-lane-finalized',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     const initialLaneAssignments = [
@@ -641,7 +651,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-prereq',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const classAssignments = [
@@ -672,7 +683,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-validation',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     const laneAssignments = [
@@ -725,7 +737,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-finalized',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     const laneAssignments = [
@@ -778,7 +791,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-starttime-prereq',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const startTimes = [
@@ -809,7 +823,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-starttime-validation',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const laneAssignments = [
@@ -891,7 +906,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-starttime-finalized',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const laneAssignments = [
@@ -947,7 +963,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-finalize-prereq',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const laneAssignments = [
@@ -983,7 +1000,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-invalidate',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const laneAssignments = [
@@ -1050,7 +1068,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-manual-lane',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 2,
     });
     const initialLaneAssignments = [
@@ -1102,7 +1121,8 @@ describe('Startlist failure scenarios', () => {
     const settings = StartlistSettings.create({
       eventId: 'event-failure-manual-class',
       startTime: fixedDate,
-      interval,
+      laneClassInterval: interval,
+      classPlayerInterval: interval,
       laneCount: 1,
     });
     const laneAssignments = [

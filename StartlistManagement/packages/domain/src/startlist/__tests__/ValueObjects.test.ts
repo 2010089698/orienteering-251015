@@ -105,20 +105,6 @@ describe('StartTime', () => {
     );
   });
 
-  test('create supports legacy interval parameter', () => {
-    const interval = Duration.fromSeconds(90);
-    const startTime = new Date('2024-04-01T10:00:00Z');
-
-    const settings = StartlistSettings.create({
-      eventId: 'legacy',
-      startTime,
-      interval,
-      laneCount: 2,
-    });
-
-    assert.strictEqual(settings.laneClassInterval, interval);
-    assert.strictEqual(settings.classPlayerInterval, interval);
-  });
 });
 
 describe('StartlistSettings', () => {
