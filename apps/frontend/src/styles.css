@@ -221,6 +221,39 @@ body {
   background-color: #f8fafc;
 }
 
+.lane-card__meta {
+  margin-top: 0.35rem;
+}
+
+.lane-card__class-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lane-card__class-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.lane-card__class-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.lane-card__class-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
 .lane-board {
   display: grid;
   gap: 1rem;
@@ -264,14 +297,14 @@ body {
 
 .draggable-card {
   border-radius: 10px;
-  padding: 0.75rem;
+  padding: 0.6rem 0.65rem;
   background-color: #fff;
   border: 1px solid #d4d4f5;
   box-shadow: 0 8px 16px rgba(79, 70, 229, 0.08);
   cursor: grab;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .draggable-card.is-dragging {
@@ -284,6 +317,40 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+.draggable-card__meta {
+  margin-top: 0.1rem;
+}
+
+.meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.meta-info__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.meta-info__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.meta-info__value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.meta-info__value.is-muted {
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .droppable-card.is-over {

@@ -18,14 +18,27 @@ import type { LaneAssignmentDto } from '@startlist-management/application';
 import { reorderLaneClass } from '../utils/startlistUtils';
 import { Tabs } from '../../../components/tabs';
 
+type LaneAssignmentStepProps = {
+  onBack: () => void;
+  onConfirm: () => void;
+};
+
 interface LaneRow {
   classId: string;
   laneNumber: number;
 }
 
-type LaneAssignmentStepProps = {
-  onBack: () => void;
-  onConfirm: () => void;
+type ClassSummary = {
+  classId: string;
+  competitorCount: number;
+  timeRangeLabel?: string;
+};
+
+type LaneSummary = {
+  laneNumber: number;
+  competitorCount: number;
+  timeRangeLabel?: string;
+  classSummaries: ClassSummary[];
 };
 
 const ensureLaneRecords = (assignments: LaneAssignmentDto[], laneCount: number, intervalMs: number) => {
@@ -72,16 +85,48 @@ const moveClassBetweenLanes = (
 
 const laneContainerId = (laneNumber: number) => `lane-${laneNumber}`;
 
+const formatTime = (milliseconds?: number): string | undefined => {
+  if (milliseconds === undefined) {
+    return undefined;
+  }
+  const date = new Date(milliseconds);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+  return date.toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Tokyo',
+  });
+};
+
+const formatTimeRange = (startMs?: number, endMs?: number): string | undefined => {
+  const start = formatTime(startMs);
+  if (!start) {
+    return undefined;
+  }
+  const end = formatTime(endMs);
+  if (!end || end === start) {
+    return start;
+  }
+  return `${start}〜${end}`;
+};
+
 const ClassCard = ({
   classId,
   laneNumber,
   onLaneChange,
   laneOptions,
+  competitorCount,
+  timeRangeLabel,
 }: {
   classId: string;
   laneNumber: number;
   onLaneChange: (classId: string, lane: number) => void;
   laneOptions: number[];
+  competitorCount: number;
+  timeRangeLabel?: string;
 }): JSX.Element => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: classId });
   const style: CSSProperties = {
@@ -109,12 +154,31 @@ const ClassCard = ({
           ))}
         </select>
       </div>
-      <p className="muted small-text">ドラッグ＆ドロップでレーンや順序を変更できます。</p>
+      <div className="meta-info draggable-card__meta">
+        <span className="meta-info__item">
+          <span className="meta-info__label">人数</span>
+          <span className="meta-info__value">{competitorCount}名</span>
+        </span>
+        <span className="meta-info__item">
+          <span className="meta-info__label">時間帯</span>
+          <span className={`meta-info__value${timeRangeLabel ? '' : ' is-muted'}`}>
+            {timeRangeLabel ?? '未設定'}
+          </span>
+        </span>
+      </div>
     </div>
   );
 };
 
-const LaneColumn = ({ lane, children }: { lane: LaneAssignmentDto; children: ReactNode }): JSX.Element => {
+const LaneColumn = ({
+  lane,
+  summary,
+  children,
+}: {
+  lane: LaneAssignmentDto;
+  summary?: LaneSummary;
+  children: ReactNode;
+}): JSX.Element => {
   const { setNodeRef, isOver } = useDroppable({ id: laneContainerId(lane.laneNumber) });
   return (
     <div
@@ -123,6 +187,20 @@ const LaneColumn = ({ lane, children }: { lane: LaneAssignmentDto; children: Rea
       data-testid={`lane-column-${lane.laneNumber}`}
     >
       <h3>レーン {lane.laneNumber}</h3>
+      {summary ? (
+        <div className="meta-info lane-card__meta">
+          <span className="meta-info__item">
+            <span className="meta-info__label">人数</span>
+            <span className="meta-info__value">{summary.competitorCount}名</span>
+          </span>
+          <span className="meta-info__item">
+            <span className="meta-info__label">時間帯</span>
+            <span className={`meta-info__value${summary.timeRangeLabel ? '' : ' is-muted'}`}>
+              {summary.timeRangeLabel ?? '未設定'}
+            </span>
+          </span>
+        </div>
+      ) : null}
       {children}
     </div>
   );
@@ -137,6 +215,27 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     settings?.intervals?.laneClass?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
   const playerIntervalMs = settings?.intervals?.classPlayer?.milliseconds ?? 0;
 
+  const classEntryCounts = useMemo(() => {
+    return entries.reduce<Record<string, number>>((acc, entry) => {
+      const trimmed = entry.classId.trim();
+      const key = trimmed.length > 0 ? trimmed : entry.classId;
+      const next = (acc[key] ?? 0) + 1;
+      acc[key] = next;
+      acc[entry.classId] = next;
+      return acc;
+    }, {});
+  }, [entries]);
+
+  const baseStartTimeMs = useMemo(() => {
+    if (!settings?.startTime) {
+      return undefined;
+    }
+    const value = new Date(settings.startTime).getTime();
+    return Number.isNaN(value) ? undefined : value;
+  }, [settings?.startTime]);
+
+  const canEstimateTimes = Boolean(baseStartTimeMs) && playerIntervalMs > 0;
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -150,6 +249,74 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
   const laneOptions = useMemo(() => {
     return Array.from({ length: laneCount }, (_, index) => index + 1);
   }, [laneCount]);
+
+  const lanesWithPlaceholders = useMemo(
+    () => ensureLaneRecords(laneAssignments, laneCount, laneIntervalMs),
+    [laneAssignments, laneCount, laneIntervalMs],
+  );
+
+  const laneSummaries = useMemo<LaneSummary[]>(() => {
+    return lanesWithPlaceholders.map((lane) => {
+      let offset = 0;
+      let laneStartMs: number | undefined;
+      let laneEndMs: number | undefined;
+      const classSummaries: ClassSummary[] = lane.classOrder.map((classId, index) => {
+        const competitorCount = classEntryCounts[classId] ?? 0;
+        let startMs: number | undefined;
+        let endMs: number | undefined;
+        if (canEstimateTimes && baseStartTimeMs !== undefined) {
+          startMs = baseStartTimeMs + offset;
+          endMs = competitorCount > 0 ? startMs + (competitorCount - 1) * playerIntervalMs : startMs;
+          if (competitorCount > 0) {
+            if (laneStartMs === undefined) {
+              laneStartMs = startMs;
+            }
+            laneEndMs = endMs;
+            offset += competitorCount * playerIntervalMs;
+          }
+          if (index < lane.classOrder.length - 1) {
+            const laneGap = lane.interval?.milliseconds ?? laneIntervalMs;
+            if (laneGap > 0) {
+              offset += laneGap;
+            }
+          }
+        }
+        return {
+          classId,
+          competitorCount,
+          timeRangeLabel: competitorCount > 0 ? formatTimeRange(startMs, endMs) : undefined,
+        };
+      });
+      const competitorCount = classSummaries.reduce((sum, summary) => sum + summary.competitorCount, 0);
+      return {
+        laneNumber: lane.laneNumber,
+        competitorCount,
+        timeRangeLabel: competitorCount > 0 ? formatTimeRange(laneStartMs, laneEndMs) : undefined,
+        classSummaries,
+      };
+    });
+  }, [
+    baseStartTimeMs,
+    canEstimateTimes,
+    classEntryCounts,
+    laneIntervalMs,
+    lanesWithPlaceholders,
+    playerIntervalMs,
+  ]);
+
+  const laneSummaryMap = useMemo(() => {
+    return new Map(laneSummaries.map((summary) => [summary.laneNumber, summary]));
+  }, [laneSummaries]);
+
+  const classSummaryMap = useMemo(() => {
+    const map = new Map<string, ClassSummary>();
+    laneSummaries.forEach((lane) => {
+      lane.classSummaries.forEach((summary) => {
+        map.set(`${lane.laneNumber}::${summary.classId}`, summary);
+      });
+    });
+    return map;
+  }, [laneSummaries]);
 
   const handleLaneChange = (classId: string, nextLane: number) => {
     if (!laneIntervalMs) {
@@ -246,11 +413,6 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     onConfirm();
   };
 
-  const lanesWithPlaceholders = useMemo(
-    () => ensureLaneRecords(laneAssignments, laneCount, laneIntervalMs),
-    [laneAssignments, laneCount, laneIntervalMs],
-  );
-
   const [activeTab, setActiveTab] = useState('overview');
 
   const tabItems = useMemo(
@@ -312,21 +474,30 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                 <>
                   <div className="lane-board" data-testid="lane-board">
                     {lanesWithPlaceholders.map((lane) => (
-                      <LaneColumn key={lane.laneNumber} lane={lane}>
+                      <LaneColumn
+                        key={lane.laneNumber}
+                        lane={lane}
+                        summary={laneSummaryMap.get(lane.laneNumber)}
+                      >
                         <SortableContext items={lane.classOrder} strategy={verticalListSortingStrategy}>
                           <div className="lane-stack">
                             {lane.classOrder.length === 0 ? (
                               <p className="muted small-text">クラスをドラッグして割り当ててください。</p>
                             ) : (
-                              lane.classOrder.map((classId) => (
-                                <ClassCard
-                                  key={classId}
-                                  classId={classId}
-                                  laneNumber={lane.laneNumber}
-                                  onLaneChange={handleLaneChange}
-                                  laneOptions={laneOptions}
-                                />
-                              ))
+                              lane.classOrder.map((classId) => {
+                                const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                                return (
+                                  <ClassCard
+                                    key={classId}
+                                    classId={classId}
+                                    laneNumber={lane.laneNumber}
+                                    onLaneChange={handleLaneChange}
+                                    laneOptions={laneOptions}
+                                    competitorCount={summary?.competitorCount ?? 0}
+                                    timeRangeLabel={summary?.timeRangeLabel}
+                                  />
+                                );
+                              })
                             )}
                           </div>
                         </SortableContext>
@@ -337,13 +508,42 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                     {lanesWithPlaceholders.map((lane) => (
                       <div key={lane.laneNumber} className="lane-card">
                         <h3>レーン {lane.laneNumber}</h3>
+                        <div className="meta-info lane-card__meta">
+                          <span className="meta-info__item">
+                            <span className="meta-info__label">人数</span>
+                            <span className="meta-info__value">
+                              {laneSummaryMap.get(lane.laneNumber)?.competitorCount ?? 0}名
+                            </span>
+                          </span>
+                          <span className="meta-info__item">
+                            <span className="meta-info__label">時間帯</span>
+                            <span
+                              className={`meta-info__value$${
+                                laneSummaryMap.get(lane.laneNumber)?.timeRangeLabel ? '' : ' is-muted'
+                              }`}
+                            >
+                              {laneSummaryMap.get(lane.laneNumber)?.timeRangeLabel ?? '未設定'}
+                            </span>
+                          </span>
+                        </div>
                         {lane.classOrder.length === 0 ? (
                           <p className="muted">クラス未設定</p>
                         ) : (
-                          <ul className="list-reset">
-                            {lane.classOrder.map((classId) => (
-                              <li key={classId}>{classId}</li>
-                            ))}
+                          <ul className="lane-card__class-list">
+                            {lane.classOrder.map((classId) => {
+                              const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                              return (
+                                <li key={classId} className="lane-card__class-item">
+                                  <span className="lane-card__class-name">{classId}</span>
+                                  <span className="lane-card__class-meta">
+                                    <span>{summary?.competitorCount ?? 0}名</span>
+                                    <span className={summary?.timeRangeLabel ? '' : 'muted small-text'}>
+                                      {summary?.timeRangeLabel ?? '時間未設定'}
+                                    </span>
+                                  </span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </div>
@@ -354,21 +554,26 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                 <div className="lane-focused-layout">
                   <div className="lane-board lane-board--single" data-testid="lane-board">
                     {focusedLane ? (
-                      <LaneColumn lane={focusedLane}>
+                      <LaneColumn lane={focusedLane} summary={laneSummaryMap.get(focusedLane.laneNumber)}>
                         <SortableContext items={focusedLane.classOrder} strategy={verticalListSortingStrategy}>
                           <div className="lane-stack">
                             {focusedLane.classOrder.length === 0 ? (
                               <p className="muted small-text">クラスをドラッグして割り当ててください。</p>
                             ) : (
-                              focusedLane.classOrder.map((classId) => (
-                                <ClassCard
-                                  key={classId}
-                                  classId={classId}
-                                  laneNumber={focusedLane.laneNumber}
-                                  onLaneChange={handleLaneChange}
-                                  laneOptions={laneOptions}
-                                />
-                              ))
+                              focusedLane.classOrder.map((classId) => {
+                                const summary = classSummaryMap.get(`${focusedLane.laneNumber}::${classId}`);
+                                return (
+                                  <ClassCard
+                                    key={classId}
+                                    classId={classId}
+                                    laneNumber={focusedLane.laneNumber}
+                                    onLaneChange={handleLaneChange}
+                                    laneOptions={laneOptions}
+                                    competitorCount={summary?.competitorCount ?? 0}
+                                    timeRangeLabel={summary?.timeRangeLabel}
+                                  />
+                                );
+                              })
                             )}
                           </div>
                         </SortableContext>
@@ -383,9 +588,44 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                       {lanesWithPlaceholders.map((lane) => (
                         <li key={lane.laneNumber} className="lane-preview__item">
                           <span className="lane-preview__lane-label">レーン {lane.laneNumber}</span>
-                          <span className="lane-preview__lane-classes">
-                            {lane.classOrder.length === 0 ? 'クラス未設定' : lane.classOrder.join(', ')}
+                          <div className="meta-info lane-card__meta">
+                            <span className="meta-info__item">
+                              <span className="meta-info__label">人数</span>
+                              <span className="meta-info__value">
+                                {laneSummaryMap.get(lane.laneNumber)?.competitorCount ?? 0}名
+                              </span>
+                            </span>
+                          <span className="meta-info__item">
+                            <span className="meta-info__label">時間帯</span>
+                            <span
+                              className={`meta-info__value${
+                                laneSummaryMap.get(lane.laneNumber)?.timeRangeLabel ? '' : ' is-muted'
+                              }`}
+                            >
+                              {laneSummaryMap.get(lane.laneNumber)?.timeRangeLabel ?? '未設定'}
+                            </span>
                           </span>
+                          </div>
+                          {lane.classOrder.length === 0 ? (
+                            <span className="lane-preview__lane-classes muted">クラス未設定</span>
+                          ) : (
+                            <ul className="lane-card__class-list">
+                              {lane.classOrder.map((classId) => {
+                                const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                                return (
+                                  <li key={classId} className="lane-card__class-item">
+                                    <span className="lane-card__class-name">{classId}</span>
+                                    <span className="lane-card__class-meta">
+                                      <span>{summary?.competitorCount ?? 0}名</span>
+                                      <span className={summary?.timeRangeLabel ? '' : 'muted small-text'}>
+                                        {summary?.timeRangeLabel ?? '時間未設定'}
+                                      </span>
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
                         </li>
                       ))}
                     </ul>
