@@ -11,6 +11,9 @@ import type {
   ClassOrderWarning,
   Entry,
   EntryDraft,
+  ClassSplitResult,
+  ClassSplitRule,
+  ClassSplitRules,
   StartlistState,
   StatusKey,
   StatusMessageState,
@@ -64,6 +67,8 @@ const initialState: StartlistState = {
   loading: {},
   startOrderRules: [],
   worldRankingByClass: new Map(),
+  classSplitRules: [],
+  classSplitResult: undefined,
 };
 
 type EntryInput = Entry | EntryDraft;
@@ -117,7 +122,18 @@ type StartlistAction =
   | { type: 'SET_CLASS_ORDER_PREFERENCES'; payload: ClassOrderPreferences }
   | { type: 'SET_START_ORDER_RULES'; payload: StartOrderRules }
   | { type: 'SET_CLASS_WORLD_RANKING'; payload: { classId: string; ranking: [string, number][] } }
-  | { type: 'REMOVE_CLASS_WORLD_RANKING'; payload: { classId: string } };
+  | { type: 'REMOVE_CLASS_WORLD_RANKING'; payload: { classId: string } }
+  | { type: 'SET_CLASS_SPLIT_RULES'; payload: ClassSplitRules }
+  | { type: 'SET_CLASS_SPLIT_RESULT'; payload: ClassSplitResult | undefined };
+
+const resetForSplitChange = (state: StartlistState): StartlistState => ({
+  ...state,
+  laneAssignments: [],
+  classAssignments: [],
+  classOrderSeed: undefined,
+  classOrderWarnings: [],
+  startTimes: [],
+});
 
 const startlistReducer = (state: StartlistState, action: StartlistAction): StartlistState => {
   switch (action.type) {
@@ -211,6 +227,23 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
         worldRankingByClass: next,
       };
     }
+    case 'SET_CLASS_SPLIT_RULES':
+      return {
+        ...state,
+        classSplitRules: action.payload,
+      };
+    case 'SET_CLASS_SPLIT_RESULT': {
+      const currentSignature = state.classSplitResult?.signature;
+      const nextSignature = action.payload?.signature;
+      const nextState =
+        currentSignature === nextSignature
+          ? state
+          : resetForSplitChange(state);
+      return {
+        ...nextState,
+        classSplitResult: action.payload,
+      };
+    }
     default:
       return state;
   }
@@ -292,7 +325,11 @@ export const updateEntries = (
 export const updateLaneAssignments = (
   dispatch: React.Dispatch<StartlistAction>,
   assignments: LaneAssignmentDto[],
+  splitResult?: ClassSplitResult,
 ): void => {
+  if (splitResult) {
+    setClassSplitResult(dispatch, splitResult);
+  }
   dispatch({ type: 'SET_LANE_ASSIGNMENTS', payload: assignments });
 };
 
@@ -301,14 +338,22 @@ export const updateClassAssignments = (
   assignments: ClassAssignmentDto[],
   seed?: string,
   warnings?: ClassOrderWarning[],
+  splitResult?: ClassSplitResult,
 ): void => {
+  if (splitResult) {
+    setClassSplitResult(dispatch, splitResult);
+  }
   dispatch({ type: 'SET_CLASS_ASSIGNMENTS', payload: { assignments, seed, warnings } });
 };
 
 export const updateStartTimes = (
   dispatch: React.Dispatch<StartlistAction>,
   startTimes: StartTimeDto[],
+  splitResult?: ClassSplitResult,
 ): void => {
+  if (splitResult) {
+    setClassSplitResult(dispatch, splitResult);
+  }
   dispatch({ type: 'SET_START_TIMES', payload: startTimes });
 };
 
@@ -356,4 +401,18 @@ export const removeClassWorldRanking = (
   classId: string,
 ): void => {
   dispatch({ type: 'REMOVE_CLASS_WORLD_RANKING', payload: { classId } });
+};
+
+export const setClassSplitRules = (
+  dispatch: React.Dispatch<StartlistAction>,
+  rules: ClassSplitRules,
+): void => {
+  dispatch({ type: 'SET_CLASS_SPLIT_RULES', payload: rules });
+};
+
+export const setClassSplitResult = (
+  dispatch: React.Dispatch<StartlistAction>,
+  result: ClassSplitResult | undefined,
+): void => {
+  dispatch({ type: 'SET_CLASS_SPLIT_RESULT', payload: result });
 };

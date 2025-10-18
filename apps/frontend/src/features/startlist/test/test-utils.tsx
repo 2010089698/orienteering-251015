@@ -16,6 +16,8 @@ import {
   updateClassOrderPreferences,
   setStartOrderRules,
   updateClassWorldRanking,
+  setClassSplitRules,
+  setClassSplitResult,
 } from '../state/StartlistContext';
 import type {
   StartlistSettingsDto,
@@ -27,6 +29,8 @@ import type {
   ClassOrderPreferences,
   ClassOrderWarning,
   Entry,
+  ClassSplitResult,
+  ClassSplitRule,
   StartOrderRules,
   StatusKey,
   StatusMessageState,
@@ -47,6 +51,8 @@ interface InitialStateOverrides {
   loading?: Partial<Record<StatusKey, boolean>>;
   startOrderRules?: StartOrderRules;
   worldRankingEntriesByClass?: Record<string, [string, number][]>;
+  classSplitRules?: ClassSplitRule[];
+  classSplitResult?: ClassSplitResult;
 }
 
 interface WrapperProps {
@@ -70,6 +76,12 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
   useEffect(() => {
     if (initialState?.entries) {
       updateEntries(dispatch, initialState.entries);
+    }
+    if (initialState?.classSplitRules) {
+      setClassSplitRules(dispatch, initialState.classSplitRules);
+    }
+    if (initialState?.classSplitResult) {
+      setClassSplitResult(dispatch, initialState.classSplitResult);
     }
     if (initialState?.laneAssignments) {
       updateLaneAssignments(dispatch, initialState.laneAssignments);

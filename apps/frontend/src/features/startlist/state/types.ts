@@ -5,6 +5,30 @@ import type {
   StartlistSettingsDto,
 } from '@startlist-management/application';
 
+export type ClassSplitMethod = string;
+
+export interface ClassSplitRule {
+  baseClassId: string;
+  partCount: number;
+  method: ClassSplitMethod;
+}
+
+export type ClassSplitRules = ClassSplitRule[];
+
+export interface SplitClassMetadata {
+  classId: string;
+  baseClassId: string;
+  splitIndex: number;
+  displayName?: string;
+}
+
+export interface ClassSplitResult {
+  signature: string;
+  splitClasses: SplitClassMetadata[];
+  entryToSplitId: Map<string, string>;
+  splitIdToEntryIds: Map<string, string[]>;
+}
+
 export type StatusLevel = 'idle' | 'info' | 'success' | 'error';
 
 export interface StatusMessageState {
@@ -82,4 +106,6 @@ export interface StartlistState {
   loading: Partial<Record<StatusKey, boolean>>;
   startOrderRules: StartOrderRules;
   worldRankingByClass: WorldRankingByClass;
+  classSplitRules: ClassSplitRule[];
+  classSplitResult?: ClassSplitResult;
 }
