@@ -45,7 +45,7 @@ export const generateLaneAssignments = (
   laneCount: number,
   laneIntervalMs: number,
 ): LaneAssignmentDto[] => {
-  if (!laneCount || laneCount <= 0 || laneIntervalMs <= 0) {
+  if (!laneCount || laneCount <= 0 || laneIntervalMs < 0) {
     return [];
   }
   const grouped = Array.from(groupEntriesByClass(entries).entries()).map<ClassGroup>(([classId, value]) => ({

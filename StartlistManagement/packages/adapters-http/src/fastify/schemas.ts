@@ -8,8 +8,8 @@ export const StartlistIdParamsSchema = Type.Object({
 export const DurationSchema = Type.Object(
   {
     milliseconds: Type.Number({
-      minimum: 1,
-      description: 'Duration expressed in milliseconds. Must be greater than or equal to 1.',
+      minimum: 0,
+      description: 'Duration expressed in milliseconds. Must be greater than or equal to 0.',
     }),
   },
   { description: 'Duration value used for interval configuration.' },

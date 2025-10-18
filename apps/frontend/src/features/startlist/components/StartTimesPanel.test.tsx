@@ -106,7 +106,9 @@ describe('StartTimesPanel', () => {
     const [parts] = capturedParts;
     expect(parts).toBeDefined();
     const csvString = parts.map((part) => (typeof part === 'string' ? part : String(part))).join('');
-    expect(csvString).toBe('\ufeffクラス,スタート番号,氏名,クラブ,カード番号\r\nM21A,001,田中 太郎,Tokyo OC,123456');
+    expect(csvString).toBe(
+      '\ufeffクラス,スタート番号,氏名,所属,スタート時刻,カード番号\r\nM21A,1001,田中 太郎,Tokyo OC,18:00,123456',
+    );
 
     expect(clickMock).toHaveBeenCalled();
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');

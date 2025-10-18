@@ -67,7 +67,8 @@ const getNextSundayAtTenJst = (): string => {
   return new Date(targetUtc - TOKYO_OFFSET_MS).toISOString();
 };
 
-const DEFAULT_INTERVAL_MS = 60000;
+const DEFAULT_LANE_INTERVAL_MS = 0;
+const DEFAULT_PLAYER_INTERVAL_MS = 60000;
 const THIRTY_SECONDS_MS = 30000;
 
 const formatIntervalLabel = (milliseconds: number): string => {
@@ -86,14 +87,20 @@ const formatIntervalLabel = (milliseconds: number): string => {
 
 type IntervalOption = { label: string; value: number };
 
-const createIntervalOptions = (maxMinutes: number): IntervalOption[] => {
-  return [
+const createIntervalOptions = (maxMinutes: number, includeZero = false): IntervalOption[] => {
+  const options: IntervalOption[] = [
     { label: '30秒', value: THIRTY_SECONDS_MS },
     ...Array.from({ length: maxMinutes }, (_, index) => {
       const minutes = index + 1;
       return { label: `${minutes}分`, value: minutes * 60000 };
     }),
   ];
+
+  if (includeZero) {
+    options.unshift({ label: 'なし', value: 0 });
+  }
+
+  return options;
 };
 
 const ensureIntervalOption = (options: IntervalOption[], value: number): IntervalOption[] => {
@@ -112,14 +119,16 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
   const dispatch = useStartlistDispatch();
 
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-  const [laneIntervalMs, setLaneIntervalMs] = useState<number>(() => settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_INTERVAL_MS);
+  const [laneIntervalMs, setLaneIntervalMs] = useState<number>(
+    () => settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_LANE_INTERVAL_MS,
+  );
   const [playerIntervalMs, setPlayerIntervalMs] = useState<number>(
-    () => settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_INTERVAL_MS,
+    () => settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS,
   );
   const [laneCount, setLaneCount] = useState(settings?.laneCount ?? 1);
 
   const laneIntervalOptions = useMemo(
-    () => ensureIntervalOption(createIntervalOptions(60), laneIntervalMs),
+    () => ensureIntervalOption(createIntervalOptions(60, true), laneIntervalMs),
     [laneIntervalMs],
   );
   const playerIntervalOptions = useMemo(
@@ -129,8 +138,8 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
 
   useEffect(() => {
     setStartTime(toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-    setLaneIntervalMs(settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_INTERVAL_MS);
-    setPlayerIntervalMs(settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_INTERVAL_MS);
+    setLaneIntervalMs(settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_LANE_INTERVAL_MS);
+    setPlayerIntervalMs(settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS);
     setLaneCount(settings?.laneCount ?? 1);
   }, [settings]);
 
@@ -146,8 +155,8 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
       return null;
     }
 
-    if (!Number.isFinite(laneIntervalMs) || laneIntervalMs <= 0) {
-      setStatus(dispatch, 'settings', createStatus('レーン内クラス間隔は 1 秒以上で設定してください。', 'error'));
+    if (!Number.isFinite(laneIntervalMs) || laneIntervalMs < 0) {
+      setStatus(dispatch, 'settings', createStatus('レーン内クラス間隔は 0 秒以上で設定してください。', 'error'));
       return null;
     }
 

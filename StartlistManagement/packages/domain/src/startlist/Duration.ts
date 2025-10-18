@@ -4,8 +4,8 @@ export class Duration {
   private constructor(private readonly milliseconds: number) {}
 
   static fromMilliseconds(milliseconds: number): Duration {
-    if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
-      throw new DomainError('Duration must be a positive finite number of milliseconds.');
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+      throw new DomainError('Duration must be a non-negative finite number of milliseconds.');
     }
     return new Duration(milliseconds);
   }

@@ -23,8 +23,14 @@ describe('Duration', () => {
     assert.ok(fromSeconds.equals(fromMinutes));
   });
 
-  test('rejects non positive or non finite durations', () => {
-    const invalidValues = [0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+  test('allows zero millisecond duration', () => {
+    const zero = Duration.fromMilliseconds(0);
+
+    assert.strictEqual(zero.value, 0);
+  });
+
+  test('rejects negative or non finite durations', () => {
+    const invalidValues = [-1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
 
     for (const value of invalidValues) {
       assert.throws(
@@ -137,6 +143,22 @@ describe('StartlistSettings', () => {
 
     startTime.setUTCMonth(5);
     assert.strictEqual(settings.startTime.toISOString(), '2024-04-01T10:00:00.000Z');
+  });
+
+  test('create accepts zero millisecond lane class interval', () => {
+    const laneClassInterval = Duration.fromMilliseconds(0);
+    const classPlayerInterval = Duration.fromSeconds(45);
+    const startTime = new Date('2024-04-01T10:00:00Z');
+
+    const settings = StartlistSettings.create({
+      eventId: 'event-1',
+      startTime,
+      laneClassInterval,
+      classPlayerInterval,
+      laneCount: 2,
+    });
+
+    assert.strictEqual(settings.laneClassInterval, laneClassInterval);
   });
 
   test('create validates inputs', () => {

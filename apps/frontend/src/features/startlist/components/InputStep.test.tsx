@@ -8,7 +8,7 @@ const baseSettings = {
   eventId: 'event-1',
   startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
   intervals: {
-    laneClass: { milliseconds: 60000 },
+    laneClass: { milliseconds: 0 },
     classPlayer: { milliseconds: 45000 },
   },
   laneCount: 2,

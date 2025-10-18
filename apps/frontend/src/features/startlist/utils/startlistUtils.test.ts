@@ -32,9 +32,16 @@ describe('generateLaneAssignments', () => {
     { id: 'entry-4', name: 'D', classId: 'M18', cardNo: '4' },
   ];
 
-  it('returns empty when lane count or interval invalid', () => {
+  it('returns empty when lane count missing or interval negative', () => {
     expect(generateLaneAssignments(entries, 0, 60000)).toEqual([]);
-    expect(generateLaneAssignments(entries, 2, 0)).toEqual([]);
+    expect(generateLaneAssignments(entries, 2, -1)).toEqual([]);
+  });
+
+  it('keeps lane assignments when interval is zero', () => {
+    const assignments = generateLaneAssignments(entries, 2, 0);
+
+    expect(assignments).not.toHaveLength(0);
+    expect(assignments.every((assignment) => assignment.interval.milliseconds === 0)).toBe(true);
   });
 
   it('distributes classes to lanes balancing load', () => {

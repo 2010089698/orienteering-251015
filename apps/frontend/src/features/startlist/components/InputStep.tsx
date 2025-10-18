@@ -59,7 +59,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
       return;
     }
     const intervalMs = nextSettings.intervals?.laneClass?.milliseconds ?? 0;
-    if (!intervalMs) {
+    if (!Number.isFinite(intervalMs) || intervalMs < 0) {
       setStatus(dispatch, 'lanes', createStatus('スタート間隔が正しく設定されていません。', 'error'));
       return;
     }
