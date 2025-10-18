@@ -13,11 +13,12 @@ import {
   useStartlistDispatch,
   useStartlistState,
 } from '../state/StartlistContext';
-import { calculateStartTimes, createDefaultClassAssignments } from '../utils/startlistUtils';
+import { calculateStartTimes, createDefaultClassAssignments, prepareClassSplits } from '../utils/startlistUtils';
 import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
 import type { LaneAssignmentDto } from '@startlist-management/application';
 import { reorderLaneClass } from '../utils/startlistUtils';
 import { Tabs } from '../../../components/tabs';
+import type { Entry } from '../state/types';
 
 type LaneAssignmentStepProps = {
   onBack: () => void;
@@ -33,6 +34,10 @@ type ClassSummary = {
   classId: string;
   competitorCount: number;
   timeRangeLabel?: string;
+  baseClassId: string;
+  splitIndex?: number;
+  splitCount: number;
+  displayName?: string;
 };
 
 type LaneSummary = {
@@ -121,6 +126,7 @@ const ClassCard = ({
   laneOptions,
   competitorCount,
   timeRangeLabel,
+  helperText,
 }: {
   classId: string;
   laneNumber: number;
@@ -128,6 +134,7 @@ const ClassCard = ({
   laneOptions: number[];
   competitorCount: number;
   timeRangeLabel?: string;
+  helperText?: string;
 }): JSX.Element => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: classId });
   const style: CSSProperties = {
@@ -155,6 +162,7 @@ const ClassCard = ({
           ))}
         </select>
       </div>
+      {helperText ? <p className="draggable-card__helper muted small-text">{helperText}</p> : null}
       <div className="meta-info draggable-card__meta">
         <span className="meta-info__item">
           <span className="meta-info__label">人数</span>
@@ -224,21 +232,72 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
+  const splitPreparation = useMemo(
+    () => prepareClassSplits(entries, { splitRules: classSplitRules }),
+    [entries, classSplitRules],
+  );
+
+  const effectiveSplitResult = useMemo(() => {
+    if (classSplitResult && classSplitResult.signature === splitPreparation.signature) {
+      return classSplitResult;
+    }
+    return splitPreparation.result;
+  }, [classSplitResult, splitPreparation]);
+
   const laneCount = settings?.laneCount ?? laneAssignments.length;
   const laneIntervalMs =
     settings?.intervals?.laneClass?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
   const playerIntervalMs = settings?.intervals?.classPlayer?.milliseconds ?? 0;
 
-  const classEntryCounts = useMemo(() => {
-    return entries.reduce<Record<string, number>>((acc, entry) => {
-      const trimmed = entry.classId.trim();
-      const key = trimmed.length > 0 ? trimmed : entry.classId;
-      const next = (acc[key] ?? 0) + 1;
-      acc[key] = next;
-      acc[entry.classId] = next;
-      return acc;
-    }, {});
+  const entryById = useMemo(() => {
+    return new Map(entries.map((entry) => [entry.id, entry]));
   }, [entries]);
+
+  const classEntriesBySplitId = useMemo(() => {
+    const map = new Map<string, Entry[]>();
+    splitPreparation.splitIdToEntryIds.forEach((ids, classId) => {
+      const resolved = ids
+        .map((id) => entryById.get(id))
+        .filter((entry): entry is Entry => Boolean(entry));
+      map.set(classId, resolved);
+    });
+    if (map.size === 0) {
+      entries.forEach((entry) => {
+        const classId = entry.classId.trim();
+        const next = map.get(classId) ?? [];
+        next.push(entry);
+        map.set(classId, next);
+      });
+    }
+    return map;
+  }, [entries, entryById, splitPreparation]);
+
+  const splitMetadataByClassId = useMemo(() => {
+    const meta = new Map<
+      string,
+      { baseClassId: string; splitIndex?: number; splitCount: number; displayName?: string }
+    >();
+    const baseCounts = new Map<string, number>();
+    splitPreparation.result?.splitClasses.forEach((item) => {
+      const current = baseCounts.get(item.baseClassId) ?? 0;
+      baseCounts.set(item.baseClassId, current + 1);
+    });
+    splitPreparation.result?.splitClasses.forEach((item) => {
+      meta.set(item.classId, {
+        baseClassId: item.baseClassId,
+        splitIndex: item.splitIndex,
+        splitCount: baseCounts.get(item.baseClassId) ?? 1,
+        displayName: item.displayName,
+      });
+    });
+    splitPreparation.splitIdToEntryIds.forEach((_ids, classId) => {
+      if (!meta.has(classId)) {
+        const baseClassId = splitPreparation.splitIdToBaseClassId.get(classId) ?? classId;
+        meta.set(classId, { baseClassId, splitCount: 1 });
+      }
+    });
+    return meta;
+  }, [splitPreparation]);
 
   const baseStartTimeMs = useMemo(() => {
     if (!settings?.startTime) {
@@ -275,7 +334,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       let laneStartMs: number | undefined;
       let laneEndMs: number | undefined;
       const classSummaries: ClassSummary[] = lane.classOrder.map((classId, index) => {
-        const competitorCount = classEntryCounts[classId] ?? 0;
+        const entriesForClass = classEntriesBySplitId.get(classId) ?? [];
+        const competitorCount = entriesForClass.length;
         let startMs: number | undefined;
         let endMs: number | undefined;
         if (canEstimateTimes && baseStartTimeMs !== undefined) {
@@ -295,10 +355,15 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
             }
           }
         }
+        const meta = splitMetadataByClassId.get(classId);
         return {
           classId,
           competitorCount,
           timeRangeLabel: competitorCount > 0 ? formatTimeRange(startMs, endMs) : undefined,
+          baseClassId: meta?.baseClassId ?? classId,
+          splitIndex: meta?.splitIndex,
+          splitCount: meta?.splitCount ?? 1,
+          displayName: meta?.displayName,
         };
       });
       const competitorCount = classSummaries.reduce((sum, summary) => sum + summary.competitorCount, 0);
@@ -312,7 +377,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
   }, [
     baseStartTimeMs,
     canEstimateTimes,
-    classEntryCounts,
+    classEntriesBySplitId,
     laneIntervalMs,
     lanesWithPlaceholders,
     playerIntervalMs,
@@ -338,7 +403,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       return;
     }
     const updated = moveClassBetweenLanes(laneAssignments, classId, nextLane, laneIntervalMs);
-    updateLaneAssignments(dispatch, updated);
+    updateLaneAssignments(dispatch, updated, effectiveSplitResult);
     setStatus(dispatch, 'lanes', createStatus(`クラス「${classId}」をレーン ${nextLane} に移動しました。`, 'info'));
   };
 
@@ -359,7 +424,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         return;
       }
       const updated = moveClassBetweenLanes(laneAssignments, activeId, laneNumber, laneIntervalMs);
-      updateLaneAssignments(dispatch, updated);
+      updateLaneAssignments(dispatch, updated, effectiveSplitResult);
       setStatus(dispatch, 'lanes', createStatus(`クラス「${activeId}」をレーン ${laneNumber} に移動しました。`, 'info'));
       return;
     }
@@ -375,7 +440,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         return;
       }
       const updated = reorderLaneClass(laneAssignments, activeLane.laneNumber, fromIndex, toIndex);
-      updateLaneAssignments(dispatch, updated);
+      updateLaneAssignments(dispatch, updated, effectiveSplitResult);
       setStatus(dispatch, 'lanes', createStatus(`クラス「${activeId}」の順序を更新しました。`, 'info'));
       return;
     }
@@ -387,7 +452,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       laneIntervalMs,
       targetIndex,
     );
-    updateLaneAssignments(dispatch, updated);
+    updateLaneAssignments(dispatch, updated, effectiveSplitResult);
     setStatus(
       dispatch,
       'lanes',
@@ -452,15 +517,16 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       }
     }
 
+    const metadataForStartTimes = nextSplitResult ?? effectiveSplitResult;
     const startTimes = calculateStartTimes({
       settings,
       laneAssignments,
       classAssignments: nextClassAssignments,
       entries,
       splitRules: classSplitRules,
-      splitResult: nextSplitResult,
+      splitResult: metadataForStartTimes,
     });
-    updateStartTimes(dispatch, startTimes, nextSplitResult);
+    updateStartTimes(dispatch, startTimes, metadataForStartTimes);
     if (startTimes.length === 0) {
       setStatus(dispatch, 'startTimes', createStatus('スタート時間を作成できませんでした。', 'error'));
       return;
@@ -498,6 +564,19 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     ? lanesWithPlaceholders.find((lane) => lane.laneNumber === focusedLaneNumber)
     : undefined;
   const activePanelId = tabItems.find((item) => item.id === activeTab)?.panelId ?? 'lane-panel-overview';
+
+  useEffect(() => {
+    if (!laneAssignments.length) {
+      return;
+    }
+    if (classSplitResult && classSplitResult.signature !== splitPreparation.signature) {
+      setStatus(
+        dispatch,
+        'lanes',
+        createStatus('クラス分割の設定が変更されています。STEP 1 でレーン割り当てを再生成してください。', 'error'),
+      );
+    }
+  }, [classSplitResult, dispatch, laneAssignments, splitPreparation.signature]);
 
   return (
     <section aria-labelledby="step2-heading">
@@ -542,6 +621,20 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                             ) : (
                               lane.classOrder.map((classId) => {
                                 const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                                const helperParts: string[] = [];
+                                if (summary && summary.baseClassId !== classId) {
+                                  helperParts.push(summary.baseClassId);
+                                }
+                                if ((summary?.splitCount ?? 1) > 1) {
+                                  const label = summary?.displayName
+                                    ? `分割 ${summary.displayName}`
+                                    : '分割';
+                                  const position = summary?.splitIndex !== undefined
+                                    ? `${summary.splitIndex + 1}/${summary.splitCount}`
+                                    : undefined;
+                                  helperParts.push(position ? `${label} (${position})` : label);
+                                }
+                                const helperText = helperParts.join(' • ');
                                 return (
                                   <ClassCard
                                     key={classId}
@@ -551,6 +644,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                                     laneOptions={laneOptions}
                                     competitorCount={summary?.competitorCount ?? 0}
                                     timeRangeLabel={summary?.timeRangeLabel}
+                                    helperText={helperText}
                                   />
                                 );
                               })
@@ -560,7 +654,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                       </LaneColumn>
                     ))}
                   </div>
-                  <div className="lane-preview">
+                  <div className="lane-preview" data-testid="lane-preview">
                     {lanesWithPlaceholders.map((lane) => (
                       <div key={lane.laneNumber} className="lane-card">
                         <h3>レーン {lane.laneNumber}</h3>
@@ -588,9 +682,26 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                           <ul className="lane-card__class-list">
                             {lane.classOrder.map((classId) => {
                               const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                              const helperParts: string[] = [];
+                              if (summary && summary.baseClassId !== classId) {
+                                helperParts.push(summary.baseClassId);
+                              }
+                              if ((summary?.splitCount ?? 1) > 1) {
+                                const label = summary?.displayName
+                                  ? `分割 ${summary.displayName}`
+                                  : '分割';
+                                const position = summary?.splitIndex !== undefined
+                                  ? `${summary.splitIndex + 1}/${summary.splitCount}`
+                                  : undefined;
+                                helperParts.push(position ? `${label} (${position})` : label);
+                              }
+                              const helperText = helperParts.join(' • ');
                               return (
                                 <li key={classId} className="lane-card__class-item">
                                   <span className="lane-card__class-name">{classId}</span>
+                                  {helperText ? (
+                                    <span className="lane-card__class-helper muted small-text">{helperText}</span>
+                                  ) : null}
                                   <span className="lane-card__class-meta">
                                     <span>{summary?.competitorCount ?? 0}名</span>
                                     <span className={summary?.timeRangeLabel ? '' : 'muted small-text'}>
@@ -618,6 +729,20 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                             ) : (
                               focusedLane.classOrder.map((classId) => {
                                 const summary = classSummaryMap.get(`${focusedLane.laneNumber}::${classId}`);
+                                const helperParts: string[] = [];
+                                if (summary && summary.baseClassId !== classId) {
+                                  helperParts.push(summary.baseClassId);
+                                }
+                                if ((summary?.splitCount ?? 1) > 1) {
+                                  const label = summary?.displayName
+                                    ? `分割 ${summary.displayName}`
+                                    : '分割';
+                                  const position = summary?.splitIndex !== undefined
+                                    ? `${summary.splitIndex + 1}/${summary.splitCount}`
+                                    : undefined;
+                                  helperParts.push(position ? `${label} (${position})` : label);
+                                }
+                                const helperText = helperParts.join(' • ');
                                 return (
                                   <ClassCard
                                     key={classId}
@@ -627,6 +752,7 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                                     laneOptions={laneOptions}
                                     competitorCount={summary?.competitorCount ?? 0}
                                     timeRangeLabel={summary?.timeRangeLabel}
+                                    helperText={helperText}
                                   />
                                 );
                               })
@@ -668,9 +794,26 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
                             <ul className="lane-card__class-list">
                               {lane.classOrder.map((classId) => {
                                 const summary = classSummaryMap.get(`${lane.laneNumber}::${classId}`);
+                                const helperParts: string[] = [];
+                                if (summary && summary.baseClassId !== classId) {
+                                  helperParts.push(summary.baseClassId);
+                                }
+                                if ((summary?.splitCount ?? 1) > 1) {
+                                  const label = summary?.displayName
+                                    ? `分割 ${summary.displayName}`
+                                    : '分割';
+                                  const position = summary?.splitIndex !== undefined
+                                    ? `${summary.splitIndex + 1}/${summary.splitCount}`
+                                    : undefined;
+                                  helperParts.push(position ? `${label} (${position})` : label);
+                                }
+                                const helperText = helperParts.join(' • ');
                                 return (
                                   <li key={classId} className="lane-card__class-item">
                                     <span className="lane-card__class-name">{classId}</span>
+                                    {helperText ? (
+                                      <span className="lane-card__class-helper muted small-text">{helperText}</span>
+                                    ) : null}
                                     <span className="lane-card__class-meta">
                                       <span>{summary?.competitorCount ?? 0}名</span>
                                       <span className={summary?.timeRangeLabel ? '' : 'muted small-text'}>

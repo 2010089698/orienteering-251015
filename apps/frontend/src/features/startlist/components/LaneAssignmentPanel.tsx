@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { StatusMessage, Tag } from '@orienteering/shared-ui';
 import type { LaneAssignmentDto } from '@startlist-management/application';
 import { useStartlistApi } from '../api/useStartlistApi';
@@ -26,6 +27,56 @@ const LaneAssignmentPanel = (): JSX.Element => {
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
+  const splitMetadataByClassId = useMemo(() => {
+    const meta = new Map<
+      string,
+      { baseClassId: string; splitIndex?: number; partCount: number; displayName?: string }
+    >();
+    const baseCounts = new Map<string, number>();
+    classSplitResult?.splitClasses.forEach((item) => {
+      const current = baseCounts.get(item.baseClassId) ?? 0;
+      baseCounts.set(item.baseClassId, current + 1);
+    });
+    classSplitResult?.splitClasses.forEach((item) => {
+      meta.set(item.classId, {
+        baseClassId: item.baseClassId,
+        splitIndex: item.splitIndex,
+        partCount: baseCounts.get(item.baseClassId) ?? 1,
+        displayName: item.displayName,
+      });
+    });
+    laneAssignments.forEach((lane) => {
+      lane.classOrder.forEach((classId) => {
+        if (!meta.has(classId)) {
+          meta.set(classId, { baseClassId: classId, partCount: 1 });
+        }
+      });
+    });
+    entries.forEach((entry) => {
+      const trimmed = entry.classId.trim();
+      if (!meta.has(trimmed)) {
+        meta.set(trimmed, { baseClassId: trimmed, partCount: 1 });
+      }
+    });
+    return meta;
+  }, [classSplitResult, laneAssignments, entries]);
+
+  const splitEntryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (classSplitResult?.splitIdToEntryIds) {
+      classSplitResult.splitIdToEntryIds.forEach((ids, classId) => {
+        counts.set(classId, ids.length);
+      });
+    }
+    if (counts.size === 0) {
+      entries.forEach((entry) => {
+        const classId = entry.classId.trim();
+        counts.set(classId, (counts.get(classId) ?? 0) + 1);
+      });
+    }
+    return counts;
+  }, [classSplitResult, entries]);
+
   const handleGenerate = () => {
     if (!settings) {
       setStatus(dispatch, 'lanes', createStatus('先に基本情報を保存してください。', 'error'));
@@ -40,7 +91,12 @@ const LaneAssignmentPanel = (): JSX.Element => {
     if (assignments.length === 0) {
       setStatus(dispatch, 'lanes', createStatus('エントリーとレーン数を確認してください。', 'error'));
     } else {
-      setStatus(dispatch, 'lanes', createStatus(`${assignments.length} 本のレーン割り当てを生成しました。`, 'success'));
+      const assignedClasses = assignments.reduce((sum, assignment) => sum + assignment.classOrder.length, 0);
+      setStatus(
+        dispatch,
+        'lanes',
+        createStatus(`分割後 ${assignedClasses} クラスを生成（${assignments.length} レーン）`, 'success'),
+      );
     }
   };
 
@@ -75,7 +131,7 @@ const LaneAssignmentPanel = (): JSX.Element => {
       return;
     }
     const updated = reorderLaneClass(laneAssignments, assignment.laneNumber, index, nextIndex);
-    updateLaneAssignments(dispatch, updated);
+    updateLaneAssignments(dispatch, updated, classSplitResult);
     setStatus(dispatch, 'lanes', createStatus('クラス順序を更新しました。', 'info'));
   };
 
@@ -107,19 +163,37 @@ const LaneAssignmentPanel = (): JSX.Element => {
                 <Tag label={`${assignment.classOrder.length} クラス`} tone="info" />
               </summary>
               <ul className="list-reset">
-                {assignment.classOrder.map((classId, index) => (
-                  <li key={classId}>
-                    {classId}
-                    <span className="inline-buttons">
-                      <button type="button" className="secondary" onClick={() => moveClass(assignment, index, -1)}>
-                        ↑
-                      </button>
-                      <button type="button" className="secondary" onClick={() => moveClass(assignment, index, 1)}>
-                        ↓
-                      </button>
-                    </span>
-                  </li>
-                ))}
+                {assignment.classOrder.map((classId, index) => {
+                  const meta = splitMetadataByClassId.get(classId);
+                  const helperParts: string[] = [];
+                  if (meta?.baseClassId && meta.baseClassId !== classId) {
+                    helperParts.push(meta.baseClassId);
+                  }
+                  if ((meta?.partCount ?? 1) > 1) {
+                    const splitLabel = meta.displayName ? `分割 ${meta.displayName}` : '分割';
+                    const position = meta.splitIndex !== undefined ? `${meta.splitIndex + 1}/${meta.partCount}` : '';
+                    helperParts.push(position ? `${splitLabel} (${position})` : splitLabel);
+                  }
+                  const helperText = helperParts.join(' • ');
+                  const competitorCount = splitEntryCounts.get(classId) ?? 0;
+                  return (
+                    <li key={classId}>
+                      <div className="lane-assignment__class-header">
+                        <span>{classId}</span>
+                        <Tag label={`${competitorCount} 名`} tone="info" />
+                      </div>
+                      {helperText ? <p className="muted small-text">{helperText}</p> : null}
+                      <span className="inline-buttons">
+                        <button type="button" className="secondary" onClick={() => moveClass(assignment, index, -1)}>
+                          ↑
+                        </button>
+                        <button type="button" className="secondary" onClick={() => moveClass(assignment, index, 1)}>
+                          ↓
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </details>
           ))}
