@@ -53,6 +53,7 @@ Monorepo のルートで実行すると、すべてのワークスペースの�
   ```bash
   npm run test --workspace @orienteering/startlist-frontend
   ```
+  startlistExport と StartTimesPanel の CSV エクスポート関連テストケースもこのコマンドで実行されます。
 
 ## ドキュメント
 

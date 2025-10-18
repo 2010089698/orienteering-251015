@@ -32,7 +32,29 @@ describe('buildStartlistExportRows', () => {
     const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
 
     expect(rows.map((row) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
-    expect(rows.map((row) => row.startNumber)).toEqual(['001', '002', '003']);
+  });
+
+  it('applies consistent start number padding based on the offset', () => {
+    const entries: Entry[] = [
+      { id: 'p1', name: 'Alice', classId: 'M21', cardNo: '1001', club: 'Alpha' },
+      { id: 'p2', name: 'Bob', classId: 'M21', cardNo: '1002', club: 'Beta' },
+      { id: 'p3', name: 'Charlie', classId: 'M21', cardNo: '1003', club: 'Gamma' },
+    ];
+    const startTimes: StartTimeDto[] = [
+      createStartTime('p1', '2024-05-01T00:30:00Z'),
+      createStartTime('p2', '2024-05-01T01:00:00Z'),
+      createStartTime('p3', '2024-05-01T01:30:00Z'),
+    ];
+    const classAssignments = [createAssignment('M21', ['p1', 'p2', 'p3'])];
+
+    const rows = buildStartlistExportRows({
+      entries,
+      startTimes,
+      classAssignments,
+      startNumberOffset: 8,
+    });
+
+    expect(rows.map((row) => row.startNumber)).toEqual(['008', '009', '010']);
   });
 
   it('replaces rental card numbers with an empty string', () => {
