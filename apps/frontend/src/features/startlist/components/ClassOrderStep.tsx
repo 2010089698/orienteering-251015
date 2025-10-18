@@ -133,8 +133,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     return new Map(entries.map((entry) => [entry.id, entry]));
   }, [entries]);
 
-  const { rows: startTimeRows, byClass: startTimeRowsByClass } = useMemo(() => {
-    const rows: StartTimeRow[] = [];
+  const startTimeRowsByClass = useMemo(() => {
     const byClass = new Map<string, StartTimeRow[]>();
     startTimes.forEach((item) => {
       const entry = entryMap.get(item.playerId);
@@ -152,7 +151,6 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         startTimeLabel: formatStartTime(isoValue),
         startTimeMs: Number.isNaN(timestamp) ? Number.NaN : timestamp,
       };
-      rows.push(row);
       const list = byClass.get(row.classId);
       if (list) {
         list.push(row);
@@ -160,7 +158,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         byClass.set(row.classId, [row]);
       }
     });
-    return { rows, byClass };
+    return byClass;
   }, [startTimes, entryMap]);
 
   const classSummaries = useMemo(
@@ -193,11 +191,23 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     [classAssignments, startTimeRowsByClass],
   );
 
-  const classTabItems = useMemo(
-    () =>
-      classAssignments.map((assignment) => {
+  const laneSortInfo = useMemo(() => {
+    const map = new Map<string, { laneNumber?: number; sortKey: number }>();
+    laneAssignments.forEach((lane) => {
+      lane.classOrder.forEach((classId, index) => {
+        map.set(classId, { laneNumber: lane.laneNumber, sortKey: lane.laneNumber * 1000 + index });
+      });
+    });
+    return map;
+  }, [laneAssignments]);
+
+  const classTabItems = useMemo(() => {
+    return classAssignments
+      .map((assignment, index) => {
         const summary = classSummaries.get(assignment.classId);
-        const metaParts = [`${assignment.playerOrder.length}人`];
+        const laneInfo = laneSortInfo.get(assignment.classId);
+        const laneLabel = laneInfo?.laneNumber ? `レーン${laneInfo.laneNumber}` : undefined;
+        const metaParts = [laneLabel, `${assignment.playerOrder.length}人`];
         if (summary?.firstStart) {
           if (summary.lastStart && summary.lastStart !== summary.firstStart) {
             metaParts.push(`${summary.firstStart}〜${summary.lastStart}`);
@@ -205,41 +215,40 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
             metaParts.push(summary.firstStart);
           }
         }
-        const label = `${assignment.classId}（${metaParts.join('・')}）`;
+        const labelMeta = metaParts.filter((part): part is string => Boolean(part));
         const tabId = createTabKey(assignment.classId);
         return {
           tabId,
           panelId: `${tabId}-panel`,
-          label,
+          label: `${assignment.classId}（${labelMeta.join('・')}）`,
           assignment,
+          laneLabel,
+          sortKey: laneInfo?.sortKey ?? Number.MAX_SAFE_INTEGER - (classAssignments.length - index),
         };
-      }),
-    [classAssignments, classSummaries],
-  );
+      })
+      .sort((a, b) => a.sortKey - b.sortKey);
+  }, [classAssignments, classSummaries, laneSortInfo]);
 
   const tabItems = useMemo(
-    () => [
-      { id: 'overview', label: '一覧', panelId: 'class-panel-overview' },
-      ...classTabItems.map((item) => ({ id: item.tabId, label: item.label, panelId: item.panelId })),
-    ],
+    () => classTabItems.map((item) => ({ id: item.tabId, label: item.label, panelId: item.panelId })),
     [classTabItems],
   );
 
-  const classTabMap = useMemo(
-    () => new Map(classTabItems.map((item) => [item.tabId, item])),
-    [classTabItems],
-  );
+  const classTabMap = useMemo(() => new Map(classTabItems.map((item) => [item.tabId, item])), [classTabItems]);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<string>(() => tabItems[0]?.id ?? '');
 
   useEffect(() => {
-    if (activeTab === 'overview') {
+    if (tabItems.length === 0) {
+      if (activeTab !== '') {
+        setActiveTab('');
+      }
       return;
     }
-    if (!classTabMap.has(activeTab)) {
-      setActiveTab('overview');
+    if (!tabItems.some((item) => item.id === activeTab)) {
+      setActiveTab(tabItems[0].id);
     }
-  }, [activeTab, classTabMap]);
+  }, [activeTab, tabItems]);
 
   const avoidConsecutiveClubs = classOrderPreferences.avoidConsecutiveClubs;
 
@@ -380,51 +389,6 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           <div className="class-order-panels">
             {tabItems.map((item) => {
               const isActive = item.id === activeTab;
-              if (item.id === 'overview') {
-                return (
-                  <div
-                    key={item.id}
-                    id={item.panelId}
-                    role="tabpanel"
-                    aria-labelledby={`class-tab-${item.id}`}
-                    hidden={!isActive}
-                    className="class-order-panel class-order-panel--overview"
-                  >
-                    {startTimeRows.length > 0 ? (
-                      <div className="table-wrapper">
-                        <table>
-                          <caption>スタートリスト</caption>
-                          <thead>
-                            <tr>
-                              <th>クラス</th>
-                              <th>氏名</th>
-                              <th>所属</th>
-                              <th>カード番号</th>
-                              <th>レーン</th>
-                              <th>スタート時刻</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {startTimeRows.map((row) => (
-                              <tr key={`${row.playerId}-${row.laneNumber}`}>
-                                <td>{row.classId}</td>
-                                <td>{row.name}</td>
-                                <td>{row.club}</td>
-                                <td>{row.cardNo}</td>
-                                <td>{row.laneNumber}</td>
-                                <td>{row.startTimeLabel}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="muted">スタート時間がまだ計算されていません。</p>
-                    )}
-                  </div>
-                );
-              }
-
               const tabInfo = classTabMap.get(item.id);
               if (!tabInfo) {
                 return null;
@@ -454,9 +418,12 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                     <div className="class-order-layout">
                       <div className="class-order-layout__list">
                         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                          <div className="class-card">
+                            <div className="class-card">
                             <div className="class-card__header">
-                              <h3>{tabInfo.assignment.classId}</h3>
+                              <h3>
+                                {tabInfo.assignment.classId}
+                                {tabInfo.laneLabel ? `（${tabInfo.laneLabel}）` : ''}
+                              </h3>
                               <p className="muted class-card__meta">{metaText}</p>
                             </div>
                             {tabInfo.assignment.playerOrder.length === 0 ? (
@@ -515,24 +482,26 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                         {rows.length > 0 ? (
                           <div className="table-wrapper">
                             <table>
-                              <caption>{`${tabInfo.assignment.classId} のスタートリスト`}</caption>
+                              <caption>
+                                {tabInfo.laneLabel
+                                  ? `${tabInfo.assignment.classId}（${tabInfo.laneLabel}）のスタートリスト`
+                                  : `${tabInfo.assignment.classId} のスタートリスト`}
+                              </caption>
                               <thead>
                                 <tr>
+                                  <th>スタート時刻</th>
                                   <th>氏名</th>
                                   <th>所属</th>
                                   <th>カード番号</th>
-                                  <th>レーン</th>
-                                  <th>スタート時刻</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {rows.map((row) => (
-                                  <tr key={`${row.playerId}-${row.laneNumber}`}>
+                                  <tr key={row.playerId}>
+                                    <td>{row.startTimeLabel}</td>
                                     <td>{row.name}</td>
                                     <td>{row.club}</td>
                                     <td>{row.cardNo}</td>
-                                    <td>{row.laneNumber}</td>
-                                    <td>{row.startTimeLabel}</td>
                                   </tr>
                                 ))}
                               </tbody>

@@ -67,7 +67,7 @@ describe('ClassOrderStep', () => {
     expect(await screen.findByText('スタート時間を再計算しました。')).toBeInTheDocument();
   });
 
-  it('switches between overview and class tabs correctly', async () => {
+  it('orders tabs by lane assignment and switches between class views', async () => {
     renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
       initialState: {
         startlistId: 'SL-1',
@@ -79,34 +79,25 @@ describe('ClassOrderStep', () => {
       },
     });
 
-    const overviewTab = screen.getByRole('tab', { name: '一覧' });
-    expect(overviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: '一覧' })).not.toBeInTheDocument();
 
-    const overviewTable = screen.getByRole('table', { name: 'スタートリスト' });
-    expect(overviewTable).toBeInTheDocument();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveTextContent('M21');
+    expect(tabs[0]).toHaveTextContent('レーン1');
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
 
-    const initialPanels = screen.getAllByRole('tabpanel', { hidden: true });
-    const w21Panel = initialPanels.find((panel) => panel.id.includes('class-w21'));
-    expect(w21Panel).toBeDefined();
-    expect(w21Panel).toHaveAttribute('hidden');
+    const initialTable = screen.getByRole('table', { name: 'M21（レーン1）のスタートリスト' });
+    expect(initialTable).toBeInTheDocument();
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers[0]).toHaveTextContent('スタート時刻');
+    expect(headers.some((header) => header.textContent === 'レーン')).toBe(false);
 
-    const m21Tab = screen.getByRole('tab', { name: /M21/ });
-    await userEvent.click(m21Tab);
+    const w21Tab = screen.getByRole('tab', { name: /W21/ });
+    await userEvent.click(w21Tab);
 
-    expect(m21Tab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.queryByRole('table', { name: 'スタートリスト' })).not.toBeInTheDocument();
-
-    const activePanels = screen.getAllByRole('tabpanel', { hidden: true });
-    const m21Panel = activePanels.find((panel) => panel.id.includes('class-m21'));
-    expect(m21Panel).toBeDefined();
-    expect(m21Panel).not.toHaveAttribute('hidden');
-    expect(w21Panel).toHaveAttribute('hidden');
-
-    expect(screen.getByRole('table', { name: 'M21 のスタートリスト' })).toBeInTheDocument();
-
-    await userEvent.click(overviewTab);
-    expect(overviewTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('table', { name: 'スタートリスト' })).toBeInTheDocument();
+    expect(w21Tab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('table', { name: 'M21（レーン1）のスタートリスト' })).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'W21（レーン1）のスタートリスト' })).toBeInTheDocument();
   });
 
   it('allows exporting CSV from the step actions row', async () => {
