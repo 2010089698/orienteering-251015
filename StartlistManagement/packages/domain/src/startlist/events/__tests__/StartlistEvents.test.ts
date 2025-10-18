@@ -22,7 +22,8 @@ const interval = Duration.fromMinutes(1);
 const baseSettings = StartlistSettings.create({
   eventId: 'event-immutable',
   startTime: baseDate,
-  interval,
+  laneClassInterval: interval,
+  classPlayerInterval: interval,
   laneCount: 2,
 });
 
