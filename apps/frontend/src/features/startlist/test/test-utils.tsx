@@ -13,9 +13,21 @@ import {
   updateClassAssignments,
   updateStartTimes,
   updateSnapshot,
+  updateClassOrderPreferences,
 } from '../state/StartlistContext';
-import type { StartlistSettingsDto, LaneAssignmentDto, ClassAssignmentDto, StartTimeDto } from '@startlist-management/application';
-import type { Entry, StatusKey, StatusMessageState } from '../state/types';
+import type {
+  StartlistSettingsDto,
+  LaneAssignmentDto,
+  ClassAssignmentDto,
+  StartTimeDto,
+} from '@startlist-management/application';
+import type {
+  ClassOrderPreferences,
+  ClassOrderWarning,
+  Entry,
+  StatusKey,
+  StatusMessageState,
+} from '../state/types';
 
 interface InitialStateOverrides {
   startlistId?: string;
@@ -23,6 +35,9 @@ interface InitialStateOverrides {
   entries?: Entry[];
   laneAssignments?: LaneAssignmentDto[];
   classAssignments?: ClassAssignmentDto[];
+  classOrderSeed?: string;
+  classOrderWarnings?: ClassOrderWarning[];
+  classOrderPreferences?: ClassOrderPreferences;
   startTimes?: StartTimeDto[];
   snapshot?: unknown;
   statuses?: Partial<Record<StatusKey, StatusMessageState>>;
@@ -54,8 +69,16 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
     if (initialState?.laneAssignments) {
       updateLaneAssignments(dispatch, initialState.laneAssignments);
     }
+    if (initialState?.classOrderPreferences) {
+      updateClassOrderPreferences(dispatch, initialState.classOrderPreferences);
+    }
     if (initialState?.classAssignments) {
-      updateClassAssignments(dispatch, initialState.classAssignments);
+      updateClassAssignments(
+        dispatch,
+        initialState.classAssignments,
+        initialState.classOrderSeed,
+        initialState.classOrderWarnings,
+      );
     }
     if (initialState?.startTimes) {
       updateStartTimes(dispatch, initialState.startTimes);

@@ -5,11 +5,14 @@ import type {
   StartlistSettingsDto,
 } from '@startlist-management/application';
 import type { Entry } from '../state/types';
-
-export interface ClassGroup {
-  classId: string;
-  entries: Entry[];
-}
+import {
+  type ClassGroup,
+  type ClassOrderWarning,
+  createClassAssignmentsFromOrders,
+  calculateClassOrderWarnings,
+  seededRandomClassOrderPolicy,
+  type ClassOrderPolicy,
+} from './classOrderPolicy';
 
 export const groupEntriesByClass = (entries: Entry[]): Map<string, Entry[]> => {
   const map = new Map<string, Entry[]>();
@@ -21,23 +24,6 @@ export const groupEntriesByClass = (entries: Entry[]): Map<string, Entry[]> => {
     map.get(classId)!.push(entry);
   });
   return map;
-};
-
-const compareCardNumbers = (a: string, b: string): number => {
-  const aNum = Number(a);
-  const bNum = Number(b);
-  const aValid = Number.isFinite(aNum);
-  const bValid = Number.isFinite(bNum);
-  if (aValid && bValid) {
-    return aNum - bNum;
-  }
-  if (aValid) {
-    return -1;
-  }
-  if (bValid) {
-    return 1;
-  }
-  return a.localeCompare(b, 'ja');
 };
 
 export const generateLaneAssignments = (
@@ -112,17 +98,61 @@ export const reorderLaneClass = (
   });
 };
 
-export const createDefaultClassAssignments = (
-  entries: Entry[],
-  playerIntervalMs: number,
-): ClassAssignmentDto[] => {
-  return Array.from(groupEntriesByClass(entries).entries()).map<ClassAssignmentDto>(([classId, groupEntries]) => ({
+export interface CreateDefaultClassAssignmentsOptions {
+  entries: Entry[];
+  playerIntervalMs: number;
+  seed?: string;
+  startlistId?: string;
+  laneAssignments?: LaneAssignmentDto[];
+  policy?: ClassOrderPolicy;
+}
+
+export interface CreateDefaultClassAssignmentsResult {
+  assignments: ClassAssignmentDto[];
+  seed: string;
+  warnings: ClassOrderWarning[];
+}
+
+export const createDefaultClassAssignments = ({
+  entries,
+  playerIntervalMs,
+  seed,
+  startlistId,
+  laneAssignments,
+  policy = seededRandomClassOrderPolicy,
+}: CreateDefaultClassAssignmentsOptions): CreateDefaultClassAssignmentsResult => {
+  const groups = Array.from(groupEntriesByClass(entries).entries()).map<ClassGroup>(([classId, value]) => ({
     classId,
-    playerOrder: [...groupEntries]
-      .sort((a, b) => compareCardNumbers(a.cardNo, b.cardNo))
-      .map((entry) => entry.id),
-    interval: { milliseconds: playerIntervalMs },
+    entries: value,
   }));
+  const derivedSeed = policy.deriveSeed({
+    seed,
+    startlistId,
+    entries,
+    laneAssignments,
+  });
+  const { playerOrders, warnings } = policy.execute({ groups, seed: derivedSeed });
+  return {
+    assignments: createClassAssignmentsFromOrders(groups, playerOrders, playerIntervalMs),
+    seed: derivedSeed,
+    warnings: Array.from(warnings.values()),
+  };
+};
+
+export const deriveClassOrderWarnings = (
+  assignments: ClassAssignmentDto[],
+  entries: Entry[],
+): ClassOrderWarning[] => {
+  if (!assignments.length) {
+    return [];
+  }
+  const groups = Array.from(groupEntriesByClass(entries).entries()).map<ClassGroup>(([classId, value]) => ({
+    classId,
+    entries: value,
+  }));
+  const orderMap = new Map<string, string[]>(assignments.map((assignment) => [assignment.classId, assignment.playerOrder]));
+  const warningMap = calculateClassOrderWarnings(groups, orderMap);
+  return Array.from(warningMap.values());
 };
 
 export const updateClassPlayerOrder = (

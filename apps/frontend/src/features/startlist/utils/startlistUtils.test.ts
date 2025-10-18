@@ -3,11 +3,16 @@ import type { Entry } from '../state/types';
 import {
   calculateStartTimes,
   createDefaultClassAssignments,
+  deriveClassOrderWarnings,
   generateLaneAssignments,
   groupEntriesByClass,
   reorderLaneClass,
   updateClassPlayerOrder,
 } from './startlistUtils';
+import { seededRandomUnconstrainedClassOrderPolicy } from './classOrderPolicy';
+
+const extractOrders = (assignments: ReturnType<typeof createDefaultClassAssignments>['assignments']) =>
+  assignments.map((assignment) => ({ classId: assignment.classId, order: assignment.playerOrder }));
 
 describe('groupEntriesByClass', () => {
   it('groups entries by classId trimming whitespace', () => {
@@ -83,6 +88,157 @@ describe('updateClassPlayerOrder', () => {
   });
 });
 
+describe('createDefaultClassAssignments', () => {
+  const entries: Entry[] = [
+    { id: 'entry-1', name: 'A1', classId: 'A', cardNo: '101' },
+    { id: 'entry-2', name: 'A2', classId: 'A', cardNo: '102' },
+    { id: 'entry-3', name: 'A3', classId: 'A', cardNo: '103' },
+    { id: 'entry-4', name: 'A4', classId: 'A', cardNo: '104' },
+    { id: 'entry-5', name: 'B1', classId: 'B', cardNo: '201' },
+    { id: 'entry-6', name: 'B2', classId: 'B', cardNo: '202' },
+    { id: 'entry-7', name: 'B3', classId: 'B', cardNo: '203' },
+    { id: 'entry-8', name: 'B4', classId: 'B', cardNo: '204' },
+  ];
+
+  const laneAssignments = [
+    { laneNumber: 1, classOrder: ['A', 'B'], interval: { milliseconds: 60000 } },
+  ];
+
+  it('recreates identical orders when the same seed is reused', () => {
+    const first = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 45000,
+      laneAssignments,
+      startlistId: 'SL-1',
+    });
+
+    const second = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 45000,
+      laneAssignments,
+      startlistId: 'SL-1',
+      seed: first.seed,
+    });
+
+    expect(second.seed).toBe(first.seed);
+    expect(extractOrders(second.assignments)).toEqual(extractOrders(first.assignments));
+    expect(first.warnings).toHaveLength(0);
+    expect(second.warnings).toHaveLength(0);
+  });
+
+  it('refreshes random order when lane assignment signature changes', () => {
+    const initial = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 45000,
+      laneAssignments,
+      startlistId: 'SL-1',
+    });
+
+    const reversedLaneAssignments = [
+      { laneNumber: 1, classOrder: ['B', 'A'], interval: { milliseconds: 60000 } },
+    ];
+
+    const preservedSeed = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 45000,
+      laneAssignments: reversedLaneAssignments,
+      startlistId: 'SL-1',
+      seed: initial.seed,
+    });
+
+    const regenerated = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 45000,
+      laneAssignments: reversedLaneAssignments,
+      startlistId: 'SL-1',
+    });
+
+    expect(regenerated.seed).not.toBe(initial.seed);
+    expect(extractOrders(preservedSeed.assignments)).toEqual(extractOrders(initial.assignments));
+    expect(extractOrders(regenerated.assignments)).not.toEqual(extractOrders(preservedSeed.assignments));
+    expect(initial.warnings).toHaveLength(0);
+    expect(regenerated.warnings).toHaveLength(0);
+  });
+
+  it('avoids consecutive clubs when possible and reports warnings otherwise', () => {
+    const variedEntries: Entry[] = [
+      { id: 'entry-1', name: 'A1', classId: 'A', cardNo: '101', club: 'Alpha' },
+      { id: 'entry-2', name: 'A2', classId: 'A', cardNo: '102', club: 'Beta' },
+      { id: 'entry-3', name: 'A3', classId: 'A', cardNo: '103', club: 'Alpha' },
+      { id: 'entry-4', name: 'A4', classId: 'A', cardNo: '104', club: 'Gamma' },
+    ];
+
+    const { assignments, warnings } = createDefaultClassAssignments({
+      entries: variedEntries,
+      playerIntervalMs: 60000,
+      startlistId: 'SL-avoid',
+    });
+
+    expect(warnings).toHaveLength(0);
+    const order = assignments[0]?.playerOrder ?? [];
+    const clubMap = new Map(variedEntries.map((entry) => [entry.id, entry.club]));
+    for (let index = 1; index < order.length; index += 1) {
+      expect(clubMap.get(order[index - 1])).not.toBe(clubMap.get(order[index]));
+    }
+
+    const unavoidableEntries: Entry[] = [
+      { id: 'entry-10', name: 'B1', classId: 'B', cardNo: '201', club: 'Delta/Omega' },
+      { id: 'entry-11', name: 'B2', classId: 'B', cardNo: '202', club: 'Delta' },
+      { id: 'entry-12', name: 'B3', classId: 'B', cardNo: '203', club: 'Omega' },
+      { id: 'entry-13', name: 'B4', classId: 'B', cardNo: '204', club: 'Omega' },
+    ];
+
+    const unavoidable = createDefaultClassAssignments({
+      entries: unavoidableEntries,
+      playerIntervalMs: 60000,
+      startlistId: 'SL-warning',
+    });
+
+    expect(unavoidable.warnings).toHaveLength(1);
+    const warning = unavoidable.warnings[0];
+    expect(warning.classId).toBe('B');
+    const overlapSet = new Set(warning.occurrences.flatMap((occurrence) => occurrence.clubs));
+    expect(overlapSet.size).toBeGreaterThan(0);
+    expect(overlapSet.has('Omega')).toBe(true);
+    expect(overlapSet.has('Delta/Omega')).toBe(false);
+  });
+
+  it('skips club warnings when using the unconstrained policy', () => {
+    const overlappingEntries: Entry[] = [
+      { id: 'entry-20', name: 'C1', classId: 'C', cardNo: '301', club: 'Echo' },
+      { id: 'entry-21', name: 'C2', classId: 'C', cardNo: '302', club: 'Echo' },
+    ];
+
+    const { warnings } = createDefaultClassAssignments({
+      entries: overlappingEntries,
+      playerIntervalMs: 60000,
+      startlistId: 'SL-unconstrained',
+      policy: seededRandomUnconstrainedClassOrderPolicy,
+    });
+
+    expect(warnings).toHaveLength(0);
+  });
+});
+
+describe('deriveClassOrderWarnings', () => {
+  it('recomputes warnings for existing assignments', () => {
+    const entries: Entry[] = [
+      { id: 'entry-1', name: 'A', classId: 'A', cardNo: '1', club: 'Same' },
+      { id: 'entry-2', name: 'B', classId: 'A', cardNo: '2', club: 'Same' },
+      { id: 'entry-3', name: 'C', classId: 'A', cardNo: '3', club: 'Different' },
+    ];
+
+    const assignments = [
+      { classId: 'A', playerOrder: ['entry-1', 'entry-2', 'entry-3'], interval: { milliseconds: 60000 } },
+    ];
+
+    const warnings = deriveClassOrderWarnings(assignments, entries);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.occurrences).toHaveLength(1);
+    expect(warnings[0]?.occurrences[0]?.clubs).toContain('Same');
+  });
+});
+
 describe('calculateStartTimes', () => {
   const entries: Entry[] = [
     { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1001' },
@@ -105,7 +261,11 @@ describe('calculateStartTimes', () => {
     const laneAssignments = [
       { laneNumber: 1, classOrder: ['M21', 'W21'], interval: { milliseconds: 90000 } },
     ];
-    const classAssignments = createDefaultClassAssignments(entries, 60000);
+    const { assignments: classAssignments } = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 60000,
+      startlistId: 'SL-1',
+    });
     const settings = {
       eventId: 'event',
       startTime: new Date('2024-01-01T09:00:00.000Z').toISOString(),

@@ -1,12 +1,15 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
-import type { ForwardedRef } from 'react';
+import type { ChangeEvent, ForwardedRef } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { DurationDto, StartlistSettingsDto } from '@startlist-management/application';
+import { deriveClassOrderWarnings } from '../utils/startlistUtils';
 import {
   createDefaultStartlistId,
   createStatus,
   setStatus,
+  updateClassAssignments,
   updateSettings,
+  updateClassOrderPreferences,
   useStartlistDispatch,
   useStartlistState,
 } from '../state/StartlistContext';
@@ -115,7 +118,8 @@ export type SettingsFormHandle = {
 };
 
 const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.Element => {
-  const { settings, startlistId, statuses } = useStartlistState();
+  const { settings, startlistId, statuses, classOrderPreferences, classAssignments, entries } =
+    useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
@@ -126,6 +130,9 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
     () => settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS,
   );
   const [laneCount, setLaneCount] = useState(settings?.laneCount ?? 1);
+  const [avoidConsecutiveClubs, setAvoidConsecutiveClubs] = useState(
+    () => classOrderPreferences.avoidConsecutiveClubs,
+  );
 
   const laneIntervalOptions = useMemo(
     () => ensureIntervalOption(createIntervalOptions(60, true), laneIntervalMs),
@@ -142,6 +149,23 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
     setPlayerIntervalMs(settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS);
     setLaneCount(settings?.laneCount ?? 1);
   }, [settings]);
+
+  useEffect(() => {
+    setAvoidConsecutiveClubs(classOrderPreferences.avoidConsecutiveClubs);
+  }, [classOrderPreferences.avoidConsecutiveClubs]);
+
+  const handlePreferenceChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.checked;
+    setAvoidConsecutiveClubs(nextValue);
+    updateClassOrderPreferences(dispatch, { avoidConsecutiveClubs: nextValue });
+    if (nextValue && classAssignments.length > 0) {
+      const warnings = deriveClassOrderWarnings(classAssignments, entries);
+      updateClassAssignments(dispatch, classAssignments, undefined, warnings);
+    }
+    if (!nextValue && classAssignments.length > 0) {
+      updateClassAssignments(dispatch, classAssignments, undefined, []);
+    }
+  };
 
   const validateAndSave = (): StartlistSettingsDto | null => {
     if (!startTime) {
@@ -229,6 +253,15 @@ const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.El
         <label>
           レーン数
           <input type="number" min={1} value={laneCount} onChange={(event) => setLaneCount(Number(event.target.value))} />
+        </label>
+        <label className="form-checkbox">
+          <input type="checkbox" checked={avoidConsecutiveClubs} onChange={handlePreferenceChange} />
+          <span>
+            同じ所属が連続で並ばないようにする
+            <span className="form-checkbox__hint">
+              チェックを外すと所属を考慮しない完全ランダムで並び替えます。
+            </span>
+          </span>
         </label>
       </form>
       <StatusMessage tone={statuses.settings.level} message={statuses.settings.text} />

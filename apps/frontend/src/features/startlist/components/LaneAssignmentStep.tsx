@@ -14,6 +14,7 @@ import {
   useStartlistState,
 } from '../state/StartlistContext';
 import { calculateStartTimes, createDefaultClassAssignments } from '../utils/startlistUtils';
+import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
 import type { LaneAssignmentDto } from '@startlist-management/application';
 import { reorderLaneClass } from '../utils/startlistUtils';
 import { Tabs } from '../../../components/tabs';
@@ -207,7 +208,16 @@ const LaneColumn = ({
 };
 
 const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX.Element => {
-  const { laneAssignments, entries, settings, statuses } = useStartlistState();
+  const {
+    laneAssignments,
+    entries,
+    settings,
+    statuses,
+    startlistId,
+    classAssignments: existingClassAssignments,
+    classOrderSeed,
+    classOrderPreferences,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const laneCount = settings?.laneCount ?? laneAssignments.length;
@@ -390,18 +400,43 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
       setStatus(dispatch, 'lanes', createStatus('レーン割り当てを確認してください。', 'error'));
       return;
     }
-    const classAssignments = createDefaultClassAssignments(entries, playerIntervalMs || laneIntervalMs);
-    updateClassAssignments(dispatch, classAssignments);
-    if (classAssignments.length === 0) {
-      setStatus(dispatch, 'classes', createStatus('クラス内順序を作成できませんでした。', 'error'));
-      return;
+    let nextClassAssignments = existingClassAssignments;
+    if (!nextClassAssignments.length) {
+      const policy = classOrderPreferences.avoidConsecutiveClubs
+        ? seededRandomClassOrderPolicy
+        : seededRandomUnconstrainedClassOrderPolicy;
+      const { assignments, seed, warnings } = createDefaultClassAssignments({
+        entries,
+        playerIntervalMs: playerIntervalMs || laneIntervalMs,
+        laneAssignments,
+        startlistId,
+        seed: classOrderSeed,
+        policy,
+      });
+      nextClassAssignments = assignments;
+      updateClassAssignments(dispatch, assignments, seed, warnings);
+      if (assignments.length === 0) {
+        setStatus(dispatch, 'classes', createStatus('クラス内順序を作成できませんでした。', 'error'));
+        return;
+      }
+      if (classOrderPreferences.avoidConsecutiveClubs && warnings.length > 0) {
+        setStatus(
+          dispatch,
+          'classes',
+          createStatus(
+            `${assignments.length} クラスの順序を自動で作成しましたが、${warnings.length} クラスで所属が連続する可能性があります。STEP 3 で詳細を確認してください。`,
+            'info',
+          ),
+        );
+      } else {
+        setStatus(dispatch, 'classes', createStatus('クラス内の順序を自動で作成しました。', 'success'));
+      }
     }
-    setStatus(dispatch, 'classes', createStatus('クラス内の順序を自動で作成しました。', 'success'));
 
     const startTimes = calculateStartTimes({
       settings,
       laneAssignments,
-      classAssignments,
+      classAssignments: nextClassAssignments,
       entries,
     });
     updateStartTimes(dispatch, startTimes);

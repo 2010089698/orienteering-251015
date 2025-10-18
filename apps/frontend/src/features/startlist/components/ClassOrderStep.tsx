@@ -20,7 +20,7 @@ import {
   useStartlistState,
   setLoading,
 } from '../state/StartlistContext';
-import { calculateStartTimes, updateClassPlayerOrder } from '../utils/startlistUtils';
+import { calculateStartTimes, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
 import type { ClassAssignmentDto } from '@startlist-management/application';
 import { Tabs } from '../../../components/tabs';
 import { downloadStartlistCsv } from '../utils/startlistExport';
@@ -56,6 +56,7 @@ type StartTimeRow = {
   playerId: string;
   cardNo: string;
   name: string;
+  club: string;
   classId: string;
   laneNumber: number;
   startTimeIso: string;
@@ -108,7 +109,17 @@ const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDt
 };
 
 const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
-  const { classAssignments, startTimes, settings, laneAssignments, entries, statuses, loading } =
+  const {
+    classAssignments,
+    startTimes,
+    settings,
+    laneAssignments,
+    entries,
+    statuses,
+    loading,
+    classOrderWarnings,
+    classOrderPreferences,
+  } =
     useStartlistState();
   const dispatch = useStartlistDispatch();
 
@@ -134,6 +145,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         playerId: item.playerId,
         cardNo: entry?.cardNo ?? item.playerId,
         name: entry?.name ?? '（名前未入力）',
+        club: entry?.club ?? '（所属未入力）',
         classId: entry?.classId ?? '不明',
         laneNumber: item.laneNumber,
         startTimeIso: isoValue,
@@ -229,6 +241,20 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     }
   }, [activeTab, classTabMap]);
 
+  const avoidConsecutiveClubs = classOrderPreferences.avoidConsecutiveClubs;
+
+  const warningSummaries = useMemo(() => {
+    if (!avoidConsecutiveClubs) {
+      return [] as { classId: string; clubs: string[] }[];
+    }
+    return classOrderWarnings.map((warning) => {
+      const clubs = Array.from(
+        new Set(warning.occurrences.flatMap((occurrence) => occurrence.clubs)),
+      ).sort((a, b) => a.localeCompare(b, 'ja'));
+      return { classId: warning.classId, clubs };
+    });
+  }, [classOrderWarnings, avoidConsecutiveClubs]);
+
   const reorderWithinClass = (classId: string, fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) {
       return;
@@ -238,7 +264,10 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
       return;
     }
     const nextAssignments = updateClassPlayerOrder(classAssignments, classId, fromIndex, toIndex);
-    updateClassAssignments(dispatch, nextAssignments);
+    const warnings = avoidConsecutiveClubs
+      ? deriveClassOrderWarnings(nextAssignments, entries)
+      : [];
+    updateClassAssignments(dispatch, nextAssignments, undefined, warnings);
     if (!settings) {
       return;
     }
@@ -319,6 +348,22 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           です。
         </p>
       </header>
+      {avoidConsecutiveClubs && warningSummaries.length > 0 && (
+        <div className="class-order-warning">
+          <StatusMessage
+            tone="error"
+            message="人数の組み合わせの都合で所属が連続するクラスがあります。下記をご確認ください。"
+          />
+          <ul className="class-order-warning__list">
+            {warningSummaries.map((item) => (
+              <li key={item.classId}>
+                {item.classId}
+                {item.clubs.length > 0 ? `（${item.clubs.join('・')}）` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {classAssignments.length === 0 ? (
         <p className="muted">クラス内順序がまだ作成されていません。STEP 2 から進めてください。</p>
       ) : (
@@ -348,11 +393,13 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                     {startTimeRows.length > 0 ? (
                       <div className="table-wrapper">
                         <table>
-                          <caption>スタート時間一覧</caption>
+                          <caption>スタートリスト</caption>
                           <thead>
                             <tr>
                               <th>クラス</th>
-                              <th>名前 / カード番号</th>
+                              <th>氏名</th>
+                              <th>所属</th>
+                              <th>カード番号</th>
                               <th>レーン</th>
                               <th>スタート時刻</th>
                             </tr>
@@ -361,9 +408,9 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                             {startTimeRows.map((row) => (
                               <tr key={`${row.playerId}-${row.laneNumber}`}>
                                 <td>{row.classId}</td>
-                                <td>
-                                  {row.name} / {row.cardNo}
-                                </td>
+                                <td>{row.name}</td>
+                                <td>{row.club}</td>
+                                <td>{row.cardNo}</td>
                                 <td>{row.laneNumber}</td>
                                 <td>{row.startTimeLabel}</td>
                               </tr>
@@ -432,7 +479,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                                       >
                                         <div className="order-row">
                                           <span>
-                                            {entry?.name || '（名前未入力）'} / {entry?.cardNo ?? playerId}
+                                            {entry?.name || '（名前未入力）'} | {entry?.club ?? '（所属未入力）'}
                                           </span>
                                           <span className="inline-buttons">
                                             <button
@@ -446,7 +493,9 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                                             <button
                                               type="button"
                                               className="secondary"
-                                              onClick={() => handleMove(tabInfo.assignment.classId, index, 1)}
+                                              onClick={() =>
+                                                handleMove(tabInfo.assignment.classId, index, 1)
+                                              }
                                               disabled={index === tabInfo.assignment.playerOrder.length - 1}
                                             >
                                               ↓
@@ -466,10 +515,12 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                         {rows.length > 0 ? (
                           <div className="table-wrapper">
                             <table>
-                              <caption>{`${tabInfo.assignment.classId} のスタート時間`}</caption>
+                              <caption>{`${tabInfo.assignment.classId} のスタートリスト`}</caption>
                               <thead>
                                 <tr>
-                                  <th>名前 / カード番号</th>
+                                  <th>氏名</th>
+                                  <th>所属</th>
+                                  <th>カード番号</th>
                                   <th>レーン</th>
                                   <th>スタート時刻</th>
                                 </tr>
@@ -477,9 +528,9 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                               <tbody>
                                 {rows.map((row) => (
                                   <tr key={`${row.playerId}-${row.laneNumber}`}>
-                                    <td>
-                                      {row.name} / {row.cardNo}
-                                    </td>
+                                    <td>{row.name}</td>
+                                    <td>{row.club}</td>
+                                    <td>{row.cardNo}</td>
                                     <td>{row.laneNumber}</td>
                                     <td>{row.startTimeLabel}</td>
                                   </tr>

@@ -15,6 +15,9 @@ describe('SettingsForm', () => {
     const laneIntervalSelect = screen.getByLabelText('レーン内クラス間隔') as HTMLSelectElement;
     expect(laneIntervalSelect.value).toBe('0');
 
+    const preferenceCheckbox = screen.getByRole('checkbox', { name: /同じ所属が連続で並ばないようにする/ });
+    expect(preferenceCheckbox).toBeChecked();
+
     fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '2024-01-01T09:00' } });
     await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
     fireEvent.change(screen.getByLabelText('レーン数'), { target: { value: '3' } });

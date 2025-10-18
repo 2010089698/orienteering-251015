@@ -11,10 +11,21 @@ import {
   useStartlistDispatch,
   useStartlistState,
 } from '../state/StartlistContext';
-import { createDefaultClassAssignments, updateClassPlayerOrder } from '../utils/startlistUtils';
+import { createDefaultClassAssignments, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
+import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
 
 const ClassOrderPanel = (): JSX.Element => {
-  const { entries, settings, classAssignments, startlistId, statuses, loading } = useStartlistState();
+  const {
+    entries,
+    settings,
+    classAssignments,
+    startlistId,
+    statuses,
+    loading,
+    laneAssignments,
+    classOrderSeed,
+    classOrderPreferences,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
@@ -26,12 +37,33 @@ const ClassOrderPanel = (): JSX.Element => {
       return;
     }
     const interval = settings.intervals?.classPlayer?.milliseconds ?? 0;
-    const assignments = createDefaultClassAssignments(entries, interval);
-    updateClassAssignments(dispatch, assignments);
+    const policy = classOrderPreferences.avoidConsecutiveClubs
+      ? seededRandomClassOrderPolicy
+      : seededRandomUnconstrainedClassOrderPolicy;
+    const { assignments, seed, warnings } = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: interval,
+      laneAssignments,
+      startlistId,
+      seed: classOrderSeed,
+      policy,
+    });
+    updateClassAssignments(dispatch, assignments, seed, warnings);
     if (assignments.length === 0) {
       setStatus(dispatch, 'classes', createStatus('エントリーが登録されていません。', 'error'));
     } else {
-      setStatus(dispatch, 'classes', createStatus(`${assignments.length} クラスの順序を生成しました。`, 'success'));
+      if (classOrderPreferences.avoidConsecutiveClubs && warnings.length > 0) {
+        setStatus(
+          dispatch,
+          'classes',
+          createStatus(
+            `${assignments.length} クラスの順序を生成しましたが、${warnings.length} クラスで所属が連続する可能性があります。STEP 3 で詳細を確認してください。`,
+            'info',
+          ),
+        );
+      } else {
+        setStatus(dispatch, 'classes', createStatus(`${assignments.length} クラスの順序を生成しました。`, 'success'));
+      }
     }
   };
 
@@ -66,7 +98,10 @@ const ClassOrderPanel = (): JSX.Element => {
       return;
     }
     const updated = updateClassPlayerOrder(classAssignments, assignment.classId, index, nextIndex);
-    updateClassAssignments(dispatch, updated);
+    const warnings = classOrderPreferences.avoidConsecutiveClubs
+      ? deriveClassOrderWarnings(updated, entries)
+      : [];
+    updateClassAssignments(dispatch, updated, undefined, warnings);
     setStatus(dispatch, 'classes', createStatus('クラス内順序を更新しました。', 'info'));
   };
 

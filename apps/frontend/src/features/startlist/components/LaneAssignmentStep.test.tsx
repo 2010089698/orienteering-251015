@@ -1,8 +1,24 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import LaneAssignmentStep from './LaneAssignmentStep';
 import { renderWithStartlist } from '../test/test-utils';
+import { useStartlistState } from '../state/StartlistContext';
+
+const ClassOrderPreview = () => {
+  const { classAssignments, classOrderSeed } = useStartlistState();
+  return (
+    <div data-testid="class-order-preview" data-seed={classOrderSeed ?? ''}>
+      {classAssignments.map((assignment) => (
+        <div
+          key={assignment.classId}
+          data-testid={`class-order-${assignment.classId}`}
+          data-order={assignment.playerOrder.join(',')}
+        />
+      ))}
+    </div>
+  );
+};
 
 const baseSettings = {
   eventId: 'event-1',
@@ -75,8 +91,8 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('confirms assignments and generates next steps', async () => {
-    let confirmed = false;
-    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={() => (confirmed = true)} />, {
+    const onConfirm = vi.fn();
+    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />, {
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -89,6 +105,51 @@ describe('LaneAssignmentStep', () => {
 
     expect(await screen.findByText('クラス内の順序を自動で作成しました。')).toBeInTheDocument();
     expect(await screen.findByText('スタート時間を割り当てました。')).toBeInTheDocument();
-    expect(confirmed).toBe(true);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves generated class order when re-confirming step 2', async () => {
+    const onConfirm = vi.fn();
+    renderWithStartlist(
+      <>
+        <LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />
+        <ClassOrderPreview />
+      </>,
+      {
+        initialState: {
+          startlistId: 'SL-1',
+          settings: baseSettings,
+          entries,
+          laneAssignments,
+        },
+      },
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '割り当て確定（順番と時間を作成）' }));
+
+    const preview = await screen.findByTestId('class-order-preview');
+    const initialSeed = preview.getAttribute('data-seed');
+    expect(initialSeed).not.toBe('');
+    const initialOrders = within(preview)
+      .getAllByTestId(/class-order-/)
+      .map((node) => ({
+        id: node.getAttribute('data-testid')?.replace('class-order-', '') ?? '',
+        order: node.getAttribute('data-order'),
+      }));
+
+    await userEvent.click(screen.getByRole('button', { name: '割り当て確定（順番と時間を作成）' }));
+
+    const previewAfter = await screen.findByTestId('class-order-preview');
+    const secondSeed = previewAfter.getAttribute('data-seed');
+    const secondOrders = within(previewAfter)
+      .getAllByTestId(/class-order-/)
+      .map((node) => ({
+        id: node.getAttribute('data-testid')?.replace('class-order-', '') ?? '',
+        order: node.getAttribute('data-order'),
+      }));
+
+    expect(secondSeed).toBe(initialSeed);
+    expect(secondOrders).toEqual(initialOrders);
+    expect(onConfirm).toHaveBeenCalledTimes(2);
   });
 });

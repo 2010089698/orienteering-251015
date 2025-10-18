@@ -5,7 +5,16 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
-import type { Entry, EntryDraft, StartlistState, StatusKey, StatusMessageState } from './types';
+import { deriveSeededRandomClassOrderSeed } from '../utils/classOrderPolicy';
+import type {
+  ClassOrderPreferences,
+  ClassOrderWarning,
+  Entry,
+  EntryDraft,
+  StartlistState,
+  StatusKey,
+  StatusMessageState,
+} from './types';
 
 export const createDefaultStartlistId = (): string => {
   const now = new Date();
@@ -36,6 +45,9 @@ const initialState: StartlistState = {
   entries: [],
   laneAssignments: [],
   classAssignments: [],
+  classOrderSeed: undefined,
+  classOrderWarnings: [],
+  classOrderPreferences: { avoidConsecutiveClubs: true },
   startTimes: [],
   snapshot: undefined,
   statuses: initialStatuses,
@@ -83,10 +95,14 @@ type StartlistAction =
   | { type: 'REMOVE_ENTRY'; payload: { id: string } }
   | { type: 'SET_ENTRIES'; payload: Entry[] }
   | { type: 'SET_LANE_ASSIGNMENTS'; payload: LaneAssignmentDto[] }
-  | { type: 'SET_CLASS_ASSIGNMENTS'; payload: ClassAssignmentDto[] }
+  | {
+      type: 'SET_CLASS_ASSIGNMENTS';
+      payload: { assignments: ClassAssignmentDto[]; seed?: string; warnings?: ClassOrderWarning[] };
+    }
   | { type: 'SET_START_TIMES'; payload: StartTimeDto[] }
   | { type: 'SET_STATUS'; payload: { key: StatusKey; status: StatusMessageState } }
-  | { type: 'SET_LOADING'; payload: { key: StatusKey; value: boolean } };
+  | { type: 'SET_LOADING'; payload: { key: StatusKey; value: boolean } }
+  | { type: 'SET_CLASS_ORDER_PREFERENCES'; payload: ClassOrderPreferences };
 
 const startlistReducer = (state: StartlistState, action: StartlistAction): StartlistState => {
   switch (action.type) {
@@ -109,9 +125,33 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
     case 'SET_ENTRIES':
       return { ...state, entries: action.payload };
     case 'SET_LANE_ASSIGNMENTS':
-      return { ...state, laneAssignments: action.payload };
+      if (!state.classAssignments.length || !state.classOrderSeed) {
+        return { ...state, laneAssignments: action.payload };
+      }
+      {
+        const derivedSeed = deriveSeededRandomClassOrderSeed({
+          startlistId: state.startlistId,
+          entries: state.entries,
+          laneAssignments: action.payload,
+        });
+        if (derivedSeed === state.classOrderSeed) {
+          return { ...state, laneAssignments: action.payload };
+        }
+        return {
+          ...state,
+          laneAssignments: action.payload,
+          classAssignments: [],
+          classOrderSeed: undefined,
+          classOrderWarnings: [],
+        };
+      }
     case 'SET_CLASS_ASSIGNMENTS':
-      return { ...state, classAssignments: action.payload };
+      return {
+        ...state,
+        classAssignments: action.payload.assignments,
+        classOrderSeed: action.payload.seed ?? state.classOrderSeed,
+        classOrderWarnings: action.payload.warnings ?? [],
+      };
     case 'SET_START_TIMES':
       return { ...state, startTimes: action.payload };
     case 'SET_STATUS':
@@ -129,6 +169,11 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
           ...state.loading,
           [action.payload.key]: action.payload.value,
         },
+      };
+    case 'SET_CLASS_ORDER_PREFERENCES':
+      return {
+        ...state,
+        classOrderPreferences: action.payload,
       };
     default:
       return state;
@@ -218,8 +263,10 @@ export const updateLaneAssignments = (
 export const updateClassAssignments = (
   dispatch: React.Dispatch<StartlistAction>,
   assignments: ClassAssignmentDto[],
+  seed?: string,
+  warnings?: ClassOrderWarning[],
 ): void => {
-  dispatch({ type: 'SET_CLASS_ASSIGNMENTS', payload: assignments });
+  dispatch({ type: 'SET_CLASS_ASSIGNMENTS', payload: { assignments, seed, warnings } });
 };
 
 export const updateStartTimes = (
@@ -241,4 +288,11 @@ export const updateSnapshot = (
   snapshot?: unknown,
 ): void => {
   dispatch({ type: 'SET_SNAPSHOT', payload: snapshot });
+};
+
+export const updateClassOrderPreferences = (
+  dispatch: React.Dispatch<StartlistAction>,
+  preferences: ClassOrderPreferences,
+): void => {
+  dispatch({ type: 'SET_CLASS_ORDER_PREFERENCES', payload: preferences });
 };

@@ -33,9 +33,9 @@ const classAssignments = [
 ];
 
 const entries = [
-  { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
-  { id: 'entry-2', name: 'B', classId: 'M21', cardNo: '2' },
-  { id: 'entry-3', name: 'C', classId: 'W21', cardNo: '3' },
+  { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1', club: 'Alpha OC' },
+  { id: 'entry-2', name: 'B', classId: 'M21', cardNo: '2', club: 'Beta OC' },
+  { id: 'entry-3', name: 'C', classId: 'W21', cardNo: '3', club: 'Gamma OC' },
 ];
 
 const startTimes = [
@@ -82,7 +82,7 @@ describe('ClassOrderStep', () => {
     const overviewTab = screen.getByRole('tab', { name: '一覧' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
 
-    const overviewTable = screen.getByRole('table', { name: 'スタート時間一覧' });
+    const overviewTable = screen.getByRole('table', { name: 'スタートリスト' });
     expect(overviewTable).toBeInTheDocument();
 
     const initialPanels = screen.getAllByRole('tabpanel', { hidden: true });
@@ -94,7 +94,7 @@ describe('ClassOrderStep', () => {
     await userEvent.click(m21Tab);
 
     expect(m21Tab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.queryByRole('table', { name: 'スタート時間一覧' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'スタートリスト' })).not.toBeInTheDocument();
 
     const activePanels = screen.getAllByRole('tabpanel', { hidden: true });
     const m21Panel = activePanels.find((panel) => panel.id.includes('class-m21'));
@@ -102,11 +102,11 @@ describe('ClassOrderStep', () => {
     expect(m21Panel).not.toHaveAttribute('hidden');
     expect(w21Panel).toHaveAttribute('hidden');
 
-    expect(screen.getByRole('table', { name: 'M21 のスタート時間' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'M21 のスタートリスト' })).toBeInTheDocument();
 
     await userEvent.click(overviewTab);
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('table', { name: 'スタート時間一覧' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'スタートリスト' })).toBeInTheDocument();
   });
 
   it('allows exporting CSV from the step actions row', async () => {
@@ -148,5 +148,31 @@ describe('ClassOrderStep', () => {
 
     const exportButton = screen.getByRole('button', { name: 'CSV をエクスポート' });
     expect(exportButton).toBeDisabled();
+  });
+
+  it('shows warnings when consecutive club assignments exist', () => {
+    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        laneAssignments,
+        classAssignments,
+        entries,
+        startTimes,
+        classOrderWarnings: [
+          {
+            classId: 'M21',
+            occurrences: [
+              { previousPlayerId: 'entry-1', nextPlayerId: 'entry-2', clubs: ['Alpha OC'] },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      screen.getByText('人数の組み合わせの都合で所属が連続するクラスがあります。下記をご確認ください。'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('M21（Alpha OC）')).toBeInTheDocument();
   });
 });
