@@ -14,6 +14,7 @@ import type {
   StartlistState,
   StatusKey,
   StatusMessageState,
+  StartOrderRules,
   WorldRankingMap,
 } from './types';
 
@@ -61,8 +62,8 @@ const initialState: StartlistState = {
   snapshot: undefined,
   statuses: initialStatuses,
   loading: {},
-  worldRanking: new Map(),
-  worldRankingTargetClassIds: new Set(),
+  startOrderRules: [],
+  worldRankingByClass: new Map(),
 };
 
 type EntryInput = Entry | EntryDraft;
@@ -114,8 +115,9 @@ type StartlistAction =
   | { type: 'SET_STATUS'; payload: { key: StatusKey; status: StatusMessageState } }
   | { type: 'SET_LOADING'; payload: { key: StatusKey; value: boolean } }
   | { type: 'SET_CLASS_ORDER_PREFERENCES'; payload: ClassOrderPreferences }
-  | { type: 'SET_WORLD_RANKING'; payload: [string, number][] }
-  | { type: 'SET_WORLD_RANKING_TARGETS'; payload: string[] };
+  | { type: 'SET_START_ORDER_RULES'; payload: StartOrderRules }
+  | { type: 'SET_CLASS_WORLD_RANKING'; payload: { classId: string; ranking: [string, number][] } }
+  | { type: 'REMOVE_CLASS_WORLD_RANKING'; payload: { classId: string } };
 
 const startlistReducer = (state: StartlistState, action: StartlistAction): StartlistState => {
   switch (action.type) {
@@ -188,16 +190,27 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
         ...state,
         classOrderPreferences: action.payload,
       };
-    case 'SET_WORLD_RANKING':
+    case 'SET_START_ORDER_RULES':
       return {
         ...state,
-        worldRanking: new Map<string, number>(action.payload),
+        startOrderRules: action.payload,
       };
-    case 'SET_WORLD_RANKING_TARGETS':
+    case 'SET_CLASS_WORLD_RANKING': {
+      const next = new Map(state.worldRankingByClass);
+      next.set(action.payload.classId, new Map<string, number>(action.payload.ranking));
       return {
         ...state,
-        worldRankingTargetClassIds: new Set<string>(action.payload),
+        worldRankingByClass: next,
       };
+    }
+    case 'REMOVE_CLASS_WORLD_RANKING': {
+      const next = new Map(state.worldRankingByClass);
+      next.delete(action.payload.classId);
+      return {
+        ...state,
+        worldRankingByClass: next,
+      };
+    }
     default:
       return state;
   }
@@ -320,16 +333,27 @@ export const updateClassOrderPreferences = (
   dispatch({ type: 'SET_CLASS_ORDER_PREFERENCES', payload: preferences });
 };
 
-export const updateWorldRanking = (
+export const setStartOrderRules = (
   dispatch: React.Dispatch<StartlistAction>,
-  worldRanking: WorldRankingMap,
+  rules: StartOrderRules,
 ): void => {
-  dispatch({ type: 'SET_WORLD_RANKING', payload: Array.from(worldRanking.entries()) });
+  dispatch({ type: 'SET_START_ORDER_RULES', payload: rules });
 };
 
-export const setWorldRankingTargetClasses = (
+export const updateClassWorldRanking = (
   dispatch: React.Dispatch<StartlistAction>,
-  classIds: Iterable<string>,
+  classId: string,
+  worldRanking: WorldRankingMap,
 ): void => {
-  dispatch({ type: 'SET_WORLD_RANKING_TARGETS', payload: Array.from(classIds) });
+  dispatch({
+    type: 'SET_CLASS_WORLD_RANKING',
+    payload: { classId, ranking: Array.from(worldRanking.entries()) },
+  });
+};
+
+export const removeClassWorldRanking = (
+  dispatch: React.Dispatch<StartlistAction>,
+  classId: string,
+): void => {
+  dispatch({ type: 'REMOVE_CLASS_WORLD_RANKING', payload: { classId } });
 };

@@ -16,8 +16,8 @@ import {
   updateStartTimes,
   updateSnapshot,
   updateEntries,
-  updateWorldRanking,
-  setWorldRankingTargetClasses,
+  setStartOrderRules,
+  updateClassWorldRanking,
 } from './StartlistContext';
 
 describe('StartlistContext', () => {
@@ -71,8 +71,10 @@ describe('StartlistContext', () => {
         { playerId: entryId, laneNumber: 1, startTime: settings.startTime },
       ]);
       updateSnapshot(result.current.dispatch, { foo: 'bar' });
-      updateWorldRanking(result.current.dispatch, new Map([['IOF001', 12]]));
-      setWorldRankingTargetClasses(result.current.dispatch, ['M21']);
+      setStartOrderRules(result.current.dispatch, [
+        { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
+      ]);
+      updateClassWorldRanking(result.current.dispatch, 'M21', new Map([['IOF001', 12]]));
     });
 
     expect(result.current.state.startlistId).toBe('SL-1');
@@ -84,8 +86,10 @@ describe('StartlistContext', () => {
     expect(result.current.state.classAssignments).toHaveLength(1);
     expect(result.current.state.startTimes).toHaveLength(1);
     expect(result.current.state.snapshot).toEqual({ foo: 'bar' });
-    expect(result.current.state.worldRanking.get('IOF001')).toBe(12);
-    expect(Array.from(result.current.state.worldRankingTargetClassIds)).toEqual(['M21']);
+    expect(result.current.state.startOrderRules).toEqual([
+      { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
+    ]);
+    expect(result.current.state.worldRankingByClass.get('M21')?.get('IOF001')).toBe(12);
 
     act(() => {
       removeEntry(result.current.dispatch, entryId);

@@ -4,11 +4,7 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
-import type {
-  Entry,
-  WorldRankingMap,
-  WorldRankingTargetClassIds,
-} from '../state/types';
+import type { Entry, StartOrderRules, WorldRankingByClass, WorldRankingMap } from '../state/types';
 import {
   type ClassGroup,
   type ClassOrderWarning,
@@ -109,8 +105,8 @@ export interface CreateDefaultClassAssignmentsOptions {
   startlistId?: string;
   laneAssignments?: LaneAssignmentDto[];
   policy?: ClassOrderPolicy;
-  worldRanking?: WorldRankingMap;
-  worldRankingTargetClassIds?: WorldRankingTargetClassIds;
+  startOrderRules?: StartOrderRules;
+  worldRankingByClass?: WorldRankingByClass;
 }
 
 export interface CreateDefaultClassAssignmentsResult {
@@ -126,8 +122,8 @@ export const createDefaultClassAssignments = ({
   startlistId,
   laneAssignments,
   policy = seededRandomClassOrderPolicy,
-  worldRanking,
-  worldRankingTargetClassIds,
+  startOrderRules,
+  worldRankingByClass,
 }: CreateDefaultClassAssignmentsOptions): CreateDefaultClassAssignmentsResult => {
   const groups = Array.from(groupEntriesByClass(entries).entries()).map<ClassGroup>(([classId, value]) => ({
     classId,
@@ -138,14 +134,14 @@ export const createDefaultClassAssignments = ({
     startlistId,
     entries,
     laneAssignments,
-    worldRanking,
-    worldRankingTargetClassIds,
+    startOrderRules,
+    worldRankingByClass,
   });
   const { playerOrders, warnings } = policy.execute({
     groups,
     seed: derivedSeed,
-    worldRanking,
-    worldRankingTargetClassIds,
+    startOrderRules,
+    worldRankingByClass,
   });
   return {
     assignments: createClassAssignmentsFromOrders(groups, playerOrders, playerIntervalMs),

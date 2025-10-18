@@ -217,8 +217,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     classAssignments: existingClassAssignments,
     classOrderSeed,
     classOrderPreferences,
-    worldRanking,
-    worldRankingTargetClassIds,
+    startOrderRules,
+    worldRankingByClass,
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
@@ -404,6 +404,15 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     }
     let nextClassAssignments = existingClassAssignments;
     if (!nextClassAssignments.length) {
+      const missingCsvClasses = startOrderRules
+        .filter((rule) => rule.method === 'worldRanking' && rule.classId && !rule.csvName)
+        .map((rule) => rule.classId as string);
+      if (missingCsvClasses.length > 0) {
+        const message = `世界ランキング方式のクラス (${missingCsvClasses.join(', ')}) の CSV が読み込まれていません。`;
+        setStatus(dispatch, 'startOrder', createStatus(message, 'error'));
+        setStatus(dispatch, 'classes', createStatus('世界ランキングの CSV を読み込んでからクラス内順序を作成してください。', 'error'));
+        return;
+      }
       const policy = classOrderPreferences.avoidConsecutiveClubs
         ? seededRandomClassOrderPolicy
         : seededRandomUnconstrainedClassOrderPolicy;
@@ -414,8 +423,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         startlistId,
         seed: classOrderSeed,
         policy,
-        worldRanking,
-        worldRankingTargetClassIds,
+        startOrderRules,
+        worldRankingByClass,
       });
       nextClassAssignments = assignments;
       updateClassAssignments(dispatch, assignments, seed, warnings);
