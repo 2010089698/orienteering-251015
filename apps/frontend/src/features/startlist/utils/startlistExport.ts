@@ -25,29 +25,24 @@ export type BuildStartlistExportRowsOptions = {
 
 const DEFAULT_START_NUMBER_OFFSET = 1;
 
-const formatJstTimestamp = (value: string): string => {
+const formatJstTime = (value: string, includeSeconds: boolean): string => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+  return date.toLocaleTimeString('ja-JP', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+    second: includeSeconds ? '2-digit' : undefined,
     hour12: false,
     timeZone: 'Asia/Tokyo',
-    timeZoneName: 'short',
   });
 };
 
-const normalizeStartTime = (startTime: Date | string): { iso: string; timestamp: number; label: string } => {
+const normalizeStartTime = (startTime: Date | string): { iso: string; timestamp: number } => {
   const iso = typeof startTime === 'string' ? startTime : startTime.toISOString();
   const timestamp = Date.parse(iso);
-  const label = formatJstTimestamp(iso);
-  return { iso, timestamp, label };
+  return { iso, timestamp };
 };
 
 const escapeCsvValue = (value: string): string => {
@@ -75,6 +70,14 @@ export const buildStartlistExportRows = ({
     });
   });
 
+  const classIntervalMap = new Map<string, number>();
+  classAssignments.forEach((assignment) => {
+    const intervalMs = assignment.interval?.milliseconds;
+    if (typeof intervalMs === 'number') {
+      classIntervalMap.set(assignment.classId, intervalMs);
+    }
+  });
+
   const startTimeEntries = startTimes.map((item, index) => {
     const normalized = normalizeStartTime(item.startTime);
     return {
@@ -96,6 +99,10 @@ export const buildStartlistExportRows = ({
     if (bInvalid) {
       return -1;
     }
+    const laneDiff = (a.item.laneNumber ?? Number.POSITIVE_INFINITY) - (b.item.laneNumber ?? Number.POSITIVE_INFINITY);
+    if (laneDiff !== 0) {
+      return laneDiff;
+    }
     if (a.normalized.timestamp === b.normalized.timestamp) {
       return a.index - b.index;
     }
@@ -104,8 +111,9 @@ export const buildStartlistExportRows = ({
 
   const rows: StartlistExportRow[] = [];
   const usedStartNumbers = new Set<string>();
+  const laneCounters = new Map<number, number>();
 
-  startTimeEntries.forEach(({ item, normalized }, sortedIndex) => {
+  startTimeEntries.forEach(({ item, normalized }) => {
     const entry = entryMap.get(item.playerId);
     const classId = entry?.classId ?? playerClassMap.get(item.playerId) ?? '不明';
     const name = entry?.name ?? '（名前未入力）';
@@ -115,23 +123,29 @@ export const buildStartlistExportRows = ({
       cardNo = '';
     }
 
-    const startNumberValue = startNumberOffset + sortedIndex;
-    const startNumberNumericText = String(startNumberValue);
-    if (startNumberNumericText.length >= 6) {
+    const laneNumber = item.laneNumber ?? 0;
+    const currentCount = laneCounters.get(laneNumber) ?? startNumberOffset;
+    if (currentCount >= 1000) {
       throw new Error('start number range exceeded');
     }
-    const startNumber = startNumberNumericText.padStart(3, '0');
+    const startNumber = `${laneNumber}${String(currentCount).padStart(3, '0')}`;
     if (usedStartNumbers.has(startNumber)) {
       throw new Error(`duplicate start number detected: ${startNumber}`);
     }
     usedStartNumbers.add(startNumber);
+    laneCounters.set(laneNumber, currentCount + 1);
+
+    const includeSeconds = classIntervalMap.get(classId) === 30_000;
+    const startTimeLabel = Number.isNaN(normalized.timestamp)
+      ? normalized.iso
+      : formatJstTime(normalized.iso, includeSeconds);
 
     rows.push({
       classId,
       startNumber,
       name,
       club,
-      startTimeLabel: normalized.label ?? '',
+      startTimeLabel,
       cardNo,
     });
   });

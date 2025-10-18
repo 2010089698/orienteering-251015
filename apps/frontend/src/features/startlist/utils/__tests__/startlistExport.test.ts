@@ -3,10 +3,14 @@ import type { ClassAssignmentDto, StartTimeDto } from '@startlist-management/app
 import { RENTAL_CARD_LABEL, type Entry } from '../../state/types';
 import { buildStartlistExportRows, downloadStartlistCsv, exportRowToCsvLine } from '../startlistExport';
 
-const createStartTime = (playerId: string, startTime: StartTimeDto['startTime']): StartTimeDto => ({
+const createStartTime = (
+  playerId: string,
+  startTime: StartTimeDto['startTime'],
+  laneNumber: number = 1,
+): StartTimeDto => ({
   playerId,
   startTime,
-  laneNumber: 1,
+  laneNumber,
 });
 
 const createAssignment = (classId: string, playerOrder: string[]): ClassAssignmentDto => ({
@@ -16,34 +20,41 @@ const createAssignment = (classId: string, playerOrder: string[]): ClassAssignme
 });
 
 describe('buildStartlistExportRows', () => {
-  it('sorts valid start times ascending and places invalid times last', () => {
+  it('sorts by lane and start time while placing invalid times last', () => {
     const entries: Entry[] = [
-      { id: 'p1', name: 'Alice', classId: 'M21', cardNo: '1001', club: 'Alpha' },
-      { id: 'p2', name: 'Bob', classId: 'M21', cardNo: '1002', club: 'Beta' },
-      { id: 'p3', name: 'Charlie', classId: 'M21', cardNo: '1003', club: 'Gamma' },
+      { id: 'p1', name: 'Lane1 Early', classId: 'M21', cardNo: '1001', club: 'Alpha' },
+      { id: 'p2', name: 'Lane2 Late', classId: 'M21', cardNo: '1002', club: 'Beta' },
+      { id: 'p3', name: 'Lane2 Early', classId: 'M21', cardNo: '1003', club: 'Gamma' },
+      { id: 'p4', name: 'Lane1 Invalid', classId: 'M21', cardNo: '1004', club: 'Delta' },
     ];
     const startTimes: StartTimeDto[] = [
-      createStartTime('p2', '2024-05-01T01:00:00Z'),
-      createStartTime('p1', '2024-05-01T00:30:00Z'),
-      createStartTime('p3', 'not-a-date'),
+      createStartTime('p2', '2024-05-01T09:30:00+09:00', 2),
+      createStartTime('p1', '2024-05-01T09:00:00+09:00', 1),
+      createStartTime('p3', '2024-05-01T09:15:00+09:00', 2),
+      createStartTime('p4', 'not-a-date', 1),
     ];
-    const classAssignments = [createAssignment('M21', ['p1', 'p2', 'p3'])];
+    const classAssignments = [createAssignment('M21', ['p1', 'p2', 'p3', 'p4'])];
 
     const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
 
-    expect(rows.map((row) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    expect(rows.map((row) => row.name)).toEqual([
+      'Lane1 Early',
+      'Lane2 Early',
+      'Lane2 Late',
+      'Lane1 Invalid',
+    ]);
   });
 
-  it('applies consistent start number padding based on the offset', () => {
+  it('assigns start numbers per lane using the offset for the three-digit sequence', () => {
     const entries: Entry[] = [
-      { id: 'p1', name: 'Alice', classId: 'M21', cardNo: '1001', club: 'Alpha' },
-      { id: 'p2', name: 'Bob', classId: 'M21', cardNo: '1002', club: 'Beta' },
-      { id: 'p3', name: 'Charlie', classId: 'M21', cardNo: '1003', club: 'Gamma' },
+      { id: 'p1', name: 'Lane1 A', classId: 'M21', cardNo: '1001', club: 'Alpha' },
+      { id: 'p2', name: 'Lane1 B', classId: 'M21', cardNo: '1002', club: 'Beta' },
+      { id: 'p3', name: 'Lane2 A', classId: 'M21', cardNo: '1003', club: 'Gamma' },
     ];
     const startTimes: StartTimeDto[] = [
-      createStartTime('p1', '2024-05-01T00:30:00Z'),
-      createStartTime('p2', '2024-05-01T01:00:00Z'),
-      createStartTime('p3', '2024-05-01T01:30:00Z'),
+      createStartTime('p1', '2024-05-01T09:00:00+09:00', 1),
+      createStartTime('p2', '2024-05-01T10:00:00+09:00', 1),
+      createStartTime('p3', '2024-05-01T09:30:00+09:00', 2),
     ];
     const classAssignments = [createAssignment('M21', ['p1', 'p2', 'p3'])];
 
@@ -51,10 +62,29 @@ describe('buildStartlistExportRows', () => {
       entries,
       startTimes,
       classAssignments,
-      startNumberOffset: 8,
+      startNumberOffset: 5,
     });
 
-    expect(rows.map((row) => row.startNumber)).toEqual(['008', '009', '010']);
+    expect(rows.map((row) => row.startNumber)).toEqual(['1005', '1006', '2005']);
+  });
+
+  it('formats start times with seconds only when the class interval is 30 seconds', () => {
+    const entries: Entry[] = [
+      { id: 'p1', name: 'Minute Interval', classId: 'M21', cardNo: '1001', club: 'Alpha' },
+      { id: 'p2', name: 'Second Interval', classId: 'W21', cardNo: '1002', club: 'Beta' },
+    ];
+    const startTimes: StartTimeDto[] = [
+      createStartTime('p1', '2024-05-01T09:00:00+09:00', 1),
+      createStartTime('p2', '2024-05-01T09:00:30+09:00', 2),
+    ];
+    const classAssignments = [
+      createAssignment('M21', ['p1']),
+      { classId: 'W21', playerOrder: ['p2'], interval: { milliseconds: 30_000 } },
+    ];
+
+    const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
+
+    expect(rows.map((row) => row.startTimeLabel)).toEqual(['09:00', '09:00:30']);
   });
 
   it('replaces rental card numbers with an empty string', () => {
@@ -69,7 +99,7 @@ describe('buildStartlistExportRows', () => {
     expect(row.cardNo).toBe('');
   });
 
-  it('throws when the start number exceeds five digits', () => {
+  it('throws when the start number sequence exceeds three digits', () => {
     const entries: Entry[] = [{ id: 'p5', name: 'Overflow', classId: 'M35', cardNo: '2000', club: '' }];
     const startTimes = [createStartTime('p5', '2024-05-01T05:00:00Z')];
     const classAssignments = [createAssignment('M35', ['p5'])];
@@ -79,7 +109,7 @@ describe('buildStartlistExportRows', () => {
         entries,
         startTimes,
         classAssignments,
-        startNumberOffset: 100000,
+        startNumberOffset: 1000,
       }),
     ).toThrowError('start number range exceeded');
   });
@@ -106,8 +136,8 @@ describe('downloadStartlistCsv', () => {
     { id: 'p2', name: 'Bob', classId: 'M21', cardNo: '1002', club: 'Beta' },
   ];
   const baseStartTimes: StartTimeDto[] = [
-    createStartTime('p1', '2024-05-01T00:30:00Z'),
-    createStartTime('p2', '2024-05-01T01:00:00Z'),
+    createStartTime('p1', '2024-05-01T09:30:00+09:00', 1),
+    createStartTime('p2', '2024-05-01T10:00:00+09:00', 2),
   ];
   const baseAssignments = [createAssignment('M21', ['p1', 'p2'])];
 
@@ -194,7 +224,7 @@ describe('downloadStartlistCsv', () => {
       const csvArrayBuffer = await createdBlobs[0].arrayBuffer();
       const csvText = new TextDecoder('utf-8').decode(csvArrayBuffer);
       expect(csvText).toContain('クラス,スタート番号,氏名,所属,スタート時刻,カード番号');
-      expect(csvText).toContain('M21,001,Alice,Alpha,');
+      expect(csvText).toContain('M21,1001,Alice,Alpha,09:30');
     } finally {
       (globalThis as unknown as { Blob: typeof Blob }).Blob = originalBlob;
     }
