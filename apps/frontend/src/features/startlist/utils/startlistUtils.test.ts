@@ -240,8 +240,8 @@ describe('createDefaultClassAssignments', () => {
       entries: worldRankingEntries,
       playerIntervalMs: 60000,
       seed: 'wr-order',
-      worldRanking,
-      worldRankingTargetClassIds: new Set(['WR']),
+      startOrderRules: [{ id: 'rule-wr', classId: 'WR', method: 'worldRanking', csvName: 'wr.csv' }],
+      worldRankingByClass: new Map([['WR', worldRanking]]),
     });
 
     const wrAssignment = assignments.find((assignment) => assignment.classId === 'WR');
@@ -276,8 +276,10 @@ describe('createDefaultClassAssignments', () => {
     const options = {
       entries: tiedEntries,
       playerIntervalMs: 60000,
-      worldRanking,
-      worldRankingTargetClassIds: new Set(['WR-TIE']),
+      startOrderRules: [
+        { id: 'rule-wr-tie', classId: 'WR-TIE', method: 'worldRanking', csvName: 'tie.csv' },
+      ],
+      worldRankingByClass: new Map([['WR-TIE', worldRanking]]),
     } as const;
 
     const first = createDefaultClassAssignments({ ...options, seed: 'wr-seed-tie' });
@@ -303,8 +305,10 @@ describe('createDefaultClassAssignments', () => {
       entries: fallbackEntries,
       playerIntervalMs: 60000,
       seed: 'wr-fallback',
-      worldRanking: new Map(),
-      worldRankingTargetClassIds: new Set(['WR-NONE']),
+      startOrderRules: [
+        { id: 'rule-wr-none', classId: 'WR-NONE', method: 'worldRanking', csvName: 'none.csv' },
+      ],
+      worldRankingByClass: new Map(),
     });
 
     expect(withTargets.assignments[0]?.playerOrder).toEqual(baseline.assignments[0]?.playerOrder);

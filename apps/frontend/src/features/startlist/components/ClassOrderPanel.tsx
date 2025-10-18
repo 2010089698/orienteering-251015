@@ -37,8 +37,8 @@ const ClassOrderPanel = ({
     laneAssignments,
     classOrderSeed,
     classOrderPreferences,
-    worldRanking,
-    worldRankingTargetClassIds,
+    startOrderRules,
+    worldRankingByClass,
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
@@ -50,10 +50,13 @@ const ClassOrderPanel = ({
       setStatus(dispatch, 'classes', createStatus('先に基本情報を入力してください。', 'error'));
       return;
     }
-    if (worldRankingTargetClassIds.size > 0 && worldRanking.size === 0) {
-      const message = '世界ランキングファイルを読み込んでからクラス順序を生成してください。';
-      setStatus(dispatch, 'classes', createStatus(message, 'error'));
+    const missingCsvClasses = startOrderRules
+      .filter((rule) => rule.method === 'worldRanking' && rule.classId && !rule.csvName)
+      .map((rule) => rule.classId as string);
+    if (missingCsvClasses.length > 0) {
+      const message = `世界ランキング方式のクラス (${missingCsvClasses.join(', ')}) の CSV が読み込まれていません。`;
       setStatus(dispatch, 'startOrder', createStatus(message, 'error'));
+      setStatus(dispatch, 'classes', createStatus('世界ランキングの CSV を読み込んでからクラス順序を生成してください。', 'error'));
       return;
     }
     const interval = settings.intervals?.classPlayer?.milliseconds ?? 0;
@@ -67,8 +70,8 @@ const ClassOrderPanel = ({
       startlistId,
       seed: classOrderSeed,
       policy,
-      worldRanking,
-      worldRankingTargetClassIds,
+      startOrderRules,
+      worldRankingByClass,
     });
     updateClassAssignments(dispatch, assignments, seed, warnings);
     if (assignments.length === 0) {

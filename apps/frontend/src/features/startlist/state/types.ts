@@ -54,7 +54,18 @@ export interface ClassOrderPreferences {
 
 export type WorldRankingMap = Map<string, number>;
 
-export type WorldRankingTargetClassIds = Set<string>;
+export type StartOrderMethod = 'random' | 'worldRanking';
+
+export interface StartOrderRule {
+  id: string;
+  classId?: string;
+  method: StartOrderMethod;
+  csvName?: string;
+}
+
+export type StartOrderRules = StartOrderRule[];
+
+export type WorldRankingByClass = Map<string, WorldRankingMap>;
 
 export interface StartlistState {
   startlistId: string;
@@ -69,6 +80,6 @@ export interface StartlistState {
   snapshot?: unknown;
   statuses: Record<StatusKey, StatusMessageState>;
   loading: Partial<Record<StatusKey, boolean>>;
-  worldRanking: WorldRankingMap;
-  worldRankingTargetClassIds: WorldRankingTargetClassIds;
+  startOrderRules: StartOrderRules;
+  worldRankingByClass: WorldRankingByClass;
 }

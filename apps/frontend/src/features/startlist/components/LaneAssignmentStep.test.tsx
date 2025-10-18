@@ -20,6 +20,11 @@ const ClassOrderPreview = () => {
   );
 };
 
+const StartOrderStatusPreview = () => {
+  const { statuses } = useStartlistState();
+  return <div data-testid="start-order-status">{statuses.startOrder.text}</div>;
+};
+
 const baseSettings = {
   eventId: 'event-1',
   startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
@@ -106,6 +111,35 @@ describe('LaneAssignmentStep', () => {
     expect(await screen.findByText('クラス内の順序を自動で作成しました。')).toBeInTheDocument();
     expect(await screen.findByText('スタート時間を割り当てました。')).toBeInTheDocument();
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks generation when required world ranking CSVs are missing', async () => {
+    const onConfirm = vi.fn();
+    renderWithStartlist(
+      <>
+        <LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />
+        <StartOrderStatusPreview />
+      </>,
+      {
+        initialState: {
+          startlistId: 'SL-1',
+          settings: baseSettings,
+          entries,
+          laneAssignments,
+          startOrderRules: [{ id: 'rule-1', classId: 'M21', method: 'worldRanking' }],
+        },
+      },
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '割り当て確定（順番と時間を作成）' }));
+
+    expect(
+      await screen.findByText('世界ランキングの CSV を読み込んでからクラス内順序を作成してください。'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('start-order-status')).toHaveTextContent(
+      '世界ランキング方式のクラス (M21) の CSV が読み込まれていません。',
+    );
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('preserves generated class order when re-confirming step 2', async () => {

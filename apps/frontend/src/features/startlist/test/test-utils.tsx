@@ -14,8 +14,8 @@ import {
   updateStartTimes,
   updateSnapshot,
   updateClassOrderPreferences,
-  updateWorldRanking,
-  setWorldRankingTargetClasses,
+  setStartOrderRules,
+  updateClassWorldRanking,
 } from '../state/StartlistContext';
 import type {
   StartlistSettingsDto,
@@ -27,6 +27,7 @@ import type {
   ClassOrderPreferences,
   ClassOrderWarning,
   Entry,
+  StartOrderRules,
   StatusKey,
   StatusMessageState,
 } from '../state/types';
@@ -44,8 +45,8 @@ interface InitialStateOverrides {
   snapshot?: unknown;
   statuses?: Partial<Record<StatusKey, StatusMessageState>>;
   loading?: Partial<Record<StatusKey, boolean>>;
-  worldRankingEntries?: [string, number][];
-  worldRankingTargetClassIds?: string[];
+  startOrderRules?: StartOrderRules;
+  worldRankingEntriesByClass?: Record<string, [string, number][]>;
 }
 
 interface WrapperProps {
@@ -84,11 +85,13 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
         initialState.classOrderWarnings,
       );
     }
-    if (initialState?.worldRankingEntries) {
-      updateWorldRanking(dispatch, new Map(initialState.worldRankingEntries));
+    if (initialState?.startOrderRules) {
+      setStartOrderRules(dispatch, initialState.startOrderRules);
     }
-    if (initialState?.worldRankingTargetClassIds) {
-      setWorldRankingTargetClasses(dispatch, initialState.worldRankingTargetClassIds);
+    if (initialState?.worldRankingEntriesByClass) {
+      for (const [classId, entries] of Object.entries(initialState.worldRankingEntriesByClass)) {
+        updateClassWorldRanking(dispatch, classId, new Map(entries));
+      }
     }
     if (initialState?.startTimes) {
       updateStartTimes(dispatch, initialState.startTimes);
