@@ -14,6 +14,7 @@ import type {
   StartlistState,
   StatusKey,
   StatusMessageState,
+  WorldRankingMap,
 } from './types';
 
 export const createDefaultStartlistId = (): string => {
@@ -24,7 +25,15 @@ export const createDefaultStartlistId = (): string => {
   return `SL-${year}${month}${day}`;
 };
 
-const statusKeys: StatusKey[] = ['settings', 'entries', 'lanes', 'classes', 'startTimes', 'snapshot'];
+const statusKeys: StatusKey[] = [
+  'settings',
+  'entries',
+  'lanes',
+  'classes',
+  'startTimes',
+  'snapshot',
+  'worldRanking',
+];
 
 const defaultStatus = (text = '待機中です。', level: StatusMessageState['level'] = 'idle'): StatusMessageState => ({
   level,
@@ -52,6 +61,8 @@ const initialState: StartlistState = {
   snapshot: undefined,
   statuses: initialStatuses,
   loading: {},
+  worldRanking: new Map(),
+  worldRankingTargetClassIds: new Set(),
 };
 
 type EntryInput = Entry | EntryDraft;
@@ -102,7 +113,9 @@ type StartlistAction =
   | { type: 'SET_START_TIMES'; payload: StartTimeDto[] }
   | { type: 'SET_STATUS'; payload: { key: StatusKey; status: StatusMessageState } }
   | { type: 'SET_LOADING'; payload: { key: StatusKey; value: boolean } }
-  | { type: 'SET_CLASS_ORDER_PREFERENCES'; payload: ClassOrderPreferences };
+  | { type: 'SET_CLASS_ORDER_PREFERENCES'; payload: ClassOrderPreferences }
+  | { type: 'SET_WORLD_RANKING'; payload: [string, number][] }
+  | { type: 'SET_WORLD_RANKING_TARGETS'; payload: string[] };
 
 const startlistReducer = (state: StartlistState, action: StartlistAction): StartlistState => {
   switch (action.type) {
@@ -174,6 +187,16 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
       return {
         ...state,
         classOrderPreferences: action.payload,
+      };
+    case 'SET_WORLD_RANKING':
+      return {
+        ...state,
+        worldRanking: new Map<string, number>(action.payload),
+      };
+    case 'SET_WORLD_RANKING_TARGETS':
+      return {
+        ...state,
+        worldRankingTargetClassIds: new Set<string>(action.payload),
       };
     default:
       return state;
@@ -295,4 +318,18 @@ export const updateClassOrderPreferences = (
   preferences: ClassOrderPreferences,
 ): void => {
   dispatch({ type: 'SET_CLASS_ORDER_PREFERENCES', payload: preferences });
+};
+
+export const updateWorldRanking = (
+  dispatch: React.Dispatch<StartlistAction>,
+  worldRanking: WorldRankingMap,
+): void => {
+  dispatch({ type: 'SET_WORLD_RANKING', payload: Array.from(worldRanking.entries()) });
+};
+
+export const setWorldRankingTargetClasses = (
+  dispatch: React.Dispatch<StartlistAction>,
+  classIds: Iterable<string>,
+): void => {
+  dispatch({ type: 'SET_WORLD_RANKING_TARGETS', payload: Array.from(classIds) });
 };

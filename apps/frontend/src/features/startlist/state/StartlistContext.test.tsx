@@ -16,6 +16,8 @@ import {
   updateStartTimes,
   updateSnapshot,
   updateEntries,
+  updateWorldRanking,
+  setWorldRankingTargetClasses,
 } from './StartlistContext';
 
 describe('StartlistContext', () => {
@@ -69,6 +71,8 @@ describe('StartlistContext', () => {
         { playerId: entryId, laneNumber: 1, startTime: settings.startTime },
       ]);
       updateSnapshot(result.current.dispatch, { foo: 'bar' });
+      updateWorldRanking(result.current.dispatch, new Map([['IOF001', 12]]));
+      setWorldRankingTargetClasses(result.current.dispatch, ['M21']);
     });
 
     expect(result.current.state.startlistId).toBe('SL-1');
@@ -80,6 +84,8 @@ describe('StartlistContext', () => {
     expect(result.current.state.classAssignments).toHaveLength(1);
     expect(result.current.state.startTimes).toHaveLength(1);
     expect(result.current.state.snapshot).toEqual({ foo: 'bar' });
+    expect(result.current.state.worldRanking.get('IOF001')).toBe(12);
+    expect(Array.from(result.current.state.worldRankingTargetClassIds)).toEqual(['M21']);
 
     act(() => {
       removeEntry(result.current.dispatch, entryId);
