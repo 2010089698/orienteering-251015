@@ -6,6 +6,7 @@ import {
   deriveClassOrderWarnings,
   generateLaneAssignments,
   groupEntriesByClass,
+  prepareClassSplits,
   reorderLaneClass,
   updateClassPlayerOrder,
 } from './startlistUtils';
@@ -38,25 +39,49 @@ describe('generateLaneAssignments', () => {
   ];
 
   it('returns empty when lane count missing or interval negative', () => {
-    expect(generateLaneAssignments(entries, 0, 60000)).toEqual([]);
-    expect(generateLaneAssignments(entries, 2, -1)).toEqual([]);
+    expect(generateLaneAssignments(entries, 0, 60000).assignments).toEqual([]);
+    expect(generateLaneAssignments(entries, 2, -1).assignments).toEqual([]);
   });
 
   it('keeps lane assignments when interval is zero', () => {
-    const assignments = generateLaneAssignments(entries, 2, 0);
+    const { assignments } = generateLaneAssignments(entries, 2, 0);
 
     expect(assignments).not.toHaveLength(0);
     expect(assignments.every((assignment) => assignment.interval.milliseconds === 0)).toBe(true);
   });
 
   it('distributes classes to lanes balancing load', () => {
-    const assignments = generateLaneAssignments(entries, 2, 60000);
+    const { assignments } = generateLaneAssignments(entries, 2, 60000);
 
     expect(assignments).toHaveLength(2);
     expect(assignments[0].laneNumber).toBe(1);
     expect(assignments[0].classOrder).toContain('M21');
     const totalAssigned = assignments.reduce((sum, lane) => sum + lane.classOrder.length, 0);
     expect(totalAssigned).toBe(3);
+  });
+});
+
+describe('prepareClassSplits', () => {
+  it('creates split groups and metadata', () => {
+    const entries: Entry[] = [
+      { id: 'm21-1', name: 'Alpha', classId: 'M21', cardNo: '1' },
+      { id: 'm21-2', name: 'Bravo', classId: 'M21', cardNo: '2' },
+      { id: 'm21-3', name: 'Charlie', classId: 'M21', cardNo: '3' },
+      { id: 'm21-4', name: 'Delta', classId: 'M21', cardNo: '4' },
+    ];
+    const { groups, entryToSplitId, splitIdToBaseClassId, result, signature } = prepareClassSplits(entries, {
+      splitRules: [{ baseClassId: 'M21', partCount: 2, method: 'balanced' }],
+    });
+
+    expect(signature).not.toBe('no-split');
+    const classIds = groups.map((group) => group.classId);
+    expect(classIds).toEqual(expect.arrayContaining(['M21-A', 'M21-B']));
+    expect(entryToSplitId.get('m21-1')).toBe('M21-A');
+    expect(entryToSplitId.get('m21-2')).toBe('M21-B');
+    expect(entryToSplitId.get('m21-3')).toBe('M21-A');
+    expect(splitIdToBaseClassId.get('M21-B')).toBe('M21');
+    expect(result?.splitClasses.map((item) => item.classId)).toEqual(['M21-A', 'M21-B']);
+    expect(result?.splitIdToEntryIds.get('M21-A')).toEqual(['m21-1', 'm21-3']);
   });
 });
 
@@ -158,6 +183,42 @@ describe('createDefaultClassAssignments', () => {
     expect(extractOrders(regenerated.assignments)).not.toEqual(extractOrders(preservedSeed.assignments));
     expect(initial.warnings).toHaveLength(0);
     expect(regenerated.warnings).toHaveLength(0);
+  });
+
+  it('invalidates cached seeds when class split rules change', () => {
+    const splitEntries: Entry[] = [
+      { id: 'split-1', name: 'One', classId: 'SPLIT', cardNo: '1' },
+      { id: 'split-2', name: 'Two', classId: 'SPLIT', cardNo: '2' },
+      { id: 'split-3', name: 'Three', classId: 'SPLIT', cardNo: '3' },
+      { id: 'split-4', name: 'Four', classId: 'SPLIT', cardNo: '4' },
+      { id: 'split-5', name: 'Five', classId: 'SPLIT', cardNo: '5' },
+      { id: 'split-6', name: 'Six', classId: 'SPLIT', cardNo: '6' },
+    ];
+    const splitLaneAssignments = [
+      { laneNumber: 1, classOrder: ['SPLIT'], interval: { milliseconds: 60000 } },
+    ];
+    const baseOptions = {
+      entries: splitEntries,
+      playerIntervalMs: 60000,
+      laneAssignments: splitLaneAssignments,
+      startlistId: 'SL-SPLIT',
+      splitRules: [{ baseClassId: 'SPLIT', partCount: 2, method: 'balanced' }],
+    } as const;
+
+    const first = createDefaultClassAssignments(baseOptions);
+    expect(first.splitResult?.splitClasses.map((meta) => meta.classId)).toEqual(['SPLIT-A', 'SPLIT-B']);
+
+    const repeated = createDefaultClassAssignments({ ...baseOptions, seed: first.seed });
+    expect(repeated.seed).toBe(first.seed);
+    expect(extractOrders(repeated.assignments)).toEqual(extractOrders(first.assignments));
+
+    const adjusted = createDefaultClassAssignments({
+      ...baseOptions,
+      splitRules: [{ baseClassId: 'SPLIT', partCount: 3, method: 'balanced' }],
+    });
+
+    expect(adjusted.splitSignature).not.toBe(first.splitSignature);
+    expect(adjusted.seed).not.toBe(first.seed);
   });
 
   it('avoids consecutive clubs when possible and reports warnings otherwise', () => {
@@ -332,6 +393,27 @@ describe('deriveClassOrderWarnings', () => {
     expect(warnings[0]?.occurrences).toHaveLength(1);
     expect(warnings[0]?.occurrences[0]?.clubs).toContain('Same');
   });
+
+  it('aggregates warnings for split classes under the base id', () => {
+    const entries: Entry[] = [
+      { id: 'split-1', name: 'Alpha', classId: 'SP', cardNo: '1', club: 'Club X' },
+      { id: 'split-2', name: 'Bravo', classId: 'SP', cardNo: '2', club: 'Club Y' },
+      { id: 'split-3', name: 'Charlie', classId: 'SP', cardNo: '3', club: 'Club X' },
+      { id: 'split-4', name: 'Delta', classId: 'SP', cardNo: '4', club: 'Club Y' },
+    ];
+    const assignments = [
+      { classId: 'SP-A', playerOrder: ['split-1', 'split-3'], interval: { milliseconds: 60000 } },
+      { classId: 'SP-B', playerOrder: ['split-2', 'split-4'], interval: { milliseconds: 60000 } },
+    ];
+
+    const warnings = deriveClassOrderWarnings(assignments, entries, {
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+    });
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.classId).toBe('SP');
+    expect(warnings[0]?.occurrences).toHaveLength(2);
+  });
 });
 
 describe('calculateStartTimes', () => {
@@ -375,7 +457,7 @@ describe('calculateStartTimes', () => {
 
     expect(result).toHaveLength(3);
     const [first, second, third] = result;
-    expect(result.map((item) => item.playerId)).toEqual(['entry-1', 'entry-2', 'entry-3']);
+    expect(result.map((item) => item.playerId)).toEqual(['entry-2', 'entry-1', 'entry-3']);
     expect(first.laneNumber).toBe(1);
     expect(new Date(first.startTime).toISOString()).toBe(settings.startTime);
     expect(new Date(second.startTime).toISOString()).toBe(
@@ -384,5 +466,44 @@ describe('calculateStartTimes', () => {
     expect(new Date(third.startTime).toISOString()).toBe(
       new Date(new Date(settings.startTime).getTime() + 60000 * 2 + 90000).toISOString(),
     );
+  });
+
+  it('uses split class mappings when calculating start times', () => {
+    const splitEntries: Entry[] = [
+      { id: 'split-1', name: 'One', classId: 'SP', cardNo: '1' },
+      { id: 'split-2', name: 'Two', classId: 'SP', cardNo: '2' },
+      { id: 'split-3', name: 'Three', classId: 'SP', cardNo: '3' },
+      { id: 'split-4', name: 'Four', classId: 'SP', cardNo: '4' },
+    ];
+    const { result: splitResult } = prepareClassSplits(splitEntries, {
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+    });
+    const laneAssignments = [
+      { laneNumber: 1, classOrder: ['SP-A', 'SP-B'], interval: { milliseconds: 60000 } },
+    ];
+    const classAssignments = [
+      { classId: 'SP-A', playerOrder: ['split-1', 'split-3'], interval: { milliseconds: 60000 } },
+      { classId: 'SP-B', playerOrder: ['split-2', 'split-4'], interval: { milliseconds: 60000 } },
+    ];
+    const settings = {
+      eventId: 'event-split',
+      startTime: new Date('2024-02-01T09:00:00.000Z').toISOString(),
+      intervals: {
+        laneClass: { milliseconds: 60000 },
+        classPlayer: { milliseconds: 60000 },
+      },
+      laneCount: 1,
+    };
+
+    const result = calculateStartTimes({
+      settings,
+      laneAssignments,
+      classAssignments,
+      entries: splitEntries,
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+      splitResult: splitResult,
+    });
+
+    expect(result.map((item) => item.playerId)).toEqual(['split-1', 'split-3', 'split-2', 'split-4']);
   });
 });

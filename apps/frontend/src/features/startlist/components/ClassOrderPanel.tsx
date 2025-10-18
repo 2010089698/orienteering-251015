@@ -39,6 +39,8 @@ const ClassOrderPanel = ({
     classOrderPreferences,
     startOrderRules,
     worldRankingByClass,
+    classSplitRules,
+    classSplitResult,
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
@@ -63,7 +65,7 @@ const ClassOrderPanel = ({
     const policy = classOrderPreferences.avoidConsecutiveClubs
       ? seededRandomClassOrderPolicy
       : seededRandomUnconstrainedClassOrderPolicy;
-    const { assignments, seed, warnings } = createDefaultClassAssignments({
+    const { assignments, seed, warnings, splitResult } = createDefaultClassAssignments({
       entries,
       playerIntervalMs: interval,
       laneAssignments,
@@ -72,8 +74,10 @@ const ClassOrderPanel = ({
       policy,
       startOrderRules,
       worldRankingByClass,
+      splitRules: classSplitRules,
+      previousSplitResult: classSplitResult,
     });
-    updateClassAssignments(dispatch, assignments, seed, warnings);
+    updateClassAssignments(dispatch, assignments, seed, warnings, splitResult);
     if (assignments.length === 0) {
       setStatus(dispatch, 'classes', createStatus('エントリーが登録されていません。', 'error'));
     } else {
@@ -124,9 +128,9 @@ const ClassOrderPanel = ({
     }
     const updated = updateClassPlayerOrder(classAssignments, assignment.classId, index, nextIndex);
     const warnings = classOrderPreferences.avoidConsecutiveClubs
-      ? deriveClassOrderWarnings(updated, entries)
+      ? deriveClassOrderWarnings(updated, entries, { splitRules: classSplitRules, previousSplitResult: classSplitResult })
       : [];
-    updateClassAssignments(dispatch, updated, undefined, warnings);
+    updateClassAssignments(dispatch, updated, undefined, warnings, classSplitResult);
     setStatus(dispatch, 'classes', createStatus('クラス内順序を更新しました。', 'info'));
   };
 

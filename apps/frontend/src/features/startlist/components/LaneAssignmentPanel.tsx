@@ -13,7 +13,16 @@ import {
 import { generateLaneAssignments, reorderLaneClass } from '../utils/startlistUtils';
 
 const LaneAssignmentPanel = (): JSX.Element => {
-  const { entries, settings, laneAssignments, startlistId, statuses, loading } = useStartlistState();
+  const {
+    entries,
+    settings,
+    laneAssignments,
+    startlistId,
+    statuses,
+    loading,
+    classSplitRules,
+    classSplitResult,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
@@ -23,8 +32,11 @@ const LaneAssignmentPanel = (): JSX.Element => {
       return;
     }
     const interval = settings.intervals?.laneClass?.milliseconds ?? 0;
-    const assignments = generateLaneAssignments(entries, settings.laneCount, interval);
-    updateLaneAssignments(dispatch, assignments);
+    const { assignments, splitResult } = generateLaneAssignments(entries, settings.laneCount, interval, {
+      splitRules: classSplitRules,
+      previousSplitResult: classSplitResult,
+    });
+    updateLaneAssignments(dispatch, assignments, splitResult);
     if (assignments.length === 0) {
       setStatus(dispatch, 'lanes', createStatus('エントリーとレーン数を確認してください。', 'error'));
     } else {

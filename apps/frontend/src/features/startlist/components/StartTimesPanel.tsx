@@ -29,7 +29,18 @@ const formatDateTime = (iso: string): string => {
 };
 
 const StartTimesPanel = (): JSX.Element => {
-  const { settings, entries, laneAssignments, classAssignments, startTimes, startlistId, statuses, loading } = useStartlistState();
+  const {
+    settings,
+    entries,
+    laneAssignments,
+    classAssignments,
+    startTimes,
+    startlistId,
+    statuses,
+    loading,
+    classSplitRules,
+    classSplitResult,
+  } = useStartlistState();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
@@ -40,8 +51,15 @@ const StartTimesPanel = (): JSX.Element => {
       setStatus(dispatch, 'startTimes', createStatus('先に基本情報を設定してください。', 'error'));
       return;
     }
-    const computed = calculateStartTimes({ settings, laneAssignments, classAssignments, entries });
-    updateStartTimes(dispatch, computed);
+    const computed = calculateStartTimes({
+      settings,
+      laneAssignments,
+      classAssignments,
+      entries,
+      splitRules: classSplitRules,
+      splitResult: classSplitResult,
+    });
+    updateStartTimes(dispatch, computed, classSplitResult);
     if (computed.length === 0) {
       setStatus(dispatch, 'startTimes', createStatus('必要なデータが不足しています。', 'error'));
     } else {
@@ -130,7 +148,7 @@ const StartTimesPanel = (): JSX.Element => {
       setLoading(dispatch, 'startTimes', true);
       const snapshot = await api.invalidateStartTimes({ startlistId, reason });
       updateSnapshot(dispatch, snapshot);
-      updateStartTimes(dispatch, []);
+      updateStartTimes(dispatch, [], classSplitResult);
       setStatus(dispatch, 'startTimes', createStatus('スタート時間を無効化しました。', 'info'));
       if (snapshot) {
         setStatus(dispatch, 'snapshot', createStatus('スナップショットを更新しました。', 'info'));

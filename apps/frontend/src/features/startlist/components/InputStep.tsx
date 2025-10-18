@@ -18,7 +18,7 @@ type InputStepProps = {
 };
 
 const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
-  const { entries, statuses } = useStartlistState();
+  const { entries, statuses, classSplitRules, classSplitResult } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -70,13 +70,16 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
       return;
     }
 
-    const assignments = generateLaneAssignments(entries, laneCount, intervalMs);
+    const { assignments, splitResult } = generateLaneAssignments(entries, laneCount, intervalMs, {
+      splitRules: classSplitRules,
+      previousSplitResult: classSplitResult,
+    });
     if (!assignments.length) {
       setStatus(dispatch, 'lanes', createStatus('レーン割り当てを作成できませんでした。入力内容を確認してください。', 'error'));
       return;
     }
 
-    updateLaneAssignments(dispatch, assignments);
+    updateLaneAssignments(dispatch, assignments, splitResult);
     setStatus(dispatch, 'lanes', createStatus('自動でレーン割り当てを作成しました。', 'success'));
     onComplete();
   };

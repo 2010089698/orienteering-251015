@@ -10,6 +10,7 @@ import type {
 
 export interface ClassGroup {
   classId: string;
+  baseClassId: string;
   entries: Entry[];
 }
 
@@ -20,6 +21,7 @@ export interface ClassOrderPolicySeedInput {
   seed?: string;
   startOrderRules?: StartOrderRules;
   worldRankingByClass?: WorldRankingByClass;
+  classSplitSignature?: string;
 }
 
 export interface ClassOrderPolicyExecutionInput {
@@ -54,7 +56,7 @@ const fnv1aHash = (value: string): number => {
   return hash >>> 0;
 };
 
-const hashString = (value: string): string => {
+export const hashString = (value: string): string => {
   return fnv1aHash(value).toString(16).padStart(8, '0');
 };
 
@@ -339,7 +341,13 @@ export const calculateClassOrderWarnings = (
     }
 
     if (occurrences.length > 0) {
-      warnings.set(group.classId, { classId: group.classId, occurrences });
+      const key = group.baseClassId;
+      const existing = warnings.get(key);
+      if (existing) {
+        existing.occurrences.push(...occurrences);
+      } else {
+        warnings.set(key, { classId: key, occurrences: [...occurrences] });
+      }
     }
   });
 
@@ -406,6 +414,7 @@ export const deriveSeededRandomClassOrderSeed = ({
   seed,
   startOrderRules,
   worldRankingByClass,
+  classSplitSignature,
 }: ClassOrderPolicySeedInput): string => {
   if (seed) {
     return seed;
@@ -416,6 +425,7 @@ export const deriveSeededRandomClassOrderSeed = ({
     createEntrySignature(entries),
     createStartOrderRuleSignature(startOrderRules),
     createWorldRankingByClassSignature(worldRankingByClass),
+    classSplitSignature ?? '',
   ]
     .filter(Boolean)
     .join('#');
@@ -443,12 +453,14 @@ const createSeededRandomClassOrderPolicy = (options: { avoidConsecutiveClubs: bo
         return;
       }
 
-      const method = methodMap.get(group.classId) ?? 'random';
+      const method =
+        methodMap.get(group.classId) ?? (group.baseClassId !== group.classId ? methodMap.get(group.baseClassId) : undefined) ?? 'random';
       if (method === 'worldRanking') {
         const rankingOrder = createWorldRankingOrder(
           group,
           random,
-          worldRankingByClass?.get(group.classId),
+          worldRankingByClass?.get(group.classId) ??
+            (group.baseClassId !== group.classId ? worldRankingByClass?.get(group.baseClassId) : undefined),
         );
         if (rankingOrder) {
           playerOrders.set(group.classId, rankingOrder);
