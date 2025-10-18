@@ -19,7 +19,7 @@ export type StatusKey =
   | 'classes'
   | 'startTimes'
   | 'snapshot'
-  | 'worldRanking';
+  | 'startOrder';
 
 interface EntryBase {
   name: string;

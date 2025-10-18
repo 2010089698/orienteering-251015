@@ -3,6 +3,7 @@ import { StatusMessage } from '@orienteering/shared-ui';
 import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
 import EntryForm from './EntryForm';
 import EntryTablePanel from './EntryTablePanel';
+import StartOrderSettingsPanel from './StartOrderSettingsPanel';
 import {
   createStatus,
   setStatus,
@@ -89,6 +90,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
       <div className="input-step__layout">
         <div className="input-step__cell input-step__cell--settings">
           <SettingsForm ref={settingsFormRef} />
+          <StartOrderSettingsPanel />
         </div>
         <div className="input-step__cell input-step__cell--entry">
           <EntryForm />
