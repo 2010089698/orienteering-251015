@@ -258,6 +258,67 @@ body {
   }
 }
 
+.class-split-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.class-split-settings__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.class-split-settings__header,
+.class-split-settings__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.6fr) minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.class-split-settings__cell {
+  min-width: 0;
+}
+
+.class-split-settings__header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.class-split-settings__cell select,
+.class-split-settings__cell input {
+  width: 100%;
+}
+
+.class-split-settings__cell--actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.class-split-settings__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .class-split-settings__header,
+  .class-split-settings__row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .class-split-settings__cell--actions {
+    justify-content: flex-start;
+  }
+}
+
 .lane-preview__item {
   display: flex;
   flex-direction: column;

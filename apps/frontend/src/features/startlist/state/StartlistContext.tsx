@@ -37,6 +37,7 @@ const statusKeys: StatusKey[] = [
   'startTimes',
   'snapshot',
   'startOrder',
+  'classSplit',
 ];
 
 const defaultStatus = (text = '待機中です。', level: StatusMessageState['level'] = 'idle'): StatusMessageState => ({
