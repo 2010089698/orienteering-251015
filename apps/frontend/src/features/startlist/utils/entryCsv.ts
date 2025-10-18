@@ -26,6 +26,14 @@ const headerMap: Record<string, keyof EntryDraft> = {
   card: 'cardNo',
   cardno: 'cardNo',
   card_no: 'cardNo',
+  iofid: 'iofId',
+  iof: 'iofId',
+  iofnumber: 'iofId',
+  iofno: 'iofId',
+  iofcode: 'iofId',
+  'iof番号': 'iofId',
+  'iofid番号': 'iofId',
+  iofidnumber: 'iofId',
 };
 
 const stripHeaderPrefixes = (value: string): string =>
@@ -43,6 +51,8 @@ const compactHeaderKey = (value: string): string => normalizeHeader(value).repla
 const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 const normalizeCardNo = (value: string): string => value.replace(/\s+/g, '').trim();
+
+const normalizeIofId = (value: string): string => value.replace(/\s+/g, '').toUpperCase().trim();
 
 const detectDelimiter = (text: string): ',' | '\t' => {
   let inQuotes = false;
@@ -179,7 +189,14 @@ const createEntryFromRow = (
     }
 
     const raw = row[index] ?? '';
-    const normalized = key === 'cardNo' ? normalizeCardNo(raw) : normalizeText(raw);
+    let normalized: string;
+    if (key === 'cardNo') {
+      normalized = normalizeCardNo(raw);
+    } else if (key === 'iofId') {
+      normalized = normalizeIofId(raw);
+    } else {
+      normalized = normalizeText(raw);
+    }
     if (!normalized) {
       return;
     }

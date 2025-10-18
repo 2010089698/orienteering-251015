@@ -19,6 +19,17 @@ describe('parseEntriesFromCsvText', () => {
     ]);
   });
 
+  it('parses IOF IDs when present and normalizes them', () => {
+    const csv = 'name,iof id,class,card number\nAlice,  ab 123 ,M21E,123\nBob,,F21,456\n';
+
+    const result = parseEntriesFromCsvText(csv, existingEntries);
+
+    expect(result).toEqual([
+      { name: 'Alice', club: '', classId: 'M21E', cardNo: '123', iofId: 'AB123' },
+      { name: 'Bob', club: '', classId: 'F21', cardNo: '456' },
+    ]);
+  });
+
   it('throws when required headers are missing', () => {
     const csv = 'name,club,card\nAlice,Tokyo,123\n';
 
@@ -29,15 +40,15 @@ describe('parseEntriesFromCsvText', () => {
 
   it('parses two-row headers from Japanese team CSV exports', () => {
     const csv = [
-      'チーム(組),予備,1人目',
-      'チーム名(氏名),所属,クラス,カード番号',
-      '田中 太郎,東京OL,M21E,12345',
+      'チーム(組),予備,1人目,1人目,1人目',
+      'チーム名(氏名),所属,クラス,IOF-ID,カード番号',
+      '田中 太郎,東京OL,M21E,abc-123,12345',
     ].join('\n');
 
     const result = parseEntriesFromCsvText(csv, existingEntries);
 
     expect(result).toEqual([
-      { name: '田中 太郎', club: '東京OL', classId: 'M21E', cardNo: '12345' },
+      { name: '田中 太郎', club: '東京OL', classId: 'M21E', cardNo: '12345', iofId: 'ABC-123' },
     ]);
   });
 

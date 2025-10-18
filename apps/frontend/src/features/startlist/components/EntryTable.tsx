@@ -12,6 +12,8 @@ const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.E
     return <p className="muted">{emptyMessage ?? '該当する参加者がいません。'}</p>;
   }
 
+  const hasIofId = entries.some((entry) => entry.iofId && entry.iofId.trim().length > 0);
+
   return (
     <div className="table-wrapper">
       <table>
@@ -20,6 +22,7 @@ const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.E
             <th>選手名</th>
             <th>所属</th>
             <th>クラス</th>
+            {hasIofId && <th>IOF ID</th>}
             <th>カード番号</th>
             <th></th>
           </tr>
@@ -32,6 +35,7 @@ const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.E
               <td>
                 <Tag label={entry.classId} tone="info" />
               </td>
+              {hasIofId && <td>{entry.iofId ?? '—'}</td>}
               <td>{entry.cardNo}</td>
               <td>
                 {onRemove && (

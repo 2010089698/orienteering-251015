@@ -37,11 +37,13 @@ describe('EntryForm', () => {
 
     await user.type(screen.getByLabelText('選手名'), '山田 太郎');
     await user.type(screen.getByLabelText('クラス'), 'M21E');
+    await user.type(screen.getByLabelText('IOF ID'), '  ab 123 ');
     await user.type(screen.getByLabelText('カード番号'), '555');
     await user.click(screen.getByRole('button', { name: '参加者を追加' }));
 
     expect(await screen.findByText('1 人の参加者を登録しました。')).toBeInTheDocument();
     expect(screen.getByLabelText('選手名')).toHaveValue('');
+    expect(screen.getByLabelText('IOF ID')).toHaveValue('');
     expect(screen.getByLabelText('カード番号')).toHaveValue('');
   });
 
