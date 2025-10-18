@@ -1,5 +1,11 @@
 import type { ClassAssignmentDto, LaneAssignmentDto } from '@startlist-management/application';
-import type { ClassOrderWarning, ClassOrderWarningOccurrence, Entry } from '../state/types';
+import type {
+  ClassOrderWarning,
+  ClassOrderWarningOccurrence,
+  Entry,
+  WorldRankingMap,
+  WorldRankingTargetClassIds,
+} from '../state/types';
 
 export interface ClassGroup {
   classId: string;
@@ -11,11 +17,15 @@ export interface ClassOrderPolicySeedInput {
   entries: Entry[];
   laneAssignments?: LaneAssignmentDto[];
   seed?: string;
+  worldRanking?: WorldRankingMap;
+  worldRankingTargetClassIds?: WorldRankingTargetClassIds;
 }
 
 export interface ClassOrderPolicyExecutionInput {
   groups: ClassGroup[];
   seed: string;
+  worldRanking?: WorldRankingMap;
+  worldRankingTargetClassIds?: WorldRankingTargetClassIds;
 }
 
 export interface ClassOrderPolicyExecutionResult {
@@ -239,6 +249,56 @@ const createOrderFromIndices = (group: ClassGroup, indices: number[]): string[] 
   return indices.map((index) => group.entries[index]?.id).filter((id): id is string => Boolean(id));
 };
 
+const createWorldRankingOrder = (
+  group: ClassGroup,
+  random: () => number,
+  worldRanking?: WorldRankingMap,
+): string[] | undefined => {
+  if (!worldRanking || worldRanking.size === 0) {
+    return undefined;
+  }
+
+  const ranked: { entry: Entry; position: number }[] = [];
+  const unranked: Entry[] = [];
+
+  group.entries.forEach((entry) => {
+    if (!entry.iofId) {
+      unranked.push(entry);
+      return;
+    }
+    const position = worldRanking.get(entry.iofId);
+    if (position === undefined) {
+      unranked.push(entry);
+      return;
+    }
+    ranked.push({ entry, position });
+  });
+
+  if (ranked.length === 0) {
+    return undefined;
+  }
+
+  const unrankedOrder = shuffleWithRandom(unranked, random).map((entry) => entry.id);
+  const rankedWithTieBreaker = ranked.map(({ entry, position }) => ({
+    entry,
+    position,
+    tieBreaker: random(),
+  }));
+
+  rankedWithTieBreaker.sort((left, right) => {
+    if (left.position !== right.position) {
+      return right.position - left.position;
+    }
+    if (left.tieBreaker !== right.tieBreaker) {
+      return left.tieBreaker - right.tieBreaker;
+    }
+    return left.entry.id.localeCompare(right.entry.id, 'ja');
+  });
+
+  const rankedOrder = rankedWithTieBreaker.map(({ entry }) => entry.id);
+  return [...unrankedOrder, ...rankedOrder];
+};
+
 export const calculateClassOrderWarnings = (
   groups: ClassGroup[],
   playerOrders: Map<string, string[]>,
@@ -304,16 +364,41 @@ const createEntrySignature = (entries: Entry[]): string => {
     .join(';');
 };
 
+const createWorldRankingSignature = (
+  worldRanking?: WorldRankingMap,
+  targetClassIds?: WorldRankingTargetClassIds,
+): string => {
+  const rankingPart = worldRanking
+    ? Array.from(worldRanking.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([iofId, position]) => `${iofId}:${position}`)
+        .join('|')
+    : '';
+  const targetPart = targetClassIds
+    ? Array.from(targetClassIds.values())
+        .sort((a, b) => a.localeCompare(b, 'ja'))
+        .join('|')
+    : '';
+  return [rankingPart, targetPart].filter(Boolean).join('#');
+};
+
 export const deriveSeededRandomClassOrderSeed = ({
   startlistId,
   entries,
   laneAssignments,
   seed,
+  worldRanking,
+  worldRankingTargetClassIds,
 }: ClassOrderPolicySeedInput): string => {
   if (seed) {
     return seed;
   }
-  const base = [startlistId ?? 'startlist', createLaneSignature(laneAssignments), createEntrySignature(entries)]
+  const base = [
+    startlistId ?? 'startlist',
+    createLaneSignature(laneAssignments),
+    createEntrySignature(entries),
+    createWorldRankingSignature(worldRanking, worldRankingTargetClassIds),
+  ]
     .filter(Boolean)
     .join('#');
   return hashString(base || 'seeded-random');
@@ -323,7 +408,12 @@ const createSeededRandomClassOrderPolicy = (options: { avoidConsecutiveClubs: bo
   id: options.avoidConsecutiveClubs ? 'seeded-random-entry-order' : 'seeded-random-entry-order-unconstrained',
   label: options.avoidConsecutiveClubs ? 'エントリー順ランダム（所属考慮）' : 'エントリー順ランダム',
   deriveSeed: deriveSeededRandomClassOrderSeed,
-  execute: ({ groups, seed }: ClassOrderPolicyExecutionInput): ClassOrderPolicyExecutionResult => {
+  execute: ({
+    groups,
+    seed,
+    worldRanking,
+    worldRankingTargetClassIds,
+  }: ClassOrderPolicyExecutionInput): ClassOrderPolicyExecutionResult => {
     const numericSeed = stringToSeed(seed);
     const random = mulberry32(numericSeed);
     const playerOrders = new Map<string, string[]>();
@@ -332,6 +422,14 @@ const createSeededRandomClassOrderPolicy = (options: { avoidConsecutiveClubs: bo
       if (group.entries.length === 0) {
         playerOrders.set(group.classId, []);
         return;
+      }
+
+      if (worldRankingTargetClassIds?.has(group.classId)) {
+        const rankingOrder = createWorldRankingOrder(group, random, worldRanking);
+        if (rankingOrder) {
+          playerOrders.set(group.classId, rankingOrder);
+          return;
+        }
       }
 
       if (!options.avoidConsecutiveClubs) {

@@ -218,6 +218,97 @@ describe('createDefaultClassAssignments', () => {
 
     expect(warnings).toHaveLength(0);
   });
+
+  it('applies world ranking ordering for targeted classes', () => {
+    const worldRankingEntries: Entry[] = [
+      { id: 'wr-entry-1', name: 'Ranked Low', classId: 'WR', cardNo: '1', iofId: 'IOF-1' },
+      { id: 'wr-entry-2', name: 'Ranked High', classId: 'WR', cardNo: '2', iofId: 'IOF-2' },
+      { id: 'wr-entry-3', name: 'Unranked Missing ID', classId: 'WR', cardNo: '3' },
+      { id: 'wr-entry-4', name: 'Ranked Mid', classId: 'WR', cardNo: '4', iofId: 'IOF-3' },
+      { id: 'wr-entry-5', name: 'Unranked Unknown', classId: 'WR', cardNo: '5', iofId: 'IOF-999' },
+      { id: 'other-entry-1', name: 'Other One', classId: 'OTHER', cardNo: '10', club: 'Club A' },
+      { id: 'other-entry-2', name: 'Other Two', classId: 'OTHER', cardNo: '11', club: 'Club B' },
+    ];
+
+    const worldRanking = new Map<string, number>([
+      ['IOF-1', 10],
+      ['IOF-2', 40],
+      ['IOF-3', 20],
+    ]);
+
+    const { assignments } = createDefaultClassAssignments({
+      entries: worldRankingEntries,
+      playerIntervalMs: 60000,
+      seed: 'wr-order',
+      worldRanking,
+      worldRankingTargetClassIds: new Set(['WR']),
+    });
+
+    const wrAssignment = assignments.find((assignment) => assignment.classId === 'WR');
+    expect(wrAssignment).toBeDefined();
+    const wrOrder = wrAssignment?.playerOrder ?? [];
+
+    const unrankedIds = ['wr-entry-3', 'wr-entry-5'];
+    const rankedIds = ['wr-entry-1', 'wr-entry-2', 'wr-entry-4'];
+    expect(unrankedIds.every((id) => wrOrder.includes(id))).toBe(true);
+    expect(rankedIds.every((id) => wrOrder.includes(id))).toBe(true);
+    const lastUnrankedIndex = Math.max(...unrankedIds.map((id) => wrOrder.indexOf(id)));
+    const firstRankedIndex = Math.min(...rankedIds.map((id) => wrOrder.indexOf(id)));
+    expect(lastUnrankedIndex).toBeLessThan(firstRankedIndex);
+
+    const rankedOrder = wrOrder.filter((id) => rankedIds.includes(id));
+    expect(rankedOrder).toEqual(['wr-entry-2', 'wr-entry-4', 'wr-entry-1']);
+  });
+
+  it('produces deterministic ordering for world ranking ties based on the seed', () => {
+    const tiedEntries: Entry[] = [
+      { id: 'tie-entry-1', name: 'Alpha', classId: 'WR-TIE', cardNo: '1', iofId: 'IOF-A' },
+      { id: 'tie-entry-2', name: 'Bravo', classId: 'WR-TIE', cardNo: '2', iofId: 'IOF-B' },
+      { id: 'tie-entry-3', name: 'Charlie', classId: 'WR-TIE', cardNo: '3', iofId: 'IOF-C' },
+    ];
+
+    const worldRanking = new Map<string, number>([
+      ['IOF-A', 50],
+      ['IOF-B', 50],
+      ['IOF-C', 10],
+    ]);
+
+    const options = {
+      entries: tiedEntries,
+      playerIntervalMs: 60000,
+      worldRanking,
+      worldRankingTargetClassIds: new Set(['WR-TIE']),
+    } as const;
+
+    const first = createDefaultClassAssignments({ ...options, seed: 'wr-seed-tie' });
+    const second = createDefaultClassAssignments({ ...options, seed: 'wr-seed-tie' });
+
+    expect(first.assignments[0]?.playerOrder).toEqual(second.assignments[0]?.playerOrder);
+  });
+
+  it('falls back to seeded random ordering when rankings are unavailable', () => {
+    const fallbackEntries: Entry[] = [
+      { id: 'fallback-1', name: 'Alpha', classId: 'WR-NONE', cardNo: '1', club: 'Club A' },
+      { id: 'fallback-2', name: 'Bravo', classId: 'WR-NONE', cardNo: '2', club: 'Club B' },
+      { id: 'fallback-3', name: 'Charlie', classId: 'WR-NONE', cardNo: '3', club: 'Club A' },
+    ];
+
+    const baseline = createDefaultClassAssignments({
+      entries: fallbackEntries,
+      playerIntervalMs: 60000,
+      seed: 'wr-fallback',
+    });
+
+    const withTargets = createDefaultClassAssignments({
+      entries: fallbackEntries,
+      playerIntervalMs: 60000,
+      seed: 'wr-fallback',
+      worldRanking: new Map(),
+      worldRankingTargetClassIds: new Set(['WR-NONE']),
+    });
+
+    expect(withTargets.assignments[0]?.playerOrder).toEqual(baseline.assignments[0]?.playerOrder);
+  });
 });
 
 describe('deriveClassOrderWarnings', () => {

@@ -140,6 +140,8 @@ const ClassOrderPanel = (): JSX.Element => {
       startlistId,
       seed: classOrderSeed,
       policy,
+      worldRanking,
+      worldRankingTargetClassIds,
     });
     updateClassAssignments(dispatch, assignments, seed, warnings);
     if (assignments.length === 0) {

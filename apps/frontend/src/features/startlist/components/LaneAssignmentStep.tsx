@@ -217,6 +217,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     classAssignments: existingClassAssignments,
     classOrderSeed,
     classOrderPreferences,
+    worldRanking,
+    worldRankingTargetClassIds,
   } = useStartlistState();
   const dispatch = useStartlistDispatch();
 
@@ -412,6 +414,8 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         startlistId,
         seed: classOrderSeed,
         policy,
+        worldRanking,
+        worldRankingTargetClassIds,
       });
       nextClassAssignments = assignments;
       updateClassAssignments(dispatch, assignments, seed, warnings);
