@@ -11,6 +11,7 @@ export interface RegisterEntryCommand {
   classId: string;
   cardNumber: string;
   club?: string;
+  iofId?: string;
 }
 
 export interface RegisterEntryUseCase {

@@ -9,6 +9,7 @@ export interface EntryProps {
   classId: string;
   cardNumber: string;
   club?: string;
+  iofId?: string;
   createdAt: Date;
 }
 
@@ -30,6 +31,7 @@ export class Entry {
       classId: snapshot.classId,
       cardNumber: snapshot.cardNumber,
       club: snapshot.club,
+      iofId: snapshot.iofId,
       createdAt: new Date(snapshot.createdAt),
     });
   }
@@ -51,6 +53,7 @@ export class Entry {
       classId: this.props.classId,
       cardNumber: this.props.cardNumber,
       club: this.props.club,
+      ...(this.props.iofId !== undefined ? { iofId: this.props.iofId } : {}),
       createdAt: this.props.createdAt.toISOString(),
     };
   }
@@ -73,6 +76,10 @@ export class Entry {
 
   get club(): string | undefined {
     return this.props.club;
+  }
+
+  get iofId(): string | undefined {
+    return this.props.iofId;
   }
 
   get createdAt(): Date {

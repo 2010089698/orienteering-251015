@@ -4,5 +4,6 @@ export interface EntrySnapshot {
   classId: string;
   cardNumber: string;
   club?: string;
+  iofId?: string;
   createdAt: string;
 }
