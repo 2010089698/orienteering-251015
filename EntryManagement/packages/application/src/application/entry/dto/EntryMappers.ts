@@ -1,21 +1,34 @@
-import { Entry } from '@entry-management/domain';
+import { Entry, EntrySnapshot } from '@entry-management/domain';
 import { EntryDto, EntrySummaryDto } from './EntryDtos.js';
 
-export const toEntryDto = (entry: Entry): EntryDto => ({
-  id: entry.id.toString(),
-  name: entry.name,
-  classId: entry.classId,
-  cardNumber: entry.cardNumber,
-  club: entry.club,
-  iofId: entry.iofId,
-  createdAt: entry.createdAt.toISOString(),
-});
+type EntryLike = Entry | EntrySnapshot;
 
-export const toEntrySummaryDto = (entry: Entry): EntrySummaryDto => ({
-  id: entry.id.toString(),
-  name: entry.name,
-  classId: entry.classId,
-  cardNumber: entry.cardNumber,
-  club: entry.club,
-  iofId: entry.iofId,
-});
+const toSnapshot = (entry: EntryLike): EntrySnapshot =>
+  entry instanceof Entry ? entry.toSnapshot() : entry;
+
+export const toEntryDto = (entry: EntryLike): EntryDto => {
+  const snapshot = toSnapshot(entry);
+
+  return {
+    id: snapshot.id,
+    name: snapshot.name,
+    classId: snapshot.classId,
+    cardNumber: snapshot.cardNumber,
+    club: snapshot.club,
+    iofId: snapshot.iofId,
+    createdAt: snapshot.createdAt,
+  };
+};
+
+export const toEntrySummaryDto = (entry: EntryLike): EntrySummaryDto => {
+  const snapshot = toSnapshot(entry);
+
+  return {
+    id: snapshot.id,
+    name: snapshot.name,
+    classId: snapshot.classId,
+    cardNumber: snapshot.cardNumber,
+    club: snapshot.club,
+    iofId: snapshot.iofId,
+  };
+};

@@ -7,12 +7,17 @@ import {
   ApplicationEventPublisher,
   EntryQueryService,
   EntryQueryServiceImpl,
+  EntryReadRepository,
   RegisterEntryService,
   RegisterEntryUseCase,
   TransactionManager,
 } from '@entry-management/application';
 import { DomainEventBus } from '../messaging/DomainEventBus.js';
-import { InMemoryEntryRepository } from '../persistence/InMemoryEntryRepository.js';
+import {
+  InMemoryEntryReadRepository,
+  InMemoryEntryRepository,
+  createInMemoryEntryRepositoryStore,
+} from '../persistence/InMemoryEntryRepository.js';
 import { SimpleTransactionManager } from '../transaction/SimpleTransactionManager.js';
 
 export interface EntryUseCases {
@@ -21,6 +26,7 @@ export interface EntryUseCases {
 
 export interface EntryModule {
   repository: EntryRepository;
+  readRepository: EntryReadRepository;
   transactionManager: TransactionManager;
   eventPublisher: ApplicationEventPublisher;
   useCases: EntryUseCases;
@@ -28,7 +34,9 @@ export interface EntryModule {
 }
 
 export const createEntryModule = (): EntryModule => {
-  const repository = new InMemoryEntryRepository();
+  const store = createInMemoryEntryRepositoryStore();
+  const repository = new InMemoryEntryRepository(store);
+  const readRepository = new InMemoryEntryReadRepository(store);
   const transactionManager = new SimpleTransactionManager();
   const eventPublisher = new DomainEventBus();
   const factory = new EntryFactory(SystemClock);
@@ -40,10 +48,11 @@ export const createEntryModule = (): EntryModule => {
     eventPublisher,
   );
 
-  const queryService = new EntryQueryServiceImpl(repository);
+  const queryService = new EntryQueryServiceImpl(readRepository);
 
   return {
     repository,
+    readRepository,
     transactionManager,
     eventPublisher,
     useCases: {

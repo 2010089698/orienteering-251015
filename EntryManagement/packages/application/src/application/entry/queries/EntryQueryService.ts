@@ -1,4 +1,4 @@
-import { EntryId, EntryRepository } from '@entry-management/domain';
+import { EntryReadRepository } from './EntryReadRepository.js';
 import { EntryDto, EntrySummaryDto } from '../dto/EntryDtos.js';
 import { toEntryDto, toEntrySummaryDto } from '../dto/EntryMappers.js';
 
@@ -8,7 +8,7 @@ export interface EntryQueryService {
 }
 
 export class EntryQueryServiceImpl implements EntryQueryService {
-  constructor(private readonly repository: EntryRepository) {}
+  constructor(private readonly repository: EntryReadRepository) {}
 
   async listEntries(): Promise<EntrySummaryDto[]> {
     const entries = await this.repository.findAll();
@@ -16,7 +16,7 @@ export class EntryQueryServiceImpl implements EntryQueryService {
   }
 
   async getEntry(id: string): Promise<EntryDto | null> {
-    const entry = await this.repository.findById(EntryId.create(id));
+    const entry = await this.repository.findById(id);
     return entry ? toEntryDto(entry) : null;
   }
 }
