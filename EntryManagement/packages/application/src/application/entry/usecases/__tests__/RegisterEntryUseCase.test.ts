@@ -4,6 +4,7 @@ import {
   EntryFactory,
   type EntryRepository,
   type DomainClock,
+  DomainError,
 } from '@entry-management/domain';
 import {
   type ApplicationEventPublisher,
@@ -81,5 +82,18 @@ describe('RegisterEntryService', () => {
 
     expect(result.iofId).toBeUndefined();
     expect(repository.savedEntries[0]?.iofId).toBeUndefined();
+  });
+
+  it('throws a DomainError when validation fails', async () => {
+    const { service, repository } = createUseCase(clock);
+
+    await expect(
+      service.execute({
+        name: '   ',
+        classId: 'M21',
+        cardNumber: '654321',
+      }),
+    ).rejects.toBeInstanceOf(DomainError);
+    expect(repository.savedEntries).toHaveLength(0);
   });
 });
