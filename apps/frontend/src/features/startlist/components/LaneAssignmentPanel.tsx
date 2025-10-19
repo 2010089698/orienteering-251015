@@ -19,6 +19,7 @@ import {
   useStartlistStatuses,
 } from '../state/StartlistContext';
 import { generateLaneAssignments, reorderLaneClass } from '../utils/startlistUtils';
+import { buildClassSplitMetadata } from '../utils/classSplitMetadata';
 
 const LaneAssignmentPanel = (): JSX.Element => {
   const entries = useStartlistEntries();
@@ -32,55 +33,14 @@ const LaneAssignmentPanel = (): JSX.Element => {
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
-  const splitMetadataByClassId = useMemo(() => {
-    const meta = new Map<
-      string,
-      { baseClassId: string; splitIndex?: number; partCount: number; displayName?: string }
-    >();
-    const baseCounts = new Map<string, number>();
-    classSplitResult?.splitClasses.forEach((item) => {
-      const current = baseCounts.get(item.baseClassId) ?? 0;
-      baseCounts.set(item.baseClassId, current + 1);
+  const { metadataByClassId: splitMetadataByClassId, countsByClassId: splitEntryCounts } = useMemo(() => {
+    return buildClassSplitMetadata({
+      entries,
+      laneAssignments,
+      splitClasses: classSplitResult?.splitClasses,
+      splitIdToEntryIds: classSplitResult?.splitIdToEntryIds,
     });
-    classSplitResult?.splitClasses.forEach((item) => {
-      meta.set(item.classId, {
-        baseClassId: item.baseClassId,
-        splitIndex: item.splitIndex,
-        partCount: baseCounts.get(item.baseClassId) ?? 1,
-        displayName: item.displayName,
-      });
-    });
-    laneAssignments.forEach((lane) => {
-      lane.classOrder.forEach((classId) => {
-        if (!meta.has(classId)) {
-          meta.set(classId, { baseClassId: classId, partCount: 1 });
-        }
-      });
-    });
-    entries.forEach((entry) => {
-      const trimmed = entry.classId.trim();
-      if (!meta.has(trimmed)) {
-        meta.set(trimmed, { baseClassId: trimmed, partCount: 1 });
-      }
-    });
-    return meta;
-  }, [classSplitResult, laneAssignments, entries]);
-
-  const splitEntryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    if (classSplitResult?.splitIdToEntryIds) {
-      classSplitResult.splitIdToEntryIds.forEach((ids, classId) => {
-        counts.set(classId, ids.length);
-      });
-    }
-    if (counts.size === 0) {
-      entries.forEach((entry) => {
-        const classId = entry.classId.trim();
-        counts.set(classId, (counts.get(classId) ?? 0) + 1);
-      });
-    }
-    return counts;
-  }, [classSplitResult, entries]);
+  }, [classSplitResult, entries, laneAssignments]);
 
   const handleGenerate = () => {
     if (!settings) {
@@ -170,16 +130,7 @@ const LaneAssignmentPanel = (): JSX.Element => {
               <ul className="list-reset">
                 {assignment.classOrder.map((classId, index) => {
                   const meta = splitMetadataByClassId.get(classId);
-                  const helperParts: string[] = [];
-                  if (meta?.baseClassId && meta.baseClassId !== classId) {
-                    helperParts.push(meta.baseClassId);
-                  }
-                  if ((meta?.partCount ?? 1) > 1) {
-                    const splitLabel = meta.displayName ? `分割 ${meta.displayName}` : '分割';
-                    const position = meta.splitIndex !== undefined ? `${meta.splitIndex + 1}/${meta.partCount}` : '';
-                    helperParts.push(position ? `${splitLabel} (${position})` : splitLabel);
-                  }
-                  const helperText = helperParts.join(' • ');
+                  const helperText = meta?.helperText;
                   const competitorCount = splitEntryCounts.get(classId) ?? 0;
                   return (
                     <li key={classId}>

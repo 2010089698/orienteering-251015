@@ -8,6 +8,7 @@ import {
   prepareClassSplits,
   reorderLaneClass,
 } from '../utils/startlistUtils';
+import { buildClassSplitMetadata } from '../utils/classSplitMetadata';
 import {
   createStatus,
   setStatus,
@@ -28,7 +29,6 @@ import {
   useStartlistStatuses,
   useStartlistWorldRankingByClass,
 } from '../state/StartlistContext';
-import type { Entry } from '../state/types';
 import {
   seededRandomClassOrderPolicy,
   seededRandomUnconstrainedClassOrderPolicy,
@@ -138,19 +138,6 @@ const formatTimeRange = (startMs?: number, endMs?: number): string | undefined =
   return `${start}〜${end}`;
 };
 
-const buildHelperText = (summary: ClassSummary) => {
-  const helperParts: string[] = [];
-  if (summary.baseClassId !== summary.classId) {
-    helperParts.push(summary.baseClassId);
-  }
-  if (summary.splitCount > 1) {
-    const label = summary.displayName ? `分割 ${summary.displayName}` : '分割';
-    const position = summary.splitIndex !== undefined ? `${summary.splitIndex + 1}/${summary.splitCount}` : undefined;
-    helperParts.push(position ? `${label} (${position})` : label);
-  }
-  return helperParts.join(' • ');
-};
-
 export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps) => {
   const laneAssignments = useStartlistLaneAssignments();
   const entries = useStartlistEntries();
@@ -183,55 +170,15 @@ export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps)
     settings?.intervals?.laneClass?.milliseconds ?? laneAssignments[0]?.interval?.milliseconds ?? 0;
   const playerIntervalMs = settings?.intervals?.classPlayer?.milliseconds ?? 0;
 
-  const entryById = useMemo(() => {
-    return new Map(entries.map((entry) => [entry.id, entry]));
-  }, [entries]);
-
-  const classEntriesBySplitId = useMemo(() => {
-    const map = new Map<string, Entry[]>();
-    splitPreparation.splitIdToEntryIds.forEach((ids, classId) => {
-      const resolved = ids
-        .map((id) => entryById.get(id))
-        .filter((entry): entry is Entry => Boolean(entry));
-      map.set(classId, resolved);
+  const { metadataByClassId: splitMetadataByClassId, countsByClassId: splitEntryCounts } = useMemo(() => {
+    return buildClassSplitMetadata({
+      entries,
+      laneAssignments,
+      splitClasses: splitPreparation.result?.splitClasses,
+      splitIdToEntryIds: splitPreparation.splitIdToEntryIds,
+      splitIdToBaseClassId: splitPreparation.splitIdToBaseClassId,
     });
-    if (map.size === 0) {
-      entries.forEach((entry) => {
-        const classId = entry.classId.trim();
-        const next = map.get(classId) ?? [];
-        next.push(entry);
-        map.set(classId, next);
-      });
-    }
-    return map;
-  }, [entries, entryById, splitPreparation]);
-
-  const splitMetadataByClassId = useMemo(() => {
-    const meta = new Map<
-      string,
-      { baseClassId: string; splitIndex?: number; splitCount: number; displayName?: string }
-    >();
-    const baseCounts = new Map<string, number>();
-    splitPreparation.result?.splitClasses.forEach((item) => {
-      const current = baseCounts.get(item.baseClassId) ?? 0;
-      baseCounts.set(item.baseClassId, current + 1);
-    });
-    splitPreparation.result?.splitClasses.forEach((item) => {
-      meta.set(item.classId, {
-        baseClassId: item.baseClassId,
-        splitIndex: item.splitIndex,
-        splitCount: baseCounts.get(item.baseClassId) ?? 1,
-        displayName: item.displayName,
-      });
-    });
-    splitPreparation.splitIdToEntryIds.forEach((_ids, classId) => {
-      if (!meta.has(classId)) {
-        const baseClassId = splitPreparation.splitIdToBaseClassId.get(classId) ?? classId;
-        meta.set(classId, { baseClassId, splitCount: 1 });
-      }
-    });
-    return meta;
-  }, [splitPreparation]);
+  }, [entries, laneAssignments, splitPreparation]);
 
   const baseStartTimeMs = useMemo(() => {
     if (!settings?.startTime) {
@@ -268,8 +215,7 @@ export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps)
       let laneStartMs: number | undefined;
       let laneEndMs: number | undefined;
       const classSummaries: ClassSummary[] = lane.classOrder.map((classId, index) => {
-        const entriesForClass = classEntriesBySplitId.get(classId) ?? [];
-        const competitorCount = entriesForClass.length;
+        const competitorCount = splitEntryCounts.get(classId) ?? 0;
         let startMs: number | undefined;
         let endMs: number | undefined;
         if (canEstimateTimes && baseStartTimeMs !== undefined) {
@@ -296,10 +242,10 @@ export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps)
           timeRangeLabel: competitorCount > 0 ? formatTimeRange(startMs, endMs) : undefined,
           baseClassId: meta?.baseClassId ?? classId,
           splitIndex: meta?.splitIndex,
-          splitCount: meta?.splitCount ?? 1,
+          splitCount: meta?.partCount ?? 1,
           displayName: meta?.displayName,
+          helperText: meta?.helperText,
         };
-        summary.helperText = buildHelperText(summary);
         return summary;
       });
       const competitorCount = classSummaries.reduce((sum, item) => sum + item.competitorCount, 0);
@@ -313,7 +259,7 @@ export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps)
   }, [
     baseStartTimeMs,
     canEstimateTimes,
-    classEntriesBySplitId,
+    splitEntryCounts,
     laneIntervalMs,
     lanesWithPlaceholders,
     playerIntervalMs,
