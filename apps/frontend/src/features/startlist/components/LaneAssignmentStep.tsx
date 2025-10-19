@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { StatusMessage } from '@orienteering/shared-ui';
@@ -9,13 +10,10 @@ import LaneClassSummaryList from './lane-assignment/LaneClassSummaryList';
 import LaneColumn from './lane-assignment/LaneColumn';
 import LaneSummaryCard from './lane-assignment/LaneSummaryCard';
 import { useLaneAssignmentStep } from '../hooks/useLaneAssignmentStep';
+import { STARTLIST_STEP_PATHS } from '../routes';
 
-export type LaneAssignmentStepProps = {
-  onBack: () => void;
-  onConfirm: () => void;
-};
-
-const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX.Element => {
+const LaneAssignmentStep = (): JSX.Element => {
+  const navigate = useNavigate();
   const {
     laneRows,
     laneOptions,
@@ -26,7 +24,9 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
     handleLaneChange,
     handleDragEnd,
     handleConfirm,
-  } = useLaneAssignmentStep({ onConfirm });
+  } = useLaneAssignmentStep({
+    onConfirm: () => navigate(STARTLIST_STEP_PATHS.order),
+  });
 
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -203,7 +203,11 @@ const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX
         </>
       )}
       <div className="actions-row step-actions">
-        <button type="button" className="secondary" onClick={onBack}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => navigate(STARTLIST_STEP_PATHS.input)}
+        >
           戻る
         </button>
         <button type="button" onClick={handleConfirm} disabled={laneRows.length === 0}>

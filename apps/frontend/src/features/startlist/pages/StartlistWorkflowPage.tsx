@@ -1,13 +1,42 @@
-import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import StepIndicator from '../components/StepIndicator';
-import InputStep from '../components/InputStep';
-import LaneAssignmentStep from '../components/LaneAssignmentStep';
-import ClassOrderStep from '../components/ClassOrderStep';
+import {
+  useStartlistClassAssignments,
+  useStartlistLaneAssignments,
+  useStartlistStartTimes,
+} from '../state/StartlistContext';
+import { STARTLIST_BASE_PATH, STARTLIST_STEP_SEQUENCE } from '../routes';
 
 const stepLabels = ['入力', 'レーン調整', '順序と時間'];
 
 const StartlistWorkflowPage = (): JSX.Element => {
-  const [step, setStep] = useState(1);
+  const laneAssignments = useStartlistLaneAssignments();
+  const classAssignments = useStartlistClassAssignments();
+  const startTimes = useStartlistStartTimes();
+
+  const steps = STARTLIST_STEP_SEQUENCE.map((step, index) => {
+    const label = stepLabels[index];
+    switch (step) {
+      case 'lanes':
+        return {
+          label,
+          path: step,
+          isEnabled: laneAssignments.length > 0,
+        };
+      case 'order':
+        return {
+          label,
+          path: step,
+          isEnabled: classAssignments.length > 0 && startTimes.length > 0,
+        };
+      default:
+        return {
+          label,
+          path: step,
+          isEnabled: true,
+        };
+    }
+  });
 
   return (
     <div className="app-shell">
@@ -16,16 +45,10 @@ const StartlistWorkflowPage = (): JSX.Element => {
           <h1>スタートリスト作成ガイド</h1>
           <p className="muted">3 つのステップを順に進めると、スタートリストが完成します。</p>
         </div>
-        <StepIndicator current={step} steps={stepLabels} />
+        <StepIndicator steps={steps} basePath={STARTLIST_BASE_PATH} />
       </header>
       <main className="content">
-        <div className="card">
-          {step === 1 && <InputStep onComplete={() => setStep(2)} />}
-          {step === 2 && (
-            <LaneAssignmentStep onBack={() => setStep(1)} onConfirm={() => setStep(3)} />
-          )}
-          {step === 3 && <ClassOrderStep onBack={() => setStep(2)} />}
-        </div>
+        <Outlet />
       </main>
     </div>
   );

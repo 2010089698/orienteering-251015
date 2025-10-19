@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { getBusinessCapabilities, getNavigationItems } from './contexts/registry';
 import type { BusinessCapabilityModule, CapabilityProvider } from './contexts/types';
+import InputStepPage from './features/startlist/pages/InputStepPage';
+import LaneAssignmentStepPage from './features/startlist/pages/LaneAssignmentStepPage';
+import ClassOrderStepPage from './features/startlist/pages/ClassOrderStepPage';
 import './styles.css';
 
 const capabilityModules = getBusinessCapabilities();
@@ -44,9 +47,20 @@ const App = (): JSX.Element => {
         <main className="app-main">
           <Routes>
             <Route index element={<Navigate to={defaultCapabilityPath} replace />} />
-            {capabilityModules.map((module) => (
-              <Route key={module.id} path={`${module.routePath}/*`} element={<ModuleRoute module={module} />} />
-            ))}
+            {capabilityModules.map((module) => {
+              if (module.id === 'startlist') {
+                return (
+                  <Route key={module.id} path={`${module.routePath}/*`} element={<ModuleRoute module={module} />}>
+                    <Route index element={<Navigate to="input" replace />} />
+                    <Route path="input" element={<InputStepPage />} />
+                    <Route path="lanes" element={<LaneAssignmentStepPage />} />
+                    <Route path="order" element={<ClassOrderStepPage />} />
+                    <Route path="*" element={<Navigate to="input" replace />} />
+                  </Route>
+                );
+              }
+              return <Route key={module.id} path={`${module.routePath}/*`} element={<ModuleRoute module={module} />} />;
+            })}
             <Route path="*" element={<Navigate to={defaultCapabilityPath} replace />} />
           </Routes>
         </main>

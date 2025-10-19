@@ -63,7 +63,7 @@ export type LaneWithSummary = {
 };
 
 export type UseLaneAssignmentStepProps = {
-  onConfirm: () => void;
+  onConfirm?: () => void;
 };
 
 const ensureLaneRecords = (assignments: LaneAssignmentDto[], laneCount: number, intervalMs: number) => {
@@ -138,7 +138,7 @@ const formatTimeRange = (startMs?: number, endMs?: number): string | undefined =
   return `${start}〜${end}`;
 };
 
-export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps) => {
+export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps = {}) => {
   const laneAssignments = useStartlistLaneAssignments();
   const entries = useStartlistEntries();
   const settings = useStartlistSettings();
@@ -409,7 +409,7 @@ export const useLaneAssignmentStep = ({ onConfirm }: UseLaneAssignmentStepProps)
       return;
     }
     setStatus(dispatch, 'startTimes', createStatus('スタート時間を割り当てました。', 'success'));
-    onConfirm();
+    onConfirm?.();
   };
 
   useEffect(() => {

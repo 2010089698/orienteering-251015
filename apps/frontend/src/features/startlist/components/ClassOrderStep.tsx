@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatusMessage } from '@orienteering/shared-ui';
 import {
   DndContext,
@@ -36,10 +37,7 @@ import { Tabs } from '../../../components/tabs';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import ClassOrderPanel from './ClassOrderPanel';
 import { createSplitClassLookup } from '../utils/splitUtils';
-
-type ClassOrderStepProps = {
-  onBack: () => void;
-};
+import { STARTLIST_STEP_PATHS } from '../routes';
 
 const formatStartTime = (iso: string): string => {
   const date = new Date(iso);
@@ -121,7 +119,8 @@ const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDt
   );
 };
 
-const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
+const ClassOrderStep = (): JSX.Element => {
+  const navigate = useNavigate();
   const classAssignments = useStartlistClassAssignments();
   const startTimes = useStartlistStartTimes();
   const settings = useStartlistSettings();
@@ -605,7 +604,11 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         >
           CSV をエクスポート
         </button>
-        <button type="button" className="secondary" onClick={onBack}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => navigate(STARTLIST_STEP_PATHS.lanes)}
+        >
           戻る
         </button>
       </div>

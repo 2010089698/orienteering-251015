@@ -26,7 +26,7 @@ vi.mock('@dnd-kit/core', async () => {
 });
 
 import LaneAssignmentStep from './LaneAssignmentStep';
-import { renderWithStartlist } from '../test/test-utils';
+import { renderWithStartlistRouter } from '../test/test-utils';
 import {
   useStartlistClassAssignments,
   useStartlistClassOrderSeed,
@@ -98,7 +98,8 @@ const splitResult = splitGeneration.splitResult!;
 
 describe('LaneAssignmentStep', () => {
   it('allows lane changes for split classes', async () => {
-    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={() => {}} />, {
+    renderWithStartlistRouter(<LaneAssignmentStep />, {
+      routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -115,7 +116,8 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('switches between overview and focused lane tabs with split metadata', async () => {
-    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={() => {}} />, {
+    renderWithStartlistRouter(<LaneAssignmentStep />, {
+      routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -154,7 +156,8 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('shows split helper text and competitor counts in previews', async () => {
-    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={() => {}} />, {
+    renderWithStartlistRouter(<LaneAssignmentStep />, {
+      routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -183,7 +186,8 @@ describe('LaneAssignmentStep', () => {
 
   it('supports dragging split classes between lanes', async () => {
     const user = userEvent.setup();
-    renderWithStartlist(<LaneAssignmentStep onBack={() => {}} onConfirm={() => {}} />, {
+    renderWithStartlistRouter(<LaneAssignmentStep />, {
+      routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -202,13 +206,13 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('confirms assignments and generates next steps with split metadata', async () => {
-    const onConfirm = vi.fn();
-    renderWithStartlist(
+    renderWithStartlistRouter(
       <>
-        <LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />
+        <LaneAssignmentStep />
         <ClassOrderPreview />
       </>,
       {
+        routerProps: { initialEntries: ['/startlist/lanes'] },
         initialState: {
           startlistId: 'SL-1',
           settings: baseSettings,
@@ -226,17 +230,16 @@ describe('LaneAssignmentStep', () => {
     expect(await screen.findByText('スタート時間を割り当てました。')).toBeInTheDocument();
     expect(await screen.findByTestId('class-order-M21-A')).toBeInTheDocument();
     expect(await screen.findByTestId('class-order-M21-B')).toBeInTheDocument();
-    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it('blocks generation when required world ranking CSVs are missing', async () => {
-    const onConfirm = vi.fn();
-    renderWithStartlist(
+    renderWithStartlistRouter(
       <>
-        <LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />
+        <LaneAssignmentStep />
         <StartOrderStatusPreview />
       </>,
       {
+        routerProps: { initialEntries: ['/startlist/lanes'] },
         initialState: {
           startlistId: 'SL-1',
           settings: baseSettings,
@@ -255,17 +258,16 @@ describe('LaneAssignmentStep', () => {
     expect(screen.getByTestId('start-order-status')).toHaveTextContent(
       '世界ランキング方式のクラス (M21) の CSV が読み込まれていません。',
     );
-    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('preserves generated class order when re-confirming step 2', async () => {
-    const onConfirm = vi.fn();
-    renderWithStartlist(
+    renderWithStartlistRouter(
       <>
-        <LaneAssignmentStep onBack={() => {}} onConfirm={onConfirm} />
+        <LaneAssignmentStep />
         <ClassOrderPreview />
       </>,
       {
+        routerProps: { initialEntries: ['/startlist/lanes'] },
         initialState: {
           startlistId: 'SL-1',
           settings: baseSettings,
@@ -302,6 +304,5 @@ describe('LaneAssignmentStep', () => {
 
     expect(secondSeed).toBe(initialSeed);
     expect(secondOrders).toEqual(initialOrders);
-    expect(onConfirm).toHaveBeenCalledTimes(2);
   });
 });

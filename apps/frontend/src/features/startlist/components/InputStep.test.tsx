@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import InputStep from './InputStep';
-import { renderWithStartlist } from '../test/test-utils';
+import { renderWithStartlistRouter } from '../test/test-utils';
 import {
   useStartlistClassSplitResult,
   useStartlistClassSplitRules,
@@ -46,7 +46,9 @@ const StatePreview = () => {
 
 describe('InputStep', () => {
   it('blocks progress when no entries are registered', async () => {
-    renderWithStartlist(<InputStep onComplete={() => {}} />);
+    renderWithStartlistRouter(<InputStep />, {
+      routerProps: { initialEntries: ['/startlist/input'] },
+    });
 
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
@@ -54,7 +56,9 @@ describe('InputStep', () => {
   });
 
   it('shows validation errors from the settings form when inputs are invalid', async () => {
-    renderWithStartlist(<InputStep onComplete={() => {}} />);
+    renderWithStartlistRouter(<InputStep />, {
+      routerProps: { initialEntries: ['/startlist/input'] },
+    });
 
     await userEvent.clear(screen.getByLabelText('開始時刻'));
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
@@ -62,9 +66,9 @@ describe('InputStep', () => {
     expect(await screen.findByText('開始時刻を入力してください。')).toBeInTheDocument();
   });
 
-  it('generates lane assignments and calls onComplete', async () => {
-    let completed = false;
-    renderWithStartlist(<InputStep onComplete={() => (completed = true)} />, {
+  it('generates lane assignments and navigates forward', async () => {
+    renderWithStartlistRouter(<InputStep />, {
+      routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -75,11 +79,11 @@ describe('InputStep', () => {
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
     expect(await screen.findByText('自動でレーン割り当てを作成しました。')).toBeInTheDocument();
-    expect(completed).toBe(true);
   });
 
   it('allows adding and removing class split rows', async () => {
-    renderWithStartlist(<InputStep onComplete={() => {}} />, {
+    renderWithStartlistRouter(<InputStep />, {
+      routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -101,7 +105,8 @@ describe('InputStep', () => {
   });
 
   it('surfaces validation errors for invalid class split counts', async () => {
-    renderWithStartlist(<InputStep onComplete={() => {}} />, {
+    renderWithStartlistRouter(<InputStep />, {
+      routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
         settings: baseSettings,
@@ -122,13 +127,13 @@ describe('InputStep', () => {
   });
 
   it('passes class split rules to lane generation before completing step 1', async () => {
-    let completed = false;
-    renderWithStartlist(
+    renderWithStartlistRouter(
       <>
-        <InputStep onComplete={() => (completed = true)} />
+        <InputStep />
         <StatePreview />
       </>,
       {
+        routerProps: { initialEntries: ['/startlist/input'] },
         initialState: {
           startlistId: 'SL-1',
           settings: baseSettings,
@@ -147,8 +152,6 @@ describe('InputStep', () => {
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
     expect(await screen.findByText('自動でレーン割り当てを作成しました。')).toBeInTheDocument();
-    expect(completed).toBe(true);
-
     const splitRulesPreview = screen.getByTestId('input-step-split-rules').textContent ?? '';
     expect(splitRulesPreview).toContain('"baseClassId":"SP"');
 
