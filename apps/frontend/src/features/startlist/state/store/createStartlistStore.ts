@@ -51,7 +51,7 @@ export const createDefaultStartlistId = (): string => {
   return `SL-${year}${month}${day}`;
 };
 
-const createInitialState = (): StartlistState => {
+export const createInitialStartlistState = (): StartlistState => {
   const statusState = createInitialStatusState();
   return {
     startlistId: createDefaultStartlistId(),
@@ -100,7 +100,10 @@ export type StartlistAction =
   | StartOrderAction
   | WorldRankingAction;
 
-const startlistReducer = (state: StartlistState, action: StartlistAction): StartlistState => {
+export const startlistReducer = (
+  state: StartlistState,
+  action: StartlistAction,
+): StartlistState => {
   switch (action.type) {
     case 'entries/add':
     case 'entries/remove':
@@ -213,43 +216,6 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
     default:
       return state;
   }
-};
-
-export interface StartlistStore {
-  getState: () => StartlistState;
-  dispatch: (action: StartlistAction) => void;
-  subscribe: (listener: () => void) => () => void;
-}
-
-export const createStartlistStore = (
-  initialState: StartlistState = createInitialState(),
-): StartlistStore => {
-  let state = initialState;
-  const listeners = new Set<() => void>();
-
-  const getState = (): StartlistState => state;
-
-  const dispatch = (action: StartlistAction): void => {
-    const nextState = startlistReducer(state, action);
-    if (nextState === state) {
-      return;
-    }
-    state = nextState;
-    listeners.forEach((listener) => listener());
-  };
-
-  const subscribe = (listener: () => void): (() => void) => {
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  };
-
-  return {
-    getState,
-    dispatch,
-    subscribe,
-  };
 };
 
 export const createLaneAssignmentAction = (
