@@ -32,6 +32,8 @@ type ClassOrderPanelProps = {
   headingId?: string;
   showAssignmentPreview?: boolean;
   className?: string;
+  showStartOrderStatus?: boolean;
+  showActions?: boolean;
 };
 
 const ClassOrderPanel = ({
@@ -39,6 +41,8 @@ const ClassOrderPanel = ({
   headingId = 'class-heading',
   showAssignmentPreview = true,
   className,
+  showStartOrderStatus = true,
+  showActions = true,
 }: ClassOrderPanelProps): JSX.Element => {
   const entries = useStartlistEntries();
   const settings = useStartlistSettings();
@@ -157,20 +161,22 @@ const ClassOrderPanel = ({
         <HeadingTag id={headingId}>クラス内順序</HeadingTag>
         <p className="muted">カード番号順をベースに、必要に応じて微調整します。</p>
       </header>
-      {statuses.startOrder.level !== 'idle' && (
+      {showStartOrderStatus && statuses.startOrder.level !== 'idle' && (
         <div className="details-group">
           <StatusMessage tone={statuses.startOrder.level} message={statuses.startOrder.text} />
         </div>
       )}
-      <div className="actions-row">
-        <button type="button" onClick={handleGenerate} disabled={!entries.length}>
-          クラス順序を自動生成
-        </button>
-        <button type="button" className="secondary" onClick={handlePersist} disabled={loading.classes}>
-          API に送信
-        </button>
-        <span className="muted">{classAssignments.length} クラスを編集中</span>
-      </div>
+      {showActions && (
+        <div className="actions-row">
+          <button type="button" onClick={handleGenerate} disabled={!entries.length}>
+            クラス順序を自動生成
+          </button>
+          <button type="button" className="secondary" onClick={handlePersist} disabled={loading.classes}>
+            API に送信
+          </button>
+          <span className="muted">{classAssignments.length} クラスを編集中</span>
+        </div>
+      )}
       {showAssignmentPreview && (
         classAssignments.length === 0 ? (
           <p className="muted">まだクラス順序が生成されていません。</p>

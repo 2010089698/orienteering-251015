@@ -107,6 +107,8 @@ const ClassOrderStep = ({
         headingId="class-order-config-heading"
         showAssignmentPreview={false}
         className="class-order-config"
+        showStartOrderStatus={false}
+        showActions={false}
       />
       {avoidConsecutiveClubs && warningSummaries.length > 0 && (
         <div className="class-order-warning">
