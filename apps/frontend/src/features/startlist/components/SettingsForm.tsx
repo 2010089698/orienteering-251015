@@ -3,44 +3,45 @@ import { StatusMessage } from '@orienteering/shared-ui';
 
 import type { StatusMessageState } from '../state/types';
 import type { IntervalOption } from '../hooks/useSettingsForm';
+import type { SettingsFormFields } from '../hooks/utils/settingsForm';
+
+export type SettingsFormErrors = {
+  form: string | null;
+};
+
+export type SettingsFormChangeHandlers = {
+  startTime: (value: string) => void;
+  laneIntervalMs: (value: number) => void;
+  playerIntervalMs: (value: number) => void;
+  laneCount: (value: number) => void;
+  avoidConsecutiveClubs: (value: boolean) => void;
+};
 
 export type SettingsFormProps = {
-  startTime: string;
-  laneIntervalMs: number;
-  playerIntervalMs: number;
-  laneCount: number;
-  avoidConsecutiveClubs: boolean;
+  fields: SettingsFormFields;
+  errors: SettingsFormErrors;
   laneIntervalOptions: IntervalOption[];
   playerIntervalOptions: IntervalOption[];
   status: StatusMessageState;
-  onStartTimeChange: (value: string) => void;
-  onLaneIntervalChange: (value: number) => void;
-  onPlayerIntervalChange: (value: number) => void;
-  onLaneCountChange: (value: number) => void;
-  onAvoidConsecutiveClubsChange: (value: boolean) => void;
+  onChange: SettingsFormChangeHandlers;
   onSubmit: () => void;
 };
 
 const SettingsForm = ({
-  startTime,
-  laneIntervalMs,
-  playerIntervalMs,
-  laneCount,
-  avoidConsecutiveClubs,
+  fields,
+  errors,
   laneIntervalOptions,
   playerIntervalOptions,
   status,
-  onStartTimeChange,
-  onLaneIntervalChange,
-  onPlayerIntervalChange,
-  onLaneCountChange,
-  onAvoidConsecutiveClubsChange,
+  onChange,
   onSubmit,
 }: SettingsFormProps): JSX.Element => {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSubmit();
   };
+
+  const { startTime, laneIntervalMs, playerIntervalMs, laneCount, avoidConsecutiveClubs } = fields;
 
   return (
     <section aria-labelledby="settings-heading">
@@ -51,18 +52,23 @@ const SettingsForm = ({
         </p>
       </header>
       <form onSubmit={handleSubmit} className="form-grid" noValidate>
+        {errors.form ? (
+          <p role="alert" className="form-error">
+            {errors.form}
+          </p>
+        ) : null}
         <label>
           開始時刻
           <input
             type="datetime-local"
             value={startTime}
-            onChange={(event) => onStartTimeChange(event.target.value)}
+            onChange={(event) => onChange.startTime(event.target.value)}
             required
           />
         </label>
         <label>
           レーン内クラス間隔
-          <select value={laneIntervalMs} onChange={(event) => onLaneIntervalChange(Number(event.target.value))}>
+          <select value={laneIntervalMs} onChange={(event) => onChange.laneIntervalMs(Number(event.target.value))}>
             {laneIntervalOptions
               .slice()
               .sort((a, b) => a.value - b.value)
@@ -75,7 +81,7 @@ const SettingsForm = ({
         </label>
         <label>
           クラス内選手間隔
-          <select value={playerIntervalMs} onChange={(event) => onPlayerIntervalChange(Number(event.target.value))}>
+          <select value={playerIntervalMs} onChange={(event) => onChange.playerIntervalMs(Number(event.target.value))}>
             {playerIntervalOptions
               .slice()
               .sort((a, b) => a.value - b.value)
@@ -92,14 +98,14 @@ const SettingsForm = ({
             type="number"
             min={1}
             value={laneCount}
-            onChange={(event) => onLaneCountChange(Number(event.target.value))}
+            onChange={(event) => onChange.laneCount(Number(event.target.value))}
           />
         </label>
         <label className="form-checkbox">
           <input
             type="checkbox"
             checked={avoidConsecutiveClubs}
-            onChange={(event) => onAvoidConsecutiveClubsChange(event.target.checked)}
+            onChange={(event) => onChange.avoidConsecutiveClubs(event.target.checked)}
           />
           <span>
             同じ所属が連続で並ばないようにする

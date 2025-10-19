@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import type { StartlistSettingsDto } from '@startlist-management/application';
 
 import { deriveClassOrderWarnings } from '../utils/startlistUtils';
-import { fromTokyoInputValue, getNextSundayAtTenJst, toTokyoInputValue } from '../utils/time';
 import {
   createDefaultStartlistId,
   createStatus,
@@ -21,16 +20,15 @@ import {
   useStartlistStatuses,
 } from '../state/StartlistContext';
 
-const DEFAULT_LANE_INTERVAL_MS = 0;
-const DEFAULT_PLAYER_INTERVAL_MS = 60000;
-const THIRTY_SECONDS_MS = 30000;
+import {
+  SETTINGS_FORM_ERROR_MESSAGES,
+  SETTINGS_SUCCESS_MESSAGE,
+  createSettingsFormFields,
+  validateSettingsFormFields,
+  type SettingsFormFields,
+} from './utils/settingsForm';
 
-const SETTINGS_SUCCESS_MESSAGE = '基本情報を保存しました。';
-const START_TIME_REQUIRED_MESSAGE = '開始時刻を入力してください。';
-const START_TIME_INVALID_MESSAGE = '開始時刻の形式が正しくありません。';
-const LANE_INTERVAL_INVALID_MESSAGE = 'レーン内クラス間隔は 0 秒以上で設定してください。';
-const PLAYER_INTERVAL_INVALID_MESSAGE = 'クラス内選手間隔は 1 秒以上で設定してください。';
-const LANE_COUNT_INVALID_MESSAGE = 'レーン数は 1 以上の整数で入力してください。';
+const THIRTY_SECONDS_MS = 30000;
 
 export type IntervalOption = { label: string; value: number };
 
@@ -77,6 +75,42 @@ export type SettingsFormSubmitResult = {
   error?: string;
 };
 
+type SettingsFormFieldName = keyof SettingsFormFields;
+
+type FormAction =
+  | { type: 'hydrate'; payload: SettingsFormFields }
+  | { type: 'updateField'; field: SettingsFormFieldName; value: SettingsFormFields[SettingsFormFieldName] }
+  | { type: 'setError'; error: string | null };
+
+type FormState = {
+  fields: SettingsFormFields;
+  error: string | null;
+};
+
+const formReducer = (state: FormState, action: FormAction): FormState => {
+  switch (action.type) {
+    case 'hydrate':
+      return { fields: action.payload, error: null };
+    case 'updateField':
+      if (state.fields[action.field] === action.value) {
+        return state.error ? { fields: state.fields, error: null } : state;
+      }
+
+      return {
+        fields: { ...state.fields, [action.field]: action.value } as SettingsFormFields,
+        error: null,
+      };
+    case 'setError':
+      if (state.error === action.error) {
+        return state;
+      }
+
+      return { ...state, error: action.error };
+    default:
+      return state;
+  }
+};
+
 export const useSettingsForm = () => {
   const settings = useStartlistSettings();
   const startlistId = useStartlistStartlistId();
@@ -88,45 +122,33 @@ export const useSettingsForm = () => {
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
 
-  const [startTime, setStartTime] = useState(() =>
-    toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()),
+  const initialFields = useMemo(
+    () => createSettingsFormFields(settings, classOrderPreferences),
+    [classOrderPreferences, settings],
   );
-  const [laneIntervalMs, setLaneIntervalMs] = useState<number>(
-    () => settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_LANE_INTERVAL_MS,
-  );
-  const [playerIntervalMs, setPlayerIntervalMs] = useState<number>(
-    () => settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS,
-  );
-  const [laneCount, setLaneCount] = useState(settings?.laneCount ?? 1);
-  const [avoidConsecutiveClubs, setAvoidConsecutiveClubs] = useState(
-    () => classOrderPreferences.avoidConsecutiveClubs,
-  );
-  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const [formState, dispatchForm] = useReducer(formReducer, {
+    fields: initialFields,
+    error: null,
+  });
 
   useEffect(() => {
-    setStartTime(toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));
-    setLaneIntervalMs(settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_LANE_INTERVAL_MS);
-    setPlayerIntervalMs(settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS);
-    setLaneCount(settings?.laneCount ?? 1);
-  }, [settings]);
-
-  useEffect(() => {
-    setAvoidConsecutiveClubs(classOrderPreferences.avoidConsecutiveClubs);
-  }, [classOrderPreferences.avoidConsecutiveClubs]);
+    dispatchForm({ type: 'hydrate', payload: initialFields });
+  }, [initialFields]);
 
   const laneIntervalOptions = useMemo(
-    () => ensureIntervalOption(createIntervalOptions(60, true), laneIntervalMs),
-    [laneIntervalMs],
+    () => ensureIntervalOption(createIntervalOptions(60, true), formState.fields.laneIntervalMs),
+    [formState.fields.laneIntervalMs],
   );
 
   const playerIntervalOptions = useMemo(
-    () => ensureIntervalOption(createIntervalOptions(5), playerIntervalMs),
-    [playerIntervalMs],
+    () => ensureIntervalOption(createIntervalOptions(5), formState.fields.playerIntervalMs),
+    [formState.fields.playerIntervalMs],
   );
 
   const handleAvoidConsecutiveClubsChange = useCallback(
     (nextValue: boolean) => {
-      setAvoidConsecutiveClubs(nextValue);
+      dispatchForm({ type: 'updateField', field: 'avoidConsecutiveClubs', value: nextValue });
       updateClassOrderPreferences(dispatch, { avoidConsecutiveClubs: nextValue });
 
       if (classAssignments.length > 0) {
@@ -151,97 +173,66 @@ export const useSettingsForm = () => {
   );
 
   const submit = useCallback((): SettingsFormSubmitResult => {
-    if (!startTime) {
-      setStatus(dispatch, 'settings', createStatus(START_TIME_REQUIRED_MESSAGE, 'error'));
-      setValidationError(START_TIME_REQUIRED_MESSAGE);
-      return { error: START_TIME_REQUIRED_MESSAGE };
-    }
+    const { settings: nextSettings, error } = validateSettingsFormFields(
+      formState.fields,
+      settings?.eventId ?? '',
+    );
 
-    const normalizedStartTime = fromTokyoInputValue(startTime);
-    if (!normalizedStartTime) {
-      setStatus(dispatch, 'settings', createStatus(START_TIME_INVALID_MESSAGE, 'error'));
-      setValidationError(START_TIME_INVALID_MESSAGE);
-      return { error: START_TIME_INVALID_MESSAGE };
+    if (error || !nextSettings) {
+      const normalizedError =
+        error ?? SETTINGS_FORM_ERROR_MESSAGES.startTimeInvalid;
+      setStatus(dispatch, 'settings', createStatus(normalizedError, 'error'));
+      dispatchForm({ type: 'setError', error: normalizedError });
+      return { error: normalizedError };
     }
-
-    if (!Number.isFinite(laneIntervalMs) || laneIntervalMs < 0) {
-      setStatus(dispatch, 'settings', createStatus(LANE_INTERVAL_INVALID_MESSAGE, 'error'));
-      setValidationError(LANE_INTERVAL_INVALID_MESSAGE);
-      return { error: LANE_INTERVAL_INVALID_MESSAGE };
-    }
-
-    if (!Number.isFinite(playerIntervalMs) || playerIntervalMs <= 0) {
-      setStatus(dispatch, 'settings', createStatus(PLAYER_INTERVAL_INVALID_MESSAGE, 'error'));
-      setValidationError(PLAYER_INTERVAL_INVALID_MESSAGE);
-      return { error: PLAYER_INTERVAL_INVALID_MESSAGE };
-    }
-
-    if (!Number.isInteger(laneCount) || laneCount <= 0) {
-      setStatus(dispatch, 'settings', createStatus(LANE_COUNT_INVALID_MESSAGE, 'error'));
-      setValidationError(LANE_COUNT_INVALID_MESSAGE);
-      return { error: LANE_COUNT_INVALID_MESSAGE };
-    }
-
-    const nextSettings: StartlistSettingsDto = {
-      eventId: settings?.eventId ?? '',
-      startTime: normalizedStartTime,
-      intervals: {
-        laneClass: { milliseconds: laneIntervalMs },
-        classPlayer: { milliseconds: playerIntervalMs },
-      },
-      laneCount,
-    };
 
     const ensuredStartlistId = startlistId?.trim() || createDefaultStartlistId();
     updateSettings(dispatch, { startlistId: ensuredStartlistId, settings: nextSettings });
     setStatus(dispatch, 'settings', createStatus(SETTINGS_SUCCESS_MESSAGE, 'success'));
-    setValidationError(null);
+    dispatchForm({ type: 'setError', error: null });
 
     return { settings: nextSettings };
   }, [
     dispatch,
-    laneCount,
-    laneIntervalMs,
-    playerIntervalMs,
+    formState.fields,
     settings?.eventId,
-    startTime,
     startlistId,
   ]);
 
   const handleStartTimeChange = useCallback((value: string) => {
-    setStartTime(value);
+    dispatchForm({ type: 'updateField', field: 'startTime', value });
   }, []);
 
   const handleLaneIntervalChange = useCallback((value: number) => {
-    setLaneIntervalMs(value);
+    dispatchForm({ type: 'updateField', field: 'laneIntervalMs', value });
   }, []);
 
   const handlePlayerIntervalChange = useCallback((value: number) => {
-    setPlayerIntervalMs(value);
+    dispatchForm({ type: 'updateField', field: 'playerIntervalMs', value });
   }, []);
 
   const handleLaneCountChange = useCallback((value: number) => {
-    setLaneCount(value);
+    dispatchForm({ type: 'updateField', field: 'laneCount', value });
   }, []);
 
   return {
-    startTime,
-    laneIntervalMs,
-    playerIntervalMs,
-    laneCount,
-    avoidConsecutiveClubs,
+    fields: formState.fields,
+    errors: { form: formState.error },
     laneIntervalOptions,
     playerIntervalOptions,
     status: statuses.settings,
-    validationError,
-    onStartTimeChange: handleStartTimeChange,
-    onLaneIntervalChange: handleLaneIntervalChange,
-    onPlayerIntervalChange: handlePlayerIntervalChange,
-    onLaneCountChange: handleLaneCountChange,
-    onAvoidConsecutiveClubsChange: handleAvoidConsecutiveClubsChange,
+    onChange: {
+      startTime: handleStartTimeChange,
+      laneIntervalMs: handleLaneIntervalChange,
+      playerIntervalMs: handlePlayerIntervalChange,
+      laneCount: handleLaneCountChange,
+      avoidConsecutiveClubs: handleAvoidConsecutiveClubsChange,
+    },
     submit,
   } as const;
 };
 
 export type UseSettingsFormReturn = ReturnType<typeof useSettingsForm>;
+
+export type { SettingsFormFields } from './utils/settingsForm';
 
