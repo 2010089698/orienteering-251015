@@ -6,6 +6,7 @@ const ClassOrderStep = ClassOrderWorkflow;
 import { renderWithStartlistRouter } from '../test/test-utils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import { prepareClassSplits } from '../utils/startlistUtils';
+import { createStatus } from '../state/StartlistContext';
 
 vi.mock('../utils/startlistExport', () => ({
   downloadStartlistCsv: vi.fn(),
@@ -87,6 +88,29 @@ describe('ClassOrderStep', () => {
 
     expect(await screen.findByText('順番を更新しました。')).toBeInTheDocument();
     expect(await screen.findByText('スタート時間を再計算しました。')).toBeInTheDocument();
+  });
+
+  it('hides start order warnings and configuration actions within STEP3', () => {
+    renderWithStartlistRouter(<ClassOrderWorkflow />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        laneAssignments,
+        classAssignments,
+        entries,
+        startTimes,
+        statuses: {
+          startOrder: createStatus('世界ランキング方式のクラス (M21) の CSV が読み込まれていません。', 'error'),
+        },
+      },
+    });
+
+    expect(
+      screen.queryByText('世界ランキング方式のクラス (M21) の CSV が読み込まれていません。'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'クラス順序を自動生成' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'API に送信' })).not.toBeInTheDocument();
   });
 
   it('orders tabs by lane assignment and switches between class views', async () => {
