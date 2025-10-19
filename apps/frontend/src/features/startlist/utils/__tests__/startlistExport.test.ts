@@ -109,13 +109,13 @@ describe('buildStartlistExportRows', () => {
       createStartTime('sp2', '2024-05-01T09:01:00+09:00', 1),
     ];
     const classAssignments = [
-      { classId: 'SP-A', playerOrder: ['sp1'], interval: { milliseconds: 60000 } },
-      { classId: 'SP-B', playerOrder: ['sp2'], interval: { milliseconds: 60000 } },
+      { classId: 'SP1', playerOrder: ['sp1'], interval: { milliseconds: 60000 } },
+      { classId: 'SP2', playerOrder: ['sp2'], interval: { milliseconds: 60000 } },
     ];
 
     const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
 
-    expect(rows.map((row) => row.classId)).toEqual(['SP-A', 'SP-B']);
+    expect(rows.map((row) => row.classId)).toEqual(['SP1', 'SP2']);
     expect(rows.map((row) => row.startTimeLabel)).toEqual(['09:00', '09:01']);
   });
 

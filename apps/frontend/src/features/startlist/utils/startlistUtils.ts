@@ -35,13 +35,7 @@ export const groupEntriesByClass = (entries: Entry[]): Map<string, Entry[]> => {
 };
 
 const createSplitSuffix = (index: number): string => {
-  let value = index;
-  let suffix = '';
-  do {
-    suffix = String.fromCharCode(65 + (value % 26)) + suffix;
-    value = Math.floor(value / 26) - 1;
-  } while (value >= 0);
-  return suffix;
+  return String(index + 1);
 };
 
 const MIN_RANDOM_SEED = 1;
@@ -164,7 +158,7 @@ export const prepareClassSplits = (
     }
     const splitGroups = Array.from({ length: partCount }, (_, index) => {
       const suffix = createSplitSuffix(index);
-      const splitId = `${baseClassId}-${suffix}`;
+      const splitId = `${baseClassId}${suffix}`;
       splitIdToBaseClassId.set(splitId, baseClassId);
       const entryIds: string[] = [];
       splitIdToEntryIds.set(splitId, entryIds);
@@ -219,7 +213,7 @@ export const prepareClassSplits = (
   const hasSplits = normalizedRules.length > 0;
   const splitClasses = normalizedRules.flatMap((rule) =>
     Array.from({ length: rule.partCount }, (_, index) => ({
-      classId: `${rule.baseClassId}-${createSplitSuffix(index)}`,
+      classId: `${rule.baseClassId}${createSplitSuffix(index)}`,
       baseClassId: rule.baseClassId,
       splitIndex: index,
       displayName: createSplitSuffix(index),

@@ -129,7 +129,7 @@ describe('StartlistContext', () => {
       const splitResult = createSplitResult({
         signature: 'sig-1',
         baseClassId: 'M21',
-        splitId: 'M21-A',
+        splitId: 'M211',
       });
       setClassSplitResult(result.current.dispatch, splitResult);
       updateLaneAssignments(result.current.dispatch, [
@@ -232,12 +232,12 @@ describe('StartlistContext', () => {
     const initialSplit = createSplitResult({
       signature: 'sig-1',
       baseClassId: 'M21',
-      splitId: 'M21-A',
+      splitId: 'M211',
     });
     const nextSplit = createSplitResult({
       signature: 'sig-2',
       baseClassId: 'M21',
-      splitId: 'M21-B',
+      splitId: 'M212',
     });
 
     act(() => {
@@ -246,13 +246,13 @@ describe('StartlistContext', () => {
       ]);
       setClassSplitResult(result.current.dispatch, initialSplit);
       updateLaneAssignments(result.current.dispatch, [
-        { laneNumber: 1, classOrder: ['M21-A'], interval: { milliseconds: 60000 } },
+        { laneNumber: 1, classOrder: ['M211'], interval: { milliseconds: 60000 } },
       ], initialSplit);
       updateClassAssignments(
         result.current.dispatch,
-        [{ classId: 'M21-A', playerOrder: ['p1'], interval: { milliseconds: 60000 } }],
+        [{ classId: 'M211', playerOrder: ['p1'], interval: { milliseconds: 60000 } }],
         'seed-1',
-        [{ classId: 'M21-A', occurrences: [] }],
+        [{ classId: 'M211', occurrences: [] }],
         initialSplit,
       );
       updateStartTimes(
@@ -295,13 +295,13 @@ describe('StartlistContext', () => {
     const split = createSplitResult({
       signature: 'sig-constant',
       baseClassId: 'M21',
-      splitId: 'M21-A',
+      splitId: 'M211',
     });
 
     act(() => {
       setClassSplitResult(result.current.dispatch, split);
       updateLaneAssignments(result.current.dispatch, [
-        { laneNumber: 1, classOrder: ['M21-A'], interval: { milliseconds: 60000 } },
+        { laneNumber: 1, classOrder: ['M211'], interval: { milliseconds: 60000 } },
       ], split);
     });
 

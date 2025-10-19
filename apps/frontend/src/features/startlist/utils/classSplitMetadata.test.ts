@@ -11,29 +11,29 @@ describe('buildClassSplitMetadata', () => {
         { id: '4', name: 'D', classId: 'W21', cardNo: '4' },
       ],
       laneAssignments: [
-        { laneNumber: 1, classOrder: ['M21-A', 'W21'], interval: { milliseconds: 60000 } },
-        { laneNumber: 2, classOrder: ['M21-B'], interval: { milliseconds: 60000 } },
+        { laneNumber: 1, classOrder: ['M211', 'W21'], interval: { milliseconds: 60000 } },
+        { laneNumber: 2, classOrder: ['M212'], interval: { milliseconds: 60000 } },
       ],
       splitClasses: [
-        { classId: 'M21-A', baseClassId: 'M21', splitIndex: 0, displayName: 'A' },
-        { classId: 'M21-B', baseClassId: 'M21', splitIndex: 1, displayName: 'B' },
+        { classId: 'M211', baseClassId: 'M21', splitIndex: 0, displayName: '1' },
+        { classId: 'M212', baseClassId: 'M21', splitIndex: 1, displayName: '2' },
       ],
       splitIdToEntryIds: new Map([
-        ['M21-A', ['1', '2']],
-        ['M21-B', ['3']],
+        ['M211', ['1', '2']],
+        ['M212', ['3']],
         ['M21', ['1', '2', '3']],
         ['W21', ['4']],
       ]),
     });
 
-    expect(metadataByClassId.get('M21-A')).toMatchObject({
+    expect(metadataByClassId.get('M211')).toMatchObject({
       baseClassId: 'M21',
       splitIndex: 0,
       partCount: 2,
-      displayName: 'A',
-      helperText: 'M21 • 分割 A (1/2)',
+      displayName: '1',
+      helperText: 'M21 • 分割 1 (1/2)',
     });
-    expect(countsByClassId.get('M21-A')).toBe(2);
+    expect(countsByClassId.get('M211')).toBe(2);
     expect(metadataByClassId.get('M21')).toMatchObject({ baseClassId: 'M21', partCount: 2 });
     expect(countsByClassId.get('M21')).toBe(3);
     expect(metadataByClassId.get('W21')).toMatchObject({ baseClassId: 'W21', partCount: 1 });
@@ -57,13 +57,13 @@ describe('buildClassSplitMetadata', () => {
   it('uses provided base class mapping without split metadata', () => {
     const { metadataByClassId } = buildClassSplitMetadata({
       entries: [],
-      laneAssignments: [{ laneNumber: 1, classOrder: ['X-1'], interval: { milliseconds: 0 } }],
+      laneAssignments: [{ laneNumber: 1, classOrder: ['X1'], interval: { milliseconds: 0 } }],
       splitIdToBaseClassId: new Map([
-        ['X-1', 'X'],
+        ['X1', 'X'],
         ['X', 'X'],
       ]),
     });
 
-    expect(metadataByClassId.get('X-1')).toMatchObject({ baseClassId: 'X', partCount: 1 });
+    expect(metadataByClassId.get('X1')).toMatchObject({ baseClassId: 'X', partCount: 1 });
   });
 });

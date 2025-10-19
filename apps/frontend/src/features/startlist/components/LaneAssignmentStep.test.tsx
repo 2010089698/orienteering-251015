@@ -15,7 +15,7 @@ vi.mock('@dnd-kit/core', async () => {
           style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }}
           onClick={() =>
             onDragEnd?.({
-              active: { id: 'M21-A' },
+              active: { id: 'M211' },
               over: { id: 'lane-2' },
             } as any)
           }
@@ -111,9 +111,9 @@ describe('LaneAssignmentStep', () => {
       },
     });
 
-    const select = screen.getByLabelText('M21-A のレーン');
+    const select = screen.getByLabelText('M211 のレーン');
     await userEvent.selectOptions(select, '2');
-    expect(await screen.findByText('クラス「M21-A」をレーン 2 に移動しました。')).toBeInTheDocument();
+    expect(await screen.findByText('クラス「M211」をレーン 2 に移動しました。')).toBeInTheDocument();
   });
 
   it('switches between overview and focused lane tabs with split metadata', async () => {
@@ -134,8 +134,8 @@ describe('LaneAssignmentStep', () => {
 
     const overviewBoard = screen.getByTestId('lane-board');
     expect(within(overviewBoard).getAllByTestId(/lane-column-/)).toHaveLength(2);
-    expect(within(overviewBoard).getByText('M21-A')).toBeInTheDocument();
-    expect(within(overviewBoard).getByText('M21 • 分割 A (1/2)')).toBeInTheDocument();
+    expect(within(overviewBoard).getByText('M211')).toBeInTheDocument();
+    expect(within(overviewBoard).getByText('M21 • 分割 1 (1/2)')).toBeInTheDocument();
 
     const laneTwoTab = screen.getByRole('tab', { name: 'レーン 2' });
     await userEvent.click(laneTwoTab);
@@ -144,12 +144,12 @@ describe('LaneAssignmentStep', () => {
     const focusedColumns = within(focusedBoard).getAllByTestId(/lane-column-/);
     expect(focusedColumns).toHaveLength(1);
     expect(within(focusedColumns[0]).getByRole('heading', { name: 'レーン 2' })).toBeInTheDocument();
-    expect(within(focusedColumns[0]).getByText('M21-B')).toBeInTheDocument();
-    expect(within(focusedColumns[0]).getByText('M21 • 分割 B (2/2)')).toBeInTheDocument();
+    expect(within(focusedColumns[0]).getByText('M212')).toBeInTheDocument();
+    expect(within(focusedColumns[0]).getByText('M21 • 分割 2 (2/2)')).toBeInTheDocument();
 
-    const laneSelect = screen.getByLabelText('M21-B のレーン');
+    const laneSelect = screen.getByLabelText('M212 のレーン');
     await userEvent.selectOptions(laneSelect, '1');
-    expect(await screen.findByText('クラス「M21-B」をレーン 1 に移動しました。')).toBeInTheDocument();
+    expect(await screen.findByText('クラス「M212」をレーン 1 に移動しました。')).toBeInTheDocument();
 
     await userEvent.click(overviewTab);
     const overviewBoardAfter = screen.getByTestId('lane-board');
@@ -170,19 +170,19 @@ describe('LaneAssignmentStep', () => {
     });
 
     const overviewBoard = screen.getByTestId('lane-board');
-    expect(within(overviewBoard).getByText(/M21\s*•\s*分割 A \(1\/2\)/)).toBeInTheDocument();
+    expect(within(overviewBoard).getByText(/M21\s*•\s*分割 1 \(1\/2\)/)).toBeInTheDocument();
     const laneOne = within(overviewBoard).getByTestId('lane-column-1');
     const laneTwo = within(overviewBoard).getByTestId('lane-column-2');
-    const laneOneM21Card = within(laneOne).getByRole('button', { name: /M21-A/ });
+    const laneOneM21Card = within(laneOne).getByRole('button', { name: /M211/ });
     const laneOneW21Card = within(laneOne).getByRole('button', { name: /W21/ });
-    const laneTwoM21Card = within(laneTwo).getByRole('button', { name: /M21-B/ });
-    expect(within(laneOneM21Card).getByText(/M21\s*•\s*分割 A \(1\/2\)/)).toBeInTheDocument();
+    const laneTwoM21Card = within(laneTwo).getByRole('button', { name: /M212/ });
+    expect(within(laneOneM21Card).getByText(/M21\s*•\s*分割 1 \(1\/2\)/)).toBeInTheDocument();
     expect(within(laneOneM21Card).getByText('2名')).toBeInTheDocument();
     expect(within(laneOneW21Card).getByText('2名')).toBeInTheDocument();
     expect(within(laneTwoM21Card).getByText('2名')).toBeInTheDocument();
 
     const preview = screen.getAllByTestId('lane-preview')[0];
-    expect(within(preview).getByText('M21 • 分割 B (2/2)')).toBeInTheDocument();
+    expect(within(preview).getByText('M21 • 分割 2 (2/2)')).toBeInTheDocument();
   });
 
   it('supports dragging split classes between lanes', async () => {
@@ -202,8 +202,8 @@ describe('LaneAssignmentStep', () => {
     const laneTwo = screen.getByTestId('lane-column-2');
     await user.click(screen.getByTestId('simulate-drag-event'));
 
-    expect(await within(laneTwo).findByRole('button', { name: /M21-A/ })).toBeInTheDocument();
-    expect(within(screen.getByTestId('lane-column-1')).queryByRole('button', { name: /M21-A/ })).toBeNull();
+    expect(await within(laneTwo).findByRole('button', { name: /M211/ })).toBeInTheDocument();
+    expect(within(screen.getByTestId('lane-column-1')).queryByRole('button', { name: /M211/ })).toBeNull();
   });
 
   it('confirms assignments and generates next steps with split metadata', async () => {
@@ -229,8 +229,8 @@ describe('LaneAssignmentStep', () => {
 
     expect(await screen.findByText('クラス内の順序を自動で作成しました。')).toBeInTheDocument();
     expect(await screen.findByText('スタート時間を割り当てました。')).toBeInTheDocument();
-    expect(await screen.findByTestId('class-order-M21-A')).toBeInTheDocument();
-    expect(await screen.findByTestId('class-order-M21-B')).toBeInTheDocument();
+    expect(await screen.findByTestId('class-order-M211')).toBeInTheDocument();
+    expect(await screen.findByTestId('class-order-M212')).toBeInTheDocument();
   });
 
   it('blocks generation when required world ranking CSVs are missing', async () => {

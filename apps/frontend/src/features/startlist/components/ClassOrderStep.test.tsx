@@ -41,8 +41,8 @@ const splitEntries = [
 ];
 
 const splitAssignments = [
-  { classId: 'SP-A', playerOrder: ['split-1', 'split-3'], interval: { milliseconds: 60000 } },
-  { classId: 'SP-B', playerOrder: ['split-2'], interval: { milliseconds: 60000 } },
+  { classId: 'SP1', playerOrder: ['split-1', 'split-3'], interval: { milliseconds: 60000 } },
+  { classId: 'SP2', playerOrder: ['split-2'], interval: { milliseconds: 60000 } },
 ];
 
 const splitLaneAssignments = [{ laneNumber: 1, classOrder: ['SP'], interval: { milliseconds: 60000 } }];
@@ -219,11 +219,11 @@ describe('ClassOrderStep', () => {
       },
     });
 
-    expect(await screen.findByRole('tab', { name: /SP-A（SP・分割 A）/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /SP-B（SP・分割 B）/ })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /SP1（SP・分割 1）/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /SP2（SP・分割 2）/ })).toBeInTheDocument();
     expect(
-      screen.getByRole('table', { name: 'SP-A（SP・分割 A）（レーン1）のスタートリスト' }),
+      screen.getByRole('table', { name: 'SP1（SP・分割 1）（レーン1）のスタートリスト' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('SP-A（SP・分割 A）（Alpha OC）')).toBeInTheDocument();
+    expect(screen.getByText('SP1（SP・分割 1）（Alpha OC）')).toBeInTheDocument();
   });
 });

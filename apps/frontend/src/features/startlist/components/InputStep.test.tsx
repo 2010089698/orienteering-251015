@@ -183,8 +183,8 @@ describe('InputStep', () => {
     expect(splitRulesPreview).toContain('"baseClassId":"SP"');
 
     const laneAssignmentsPreview = screen.getByTestId('input-step-lane-assignments').textContent ?? '';
-    expect(laneAssignmentsPreview).toContain('SP-A');
-    expect(laneAssignmentsPreview).toContain('SP-B');
+    expect(laneAssignmentsPreview).toContain('SP1');
+    expect(laneAssignmentsPreview).toContain('SP2');
 
     const signature = screen.getByTestId('input-step-split-signature').textContent;
     expect(signature).not.toBe('none');
