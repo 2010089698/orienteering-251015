@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import InputStep from './InputStep';
+import InputStepWorkflow from '../workflow/InputStepWorkflow';
 import { renderWithStartlistRouter } from '../test/test-utils';
 import {
   useStartlistClassSplitResult,
@@ -46,7 +46,7 @@ const StatePreview = () => {
 
 describe('InputStep', () => {
   it('blocks progress when no entries are registered', async () => {
-    renderWithStartlistRouter(<InputStep />, {
+    renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
     });
 
@@ -56,7 +56,7 @@ describe('InputStep', () => {
   });
 
   it('shows validation errors from the settings form when inputs are invalid', async () => {
-    renderWithStartlistRouter(<InputStep />, {
+    renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
     });
 
@@ -67,7 +67,7 @@ describe('InputStep', () => {
   });
 
   it('generates lane assignments and navigates forward', async () => {
-    renderWithStartlistRouter(<InputStep />, {
+    renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
@@ -82,7 +82,7 @@ describe('InputStep', () => {
   });
 
   it('allows adding and removing class split rows', async () => {
-    renderWithStartlistRouter(<InputStep />, {
+    renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
@@ -105,7 +105,7 @@ describe('InputStep', () => {
   });
 
   it('surfaces validation errors for invalid class split counts', async () => {
-    renderWithStartlistRouter(<InputStep />, {
+    renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
       initialState: {
         startlistId: 'SL-1',
@@ -129,7 +129,7 @@ describe('InputStep', () => {
   it('passes class split rules to lane generation before completing step 1', async () => {
     renderWithStartlistRouter(
       <>
-        <InputStep />
+        <InputStepWorkflow />
         <StatePreview />
       </>,
       {

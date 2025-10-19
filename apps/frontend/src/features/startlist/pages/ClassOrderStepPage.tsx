@@ -1,4 +1,4 @@
-import ClassOrderStep from '../components/ClassOrderStep';
+import ClassOrderWorkflow from '../workflow/ClassOrderWorkflow';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
 
 const ClassOrderStepPage = (): JSX.Element => {
@@ -6,7 +6,7 @@ const ClassOrderStepPage = (): JSX.Element => {
 
   return (
     <div className="card">
-      <ClassOrderStep />
+      <ClassOrderWorkflow />
     </div>
   );
 };

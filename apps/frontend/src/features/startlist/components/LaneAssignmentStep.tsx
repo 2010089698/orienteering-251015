@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
 import { DndContext } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { StatusMessage } from '@orienteering/shared-ui';
@@ -9,71 +8,47 @@ import ClassCard from './lane-assignment/ClassCard';
 import LaneClassSummaryList from './lane-assignment/LaneClassSummaryList';
 import LaneColumn from './lane-assignment/LaneColumn';
 import LaneSummaryCard from './lane-assignment/LaneSummaryCard';
-import { useLaneAssignmentStep } from '../hooks/useLaneAssignmentStep';
-import { STARTLIST_STEP_PATHS } from '../routes';
+import type { LaneAssignmentTab, LaneWithSummary, LaneRow } from '../workflow/createLaneAssignmentViewModel';
+import type { StatusMessageState } from '../state/types';
 
-const LaneAssignmentStep = (): JSX.Element => {
-  const navigate = useNavigate();
-  const {
-    laneRows,
-    laneOptions,
-    lanesWithPlaceholders,
-    laneSummaryMap,
-    sensors,
-    statuses,
-    handleLaneChange,
-    handleDragEnd,
-    handleConfirm,
-  } = useLaneAssignmentStep({
-    onConfirm: () => navigate(STARTLIST_STEP_PATHS.order),
-  });
+export type LaneAssignmentStatuses = Pick<
+  Record<'lanes' | 'classes' | 'startTimes', StatusMessageState>,
+  'lanes' | 'classes' | 'startTimes'
+>;
 
-  const [activeTab, setActiveTab] = useState('overview');
+export type LaneAssignmentStepProps = {
+  tabs: LaneAssignmentTab[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+  lanesWithSummaries: LaneWithSummary[];
+  laneOptions: number[];
+  laneRows: LaneRow[];
+  sensors: DndContextProps['sensors'];
+  onLaneChange: (classId: string, laneNumber: number) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  onConfirm: () => void;
+  onBack: () => void;
+  statuses: LaneAssignmentStatuses;
+  focusedLane?: LaneWithSummary;
+  activePanelId: string;
+};
 
-  const tabItems = useMemo(
-    () => [
-      { id: 'overview', label: 'すべてのレーン', panelId: 'lane-panel-overview' },
-      ...lanesWithPlaceholders.map((lane) => ({
-        id: `lane-${lane.laneNumber}`,
-        label: `レーン ${lane.laneNumber}`,
-        panelId: `lane-panel-${lane.laneNumber}`,
-      })),
-    ],
-    [lanesWithPlaceholders],
-  );
-
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      return;
-    }
-    const exists = tabItems.some((item) => item.id === activeTab);
-    if (!exists) {
-      setActiveTab('overview');
-    }
-  }, [activeTab, tabItems]);
-
-  const activePanelId = tabItems.find((item) => item.id === activeTab)?.panelId ?? 'lane-panel-overview';
-
-  const lanesWithSummaries = useMemo(
-    () =>
-      lanesWithPlaceholders.map((lane) => ({
-        lane,
-        summary:
-          laneSummaryMap.get(lane.laneNumber) ?? {
-            laneNumber: lane.laneNumber,
-            competitorCount: 0,
-            timeRangeLabel: undefined,
-            classSummaries: [],
-          },
-      })),
-    [laneSummaryMap, lanesWithPlaceholders],
-  );
-
-  const focusedLaneNumber = activeTab === 'overview' ? undefined : Number(activeTab.replace('lane-', ''));
-  const focusedLane = focusedLaneNumber
-    ? lanesWithSummaries.find(({ lane }) => lane.laneNumber === focusedLaneNumber)
-    : undefined;
-
+const LaneAssignmentStep = ({
+  tabs,
+  activeTab,
+  onTabChange,
+  lanesWithSummaries,
+  laneOptions,
+  laneRows,
+  sensors,
+  onLaneChange,
+  onDragEnd,
+  onConfirm,
+  onBack,
+  statuses,
+  focusedLane,
+  activePanelId,
+}: LaneAssignmentStepProps): JSX.Element => {
   return (
     <section aria-labelledby="step2-heading">
       <header>
@@ -89,13 +64,13 @@ const LaneAssignmentStep = (): JSX.Element => {
           <div className="lane-tabs">
             <Tabs
               activeId={activeTab}
-              items={tabItems}
-              onChange={setActiveTab}
+              items={tabs.map((tab) => ({ id: tab.id, label: tab.label, panelId: tab.panelId }))}
+              onChange={onTabChange}
               idPrefix="lanes"
               ariaLabel="レーン表示の切り替え"
             />
           </div>
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} onDragEnd={onDragEnd}>
             <div
               className={activeTab === 'overview' ? 'lane-view lane-view--overview' : 'lane-view lane-view--focused'}
               role="tabpanel"
@@ -118,7 +93,7 @@ const LaneAssignmentStep = (): JSX.Element => {
                                   key={classSummary.classId}
                                   classId={classSummary.classId}
                                   laneNumber={lane.laneNumber}
-                                  onLaneChange={handleLaneChange}
+                                  onLaneChange={onLaneChange}
                                   laneOptions={laneOptions}
                                   competitorCount={classSummary.competitorCount}
                                   timeRangeLabel={classSummary.timeRangeLabel}
@@ -155,7 +130,7 @@ const LaneAssignmentStep = (): JSX.Element => {
                                   key={classSummary.classId}
                                   classId={classSummary.classId}
                                   laneNumber={focusedLane.lane.laneNumber}
-                                  onLaneChange={handleLaneChange}
+                                  onLaneChange={onLaneChange}
                                   laneOptions={laneOptions}
                                   competitorCount={classSummary.competitorCount}
                                   timeRangeLabel={classSummary.timeRangeLabel}
@@ -203,14 +178,10 @@ const LaneAssignmentStep = (): JSX.Element => {
         </>
       )}
       <div className="actions-row step-actions">
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => navigate(STARTLIST_STEP_PATHS.input)}
-        >
+        <button type="button" className="secondary" onClick={onBack}>
           戻る
         </button>
-        <button type="button" onClick={handleConfirm} disabled={laneRows.length === 0}>
+        <button type="button" onClick={onConfirm} disabled={laneRows.length === 0}>
           割り当て確定（順番と時間を作成）
         </button>
       </div>

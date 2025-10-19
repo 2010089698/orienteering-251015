@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, ElementType } from 'react';
 
-import type { LaneSummary } from '../../hooks/useLaneAssignmentStep';
+import type { LaneSummary } from '../../workflow/createLaneAssignmentViewModel';
 import LaneClassSummaryList from './LaneClassSummaryList';
 
 export type LaneSummaryCardProps<WrapperElement extends ElementType = 'div'> = {

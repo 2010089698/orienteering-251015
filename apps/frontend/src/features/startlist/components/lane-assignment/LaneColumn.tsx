@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import type { LaneAssignmentDto } from '@startlist-management/application';
 
-import type { LaneSummary } from '../../hooks/useLaneAssignmentStep';
-import { laneContainerId } from '../../hooks/useLaneAssignmentStep';
+import type { LaneSummary } from '../../workflow/createLaneAssignmentViewModel';
+import { laneContainerId } from '../../workflow/createLaneAssignmentViewModel';
 
 export type LaneColumnProps = {
   lane: LaneAssignmentDto;

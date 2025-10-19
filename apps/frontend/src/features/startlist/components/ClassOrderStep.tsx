@@ -1,90 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { StatusMessage } from '@orienteering/shared-ui';
-import {
-  DndContext,
-  PointerSensor,
-  type DragEndEvent,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  createStatus,
-  setStatus,
-  updateClassAssignments,
-  updateStartTimes,
-  useStartlistClassAssignments,
-  useStartlistClassOrderPreferences,
-  useStartlistClassOrderWarnings,
-  useStartlistClassSplitResult,
-  useStartlistClassSplitRules,
-  useStartlistDispatch,
-  useStartlistEntries,
-  useStartlistLaneAssignments,
-  useStartlistLoading,
-  useStartlistSettings,
-  useStartlistStartTimes,
-  useStartlistStatuses,
-  setLoading,
-} from '../state/StartlistContext';
-import { calculateStartTimes, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
-import type { ClassAssignmentDto } from '@startlist-management/application';
+import type { CSSProperties, ReactNode } from 'react';
+import { StatusMessage } from '@orienteering/shared-ui';
+
 import { Tabs } from '../../../components/tabs';
-import { downloadStartlistCsv } from '../utils/startlistExport';
 import ClassOrderPanel from './ClassOrderPanel';
-import { createSplitClassLookup } from '../utils/splitUtils';
-import { STARTLIST_STEP_PATHS } from '../routes';
-
-const formatStartTime = (iso: string): string => {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  return date.toLocaleTimeString('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Tokyo',
-    timeZoneName: 'short',
-  });
-};
-
-const playerItemId = (classId: string, playerId: string) => `${classId}::${playerId}`;
-
-const parsePlayerItemId = (value: string): { classId: string; playerId: string } | undefined => {
-  const [classId, playerId] = value.split('::');
-  if (!classId || !playerId) {
-    return undefined;
-  }
-  return { classId, playerId };
-};
-
-type StartTimeRow = {
-  playerId: string;
-  cardNo: string;
-  name: string;
-  club: string;
-  classId: string;
-  baseClassId: string;
-  laneNumber: number;
-  startTimeIso: string;
-  startTimeLabel: string;
-  startTimeMs: number;
-};
-
-const createTabKey = (value: string): string => {
-  const sanitized = value
-    .replace(/\s+/g, '-')
-    .replace(/[^a-zA-Z0-9_-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .toLowerCase();
-  const hash = Array.from(value).reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) >>> 0, 0).toString(16);
-  return `class-${sanitized || 'id'}-${hash}`;
-};
+import type {
+  ClassOrderTabItem,
+  ClassOrderWarningSummary,
+  StartTimeRow,
+} from '../workflow/createClassOrderViewModel';
+import { playerItemId } from '../workflow/createClassOrderViewModel';
+import type { Entry, StatusMessageState } from '../state/types';
+import type { SplitClassLookup } from '../utils/splitUtils';
 
 const ClassPlayerCard = ({
   classId,
@@ -110,7 +40,13 @@ const ClassPlayerCard = ({
   );
 };
 
-const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDto; children: ReactNode }): JSX.Element => {
+const DroppableList = ({
+  assignment,
+  children,
+}: {
+  assignment: ClassOrderTabItem['assignment'];
+  children: ReactNode;
+}) => {
   const { setNodeRef, isOver } = useDroppable({ id: `class-drop-${assignment.classId}` });
   return (
     <ol ref={setNodeRef} className={`order-list${isOver ? ' is-over' : ''}`}>
@@ -119,312 +55,51 @@ const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDt
   );
 };
 
-const ClassOrderStep = (): JSX.Element => {
-  const navigate = useNavigate();
-  const classAssignments = useStartlistClassAssignments();
-  const startTimes = useStartlistStartTimes();
-  const settings = useStartlistSettings();
-  const laneAssignments = useStartlistLaneAssignments();
-  const entries = useStartlistEntries();
-  const statuses = useStartlistStatuses();
-  const loading = useStartlistLoading();
-  const classOrderWarnings = useStartlistClassOrderWarnings();
-  const classOrderPreferences = useStartlistClassOrderPreferences();
-  const classSplitRules = useStartlistClassSplitRules();
-  const classSplitResult = useStartlistClassSplitResult();
-  const dispatch = useStartlistDispatch();
+export type ClassOrderStepProps = {
+  tabs: { id: string; label: string; panelId: string }[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+  classTabMap: Map<string, ClassOrderTabItem>;
+  startTimeRowsByClass: Map<string, StartTimeRow[]>;
+  classSummaries: Map<string, { count: number; firstStart?: string; lastStart?: string }>;
+  warningSummaries: ClassOrderWarningSummary[];
+  avoidConsecutiveClubs: boolean;
+  sensors: DndContextProps['sensors'];
+  onDragEnd: (event: DragEndEvent) => void;
+  onMove: (classId: string, index: number, direction: number) => void;
+  onExportCsv: () => void;
+  onBack: () => void;
+  statuses: Pick<Record<'startTimes', StatusMessageState>, 'startTimes'>;
+  loadingStartTimes: boolean;
+  entryMap: Map<string, Entry>;
+  splitLookup: SplitClassLookup;
+};
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    }),
-  );
-
-  const entryMap = useMemo(() => {
-    return new Map(entries.map((entry) => [entry.id, entry]));
-  }, [entries]);
-
-  const splitLookup = useMemo(
-    () => createSplitClassLookup({ classAssignments, splitResult: classSplitResult, entries }),
-    [classAssignments, classSplitResult, entries],
-  );
-
-  const startTimeRowsByClass = useMemo(() => {
-    const byClass = new Map<string, StartTimeRow[]>();
-    startTimes.forEach((item) => {
-      const entry = entryMap.get(item.playerId);
-      const assignedClassId =
-        splitLookup.getPlayerClassId(item.playerId) ?? entry?.classId ?? '不明';
-      const baseClassId = splitLookup.getBaseClassId(assignedClassId);
-      const isoValue =
-        typeof item.startTime === 'string' ? item.startTime : new Date(item.startTime).toISOString();
-      const timestamp = new Date(isoValue).getTime();
-      const row: StartTimeRow = {
-        playerId: item.playerId,
-        cardNo: entry?.cardNo ?? item.playerId,
-        name: entry?.name ?? '（名前未入力）',
-        club: entry?.club ?? '（所属未入力）',
-        classId: assignedClassId,
-        baseClassId,
-        laneNumber: item.laneNumber,
-        startTimeIso: isoValue,
-        startTimeLabel: formatStartTime(isoValue),
-        startTimeMs: Number.isNaN(timestamp) ? Number.NaN : timestamp,
-      };
-      const list = byClass.get(row.classId);
-      if (list) {
-        list.push(row);
-      } else {
-        byClass.set(row.classId, [row]);
-      }
-    });
-    return byClass;
-  }, [startTimes, entryMap, splitLookup]);
-
-  const classSummaries = useMemo(
-    () =>
-      classAssignments.reduce(
-        (acc, assignment) => {
-          const rows = startTimeRowsByClass.get(assignment.classId) ?? [];
-          let firstRow: StartTimeRow | undefined;
-          let lastRow: StartTimeRow | undefined;
-          rows.forEach((row) => {
-            if (Number.isNaN(row.startTimeMs)) {
-              return;
-            }
-            if (!firstRow || row.startTimeMs < firstRow.startTimeMs) {
-              firstRow = row;
-            }
-            if (!lastRow || row.startTimeMs > lastRow.startTimeMs) {
-              lastRow = row;
-            }
-          });
-          acc.set(assignment.classId, {
-            count: assignment.playerOrder.length,
-            firstStart: firstRow?.startTimeLabel,
-            lastStart: lastRow?.startTimeLabel ?? firstRow?.startTimeLabel,
-          });
-          return acc;
-        },
-        new Map<string, { count: number; firstStart?: string; lastStart?: string }>(),
-      ),
-    [classAssignments, startTimeRowsByClass],
-  );
-
-  const laneSortInfo = useMemo(() => {
-    const map = new Map<string, { laneNumber?: number; sortKey: number }>();
-    laneAssignments.forEach((lane) => {
-      lane.classOrder.forEach((classId, index) => {
-        const baseClassId = splitLookup.getBaseClassId(classId);
-        const baseSortKey = lane.laneNumber * 1000 + index;
-        const info = { laneNumber: lane.laneNumber, sortKey: baseSortKey };
-        map.set(classId, info);
-        if (!map.has(baseClassId)) {
-          map.set(baseClassId, info);
-        }
-        const related = splitLookup.baseToClassIds.get(baseClassId);
-        if (related) {
-          related.forEach((relatedId, relatedIndex) => {
-            const offsetInfo = {
-              laneNumber: lane.laneNumber,
-              sortKey: baseSortKey + relatedIndex / 10,
-            };
-            if (!map.has(relatedId)) {
-              map.set(relatedId, offsetInfo);
-            }
-          });
-        }
-      });
-    });
-    return map;
-  }, [laneAssignments, splitLookup]);
-
-  const classTabItems = useMemo(() => {
-    return classAssignments
-      .map((assignment, index) => {
-        const summary = classSummaries.get(assignment.classId);
-        const laneInfo = laneSortInfo.get(assignment.classId);
-        const laneLabel = laneInfo?.laneNumber ? `レーン${laneInfo.laneNumber}` : undefined;
-        const metaParts = [laneLabel, `${assignment.playerOrder.length}人`];
-        if (summary?.firstStart) {
-          if (summary.lastStart && summary.lastStart !== summary.firstStart) {
-            metaParts.push(`${summary.firstStart}〜${summary.lastStart}`);
-          } else {
-            metaParts.push(summary.firstStart);
-          }
-        }
-        const labelMeta = metaParts.filter((part): part is string => Boolean(part));
-        const tabId = createTabKey(assignment.classId);
-        return {
-          tabId,
-          panelId: `${tabId}-panel`,
-          label: `${splitLookup.formatClassLabel(assignment.classId)}（${labelMeta.join('・')}）`,
-          assignment,
-          laneLabel,
-          sortKey: laneInfo?.sortKey ?? Number.MAX_SAFE_INTEGER - (classAssignments.length - index),
-        };
-      })
-      .sort((a, b) => a.sortKey - b.sortKey);
-  }, [classAssignments, classSummaries, laneSortInfo, splitLookup]);
-
-  const tabItems = useMemo(
-    () => classTabItems.map((item) => ({ id: item.tabId, label: item.label, panelId: item.panelId })),
-    [classTabItems],
-  );
-
-  const classTabMap = useMemo(() => new Map(classTabItems.map((item) => [item.tabId, item])), [classTabItems]);
-
-  const [activeTab, setActiveTab] = useState<string>(() => tabItems[0]?.id ?? '');
-
-  useEffect(() => {
-    if (tabItems.length === 0) {
-      if (activeTab !== '') {
-        setActiveTab('');
-      }
-      return;
-    }
-    if (!tabItems.some((item) => item.id === activeTab)) {
-      setActiveTab(tabItems[0].id);
-    }
-  }, [activeTab, tabItems]);
-
-  const avoidConsecutiveClubs = classOrderPreferences.avoidConsecutiveClubs;
-
-  const warningSummaries = useMemo(() => {
-    if (!avoidConsecutiveClubs) {
-      return [] as { classId: string; clubs: string[] }[];
-    }
-    const map = new Map<string, Set<string>>();
-    classOrderWarnings.forEach((warning) => {
-      const classIds = new Set<string>();
-      warning.occurrences.forEach((occurrence) => {
-        const prevClassId = splitLookup.getPlayerClassId(occurrence.previousPlayerId);
-        const nextClassId = splitLookup.getPlayerClassId(occurrence.nextPlayerId);
-        if (prevClassId) {
-          classIds.add(prevClassId);
-        }
-        if (nextClassId) {
-          classIds.add(nextClassId);
-        }
-      });
-      const targets = classIds.size > 0 ? Array.from(classIds) : [warning.classId];
-      targets.forEach((classId) => {
-        const set = map.get(classId) ?? new Set<string>();
-        warning.occurrences.forEach((occurrence) => {
-          occurrence.clubs.forEach((club) => set.add(club));
-        });
-        map.set(classId, set);
-      });
-    });
-
-    return Array.from(map.entries())
-      .map(([classId, clubs]) => ({
-        classId,
-        clubs: Array.from(clubs).sort((a, b) => a.localeCompare(b, 'ja')),
-      }))
-      .sort((a, b) =>
-        splitLookup
-          .formatClassLabel(a.classId)
-          .localeCompare(splitLookup.formatClassLabel(b.classId), 'ja'),
-      );
-  }, [classOrderWarnings, avoidConsecutiveClubs, splitLookup]);
-
-  const reorderWithinClass = (classId: string, fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) {
-      return;
-    }
-    const assignment = classAssignments.find((item) => item.classId === classId);
-    if (!assignment || toIndex < 0 || toIndex > assignment.playerOrder.length) {
-      return;
-    }
-    const nextAssignments = updateClassPlayerOrder(classAssignments, classId, fromIndex, toIndex);
-    const warnings = avoidConsecutiveClubs
-      ? deriveClassOrderWarnings(nextAssignments, entries, {
-          splitRules: classSplitRules,
-          previousSplitResult: classSplitResult,
-        })
-      : [];
-    updateClassAssignments(dispatch, nextAssignments, undefined, warnings, classSplitResult);
-    if (!settings) {
-      return;
-    }
-    const nextStartTimes = calculateStartTimes({
-      settings,
-      laneAssignments,
-      classAssignments: nextAssignments,
-      entries,
-      splitRules: classSplitRules,
-      splitResult: classSplitResult,
-    });
-    updateStartTimes(dispatch, nextStartTimes, classSplitResult);
-    setStatus(dispatch, 'classes', createStatus('順番を更新しました。', 'info'));
-    setStatus(dispatch, 'startTimes', createStatus('スタート時間を再計算しました。', 'info'));
-  };
-
-  const handleMove = (classId: string, index: number, direction: number) => {
-    const targetIndex = index + direction;
-    const assignment = classAssignments.find((item) => item.classId === classId);
-    if (!assignment || targetIndex < 0 || targetIndex >= assignment.playerOrder.length) {
-      return;
-    }
-    reorderWithinClass(classId, index, targetIndex);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const activeId = typeof event.active.id === 'string' ? event.active.id : undefined;
-    const overId = typeof event.over?.id === 'string' ? event.over.id : undefined;
-    if (!activeId || !overId) {
-      return;
-    }
-    if (activeId === overId) {
-      return;
-    }
-    const active = parsePlayerItemId(activeId);
-    const over = overId.startsWith('class-drop-') ? { classId: overId.replace('class-drop-', ''), playerId: '' } : parsePlayerItemId(overId);
-    if (!active || !over || active.classId !== over.classId) {
-      return;
-    }
-    const assignment = classAssignments.find((item) => item.classId === active.classId);
-    if (!assignment) {
-      return;
-    }
-    const fromIndex = assignment.playerOrder.indexOf(active.playerId);
-    if (fromIndex === -1) {
-      return;
-    }
-    const toIndex = over.playerId
-      ? assignment.playerOrder.indexOf(over.playerId)
-      : assignment.playerOrder.length - 1;
-    if (toIndex === -1) {
-      return;
-    }
-    reorderWithinClass(active.classId, fromIndex, toIndex);
-  };
-
-  const handleExportCsv = () => {
-    if (startTimes.length === 0) {
-      return;
-    }
-
-    setLoading(dispatch, 'startTimes', true);
-    try {
-      const count = downloadStartlistCsv({ entries, startTimes, classAssignments });
-      setStatus(dispatch, 'startTimes', createStatus(`${count} 件のスタート時間をエクスポートしました。`, 'info'));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'CSV のエクスポートに失敗しました。';
-      setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
-    } finally {
-      setLoading(dispatch, 'startTimes', false);
-    }
-  };
-
+const ClassOrderStep = ({
+  tabs,
+  activeTab,
+  onTabChange,
+  classTabMap,
+  startTimeRowsByClass,
+  classSummaries,
+  warningSummaries,
+  avoidConsecutiveClubs,
+  sensors,
+  onDragEnd,
+  onMove,
+  onExportCsv,
+  onBack,
+  statuses,
+  loadingStartTimes,
+  entryMap,
+  splitLookup,
+}: ClassOrderStepProps): JSX.Element => {
   return (
     <section aria-labelledby="step3-heading">
       <header>
         <h2 id="step3-heading">STEP 3 クラス内順序とスタート時間</h2>
         <p className="muted">
-          並び順をドラッグ＆ドロップまたはボタンで変更すると、スタート時間が自動で計算し直されます。スタート時刻はすべて日本時間 (JST)
-          です。
+          並び順をドラッグ＆ドロップまたはボタンで変更すると、スタート時間が自動で計算し直されます。スタート時刻はすべて日本時間 (JST) です。
         </p>
       </header>
       <ClassOrderPanel
@@ -449,28 +124,28 @@ const ClassOrderStep = (): JSX.Element => {
           </ul>
         </div>
       )}
-      {classAssignments.length === 0 ? (
+      {tabs.length === 0 ? (
         <p className="muted">クラス内順序がまだ作成されていません。STEP 2 から進めてください。</p>
       ) : (
         <>
           <div className="class-order-tabs">
             <Tabs
               activeId={activeTab}
-              items={tabItems}
-              onChange={setActiveTab}
+              items={tabs}
+              onChange={onTabChange}
               idPrefix="class-tab"
               ariaLabel="クラス別の表示切り替え"
             />
           </div>
           <div className="class-order-panels">
-            {tabItems.map((item) => {
+            {tabs.map((item) => {
               const isActive = item.id === activeTab;
-        const tabInfo = classTabMap.get(item.id);
-        if (!tabInfo) {
-          return null;
-        }
-        const rows = startTimeRowsByClass.get(tabInfo.assignment.classId) ?? [];
-        const summary = classSummaries.get(tabInfo.assignment.classId);
+              const tabInfo = classTabMap.get(item.id);
+              if (!tabInfo) {
+                return null;
+              }
+              const rows = startTimeRowsByClass.get(tabInfo.assignment.classId) ?? [];
+              const summary = classSummaries.get(tabInfo.assignment.classId);
               const metaParts = [`参加者 ${summary?.count ?? tabInfo.assignment.playerOrder.length}人`];
               if (summary?.firstStart) {
                 if (summary.lastStart && summary.lastStart !== summary.firstStart) {
@@ -493,8 +168,8 @@ const ClassOrderStep = (): JSX.Element => {
                   {isActive ? (
                     <div className="class-order-layout">
                       <div className="class-order-layout__list">
-                        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                            <div className="class-card">
+                        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                          <div className="class-card">
                             <div className="class-card__header">
                               <h3>
                                 {splitLookup.formatClassLabel(tabInfo.assignment.classId)}
@@ -528,7 +203,7 @@ const ClassOrderStep = (): JSX.Element => {
                                             <button
                                               type="button"
                                               className="secondary"
-                                              onClick={() => handleMove(tabInfo.assignment.classId, index, -1)}
+                                              onClick={() => onMove(tabInfo.assignment.classId, index, -1)}
                                               disabled={index === 0}
                                             >
                                               ↑
@@ -536,9 +211,7 @@ const ClassOrderStep = (): JSX.Element => {
                                             <button
                                               type="button"
                                               className="secondary"
-                                              onClick={() =>
-                                                handleMove(tabInfo.assignment.classId, index, 1)
-                                              }
+                                              onClick={() => onMove(tabInfo.assignment.classId, index, 1)}
                                               disabled={index === tabInfo.assignment.playerOrder.length - 1}
                                             >
                                               ↓
@@ -599,16 +272,12 @@ const ClassOrderStep = (): JSX.Element => {
         <button
           type="button"
           className="secondary"
-          onClick={handleExportCsv}
-          disabled={startTimes.length === 0 || Boolean(loading.startTimes)}
+          onClick={onExportCsv}
+          disabled={loadingStartTimes}
         >
           CSV をエクスポート
         </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => navigate(STARTLIST_STEP_PATHS.lanes)}
-        >
+        <button type="button" className="secondary" onClick={onBack}>
           戻る
         </button>
       </div>

@@ -1,97 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { RefObject } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
+
 import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
 import EntryForm from './EntryForm';
 import EntryTablePanel from './EntryTablePanel';
 import StartOrderSettingsPanel from './StartOrderSettingsPanel';
 import ClassSplitSettingsPanel from './ClassSplitSettingsPanel';
-import {
-  createStatus,
-  setStatus,
-  updateLaneAssignments,
-  useStartlistClassSplitResult,
-  useStartlistClassSplitRules,
-  useStartlistDispatch,
-  useStartlistEntries,
-  useStartlistStatuses,
-} from '../state/StartlistContext';
-import { generateLaneAssignments } from '../utils/startlistUtils';
+import type { StatusMessageState, Entry } from '../state/types';
+import type { InputStepTab } from '../workflow/createInputStepViewModel';
 
-import { STARTLIST_STEP_PATHS } from '../routes';
+export type InputStepProps = {
+  tabs: InputStepTab[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+  filteredEntries: Entry[];
+  onComplete: () => void;
+  status: StatusMessageState;
+  settingsFormRef: RefObject<SettingsFormHandle>;
+};
 
-const InputStep = (): JSX.Element => {
-  const entries = useStartlistEntries();
-  const statuses = useStartlistStatuses();
-  const classSplitRules = useStartlistClassSplitRules();
-  const classSplitResult = useStartlistClassSplitResult();
-  const dispatch = useStartlistDispatch();
-
-  const navigate = useNavigate();
-
-  const [activeTab, setActiveTab] = useState<string>('all');
-  const settingsFormRef = useRef<SettingsFormHandle>(null);
-
-  const { tabs, classIds } = useMemo(() => {
-    const counts = new Map<string, number>();
-    entries.forEach((entry) => {
-      const key = entry.classId;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    });
-    const sortedClassIds = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'ja'));
-    const tabList = [
-      { id: 'all', label: 'すべて', count: entries.length },
-      ...sortedClassIds.map((classId) => ({ id: classId, label: classId, count: counts.get(classId) ?? 0 })),
-    ];
-    return { tabs: tabList, classIds: sortedClassIds };
-  }, [entries]);
-
-  useEffect(() => {
-    if (activeTab !== 'all' && !classIds.includes(activeTab)) {
-      setActiveTab('all');
-    }
-  }, [activeTab, classIds]);
-
-  const filteredEntries = useMemo(
-    () => (activeTab === 'all' ? entries : entries.filter((entry) => entry.classId === activeTab)),
-    [activeTab, entries],
-  );
-
-  const handleComplete = () => {
-    const nextSettings = settingsFormRef.current?.validateAndSave();
-
-    if (!nextSettings) {
-      return;
-    }
-    if (!entries.length) {
-      setStatus(dispatch, 'lanes', createStatus('参加者を1人以上登録してください。', 'error'));
-      return;
-    }
-    const intervalMs = nextSettings.intervals?.laneClass?.milliseconds ?? 0;
-    if (!Number.isFinite(intervalMs) || intervalMs < 0) {
-      setStatus(dispatch, 'lanes', createStatus('スタート間隔が正しく設定されていません。', 'error'));
-      return;
-    }
-    const laneCount = nextSettings.laneCount ?? 0;
-    if (!laneCount) {
-      setStatus(dispatch, 'lanes', createStatus('レーン数を確認してください。', 'error'));
-      return;
-    }
-
-    const { assignments, splitResult } = generateLaneAssignments(entries, laneCount, intervalMs, {
-      splitRules: classSplitRules,
-      previousSplitResult: classSplitResult,
-    });
-    if (!assignments.length) {
-      setStatus(dispatch, 'lanes', createStatus('レーン割り当てを作成できませんでした。入力内容を確認してください。', 'error'));
-      return;
-    }
-
-    updateLaneAssignments(dispatch, assignments, splitResult);
-    setStatus(dispatch, 'lanes', createStatus('自動でレーン割り当てを作成しました。', 'success'));
-    navigate(STARTLIST_STEP_PATHS.lanes);
-  };
-
+const InputStep = ({
+  tabs,
+  activeTab,
+  onTabChange,
+  filteredEntries,
+  onComplete,
+  status,
+  settingsFormRef,
+}: InputStepProps): JSX.Element => {
   return (
     <section aria-labelledby="step1-heading">
       <header>
@@ -108,15 +44,15 @@ const InputStep = (): JSX.Element => {
           <EntryForm />
         </div>
         <div className="input-step__cell input-step__cell--table">
-          <EntryTablePanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} entries={filteredEntries} />
+          <EntryTablePanel tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} entries={filteredEntries} />
         </div>
       </div>
       <div className="actions-row step-actions step-actions--sticky">
-        <button type="button" onClick={handleComplete}>
+        <button type="button" onClick={onComplete}>
           入力完了（レーンを自動作成）
         </button>
       </div>
-      <StatusMessage tone={statuses.lanes.level} message={statuses.lanes.text} />
+      <StatusMessage tone={status.level} message={status.text} />
     </section>
   );
 };

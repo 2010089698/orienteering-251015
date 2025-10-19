@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import type { ClassSummary } from '../../hooks/useLaneAssignmentStep';
+import type { ClassSummary } from '../../workflow/createLaneAssignmentViewModel';
 
 export type LaneClassSummaryListProps = {
   summaries: ClassSummary[];
