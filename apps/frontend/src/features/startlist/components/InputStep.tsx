@@ -1,7 +1,6 @@
-import type { RefObject } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 
-import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
+import SettingsForm, { type SettingsFormProps } from './SettingsForm';
 import EntryForm from './EntryForm';
 import EntryTablePanel from './EntryTablePanel';
 import StartOrderSettingsPanel from './StartOrderSettingsPanel';
@@ -14,9 +13,9 @@ export type InputStepProps = {
   activeTab: string;
   onTabChange: (tabId: string) => void;
   filteredEntries: Entry[];
-  onComplete: () => void;
+  onSubmit: () => void;
   status: StatusMessageState;
-  settingsFormRef: RefObject<SettingsFormHandle>;
+  settingsForm: SettingsFormProps;
 };
 
 const InputStep = ({
@@ -24,9 +23,9 @@ const InputStep = ({
   activeTab,
   onTabChange,
   filteredEntries,
-  onComplete,
+  onSubmit,
   status,
-  settingsFormRef,
+  settingsForm,
 }: InputStepProps): JSX.Element => {
   return (
     <section aria-labelledby="step1-heading">
@@ -36,7 +35,7 @@ const InputStep = ({
       </header>
       <div className="input-step__layout">
         <div className="input-step__cell input-step__cell--settings">
-          <SettingsForm ref={settingsFormRef} />
+          <SettingsForm {...settingsForm} />
           <StartOrderSettingsPanel />
           <ClassSplitSettingsPanel />
         </div>
@@ -48,7 +47,7 @@ const InputStep = ({
         </div>
       </div>
       <div className="actions-row step-actions step-actions--sticky">
-        <button type="button" onClick={onComplete}>
+        <button type="button" onClick={onSubmit}>
           入力完了（レーンを自動作成）
         </button>
       </div>

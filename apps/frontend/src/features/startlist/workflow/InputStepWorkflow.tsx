@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import InputStep from '../components/InputStep';
@@ -17,7 +17,8 @@ import {
 } from '../state/StartlistContext';
 import { generateLaneAssignments } from '../utils/startlistUtils';
 import { STARTLIST_STEP_PATHS } from '../routes';
-import type { SettingsFormHandle } from '../components/SettingsForm';
+import type { SettingsFormProps } from '../components/SettingsForm';
+import { useSettingsForm } from '../hooks/useSettingsForm';
 
 const sanitizeActiveTab = (tabs: InputStepTab[], activeTab: string): string => {
   if (activeTab === 'all') {
@@ -35,7 +36,22 @@ const InputStepWorkflow = (): JSX.Element => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<string>('all');
-  const settingsFormRef = useRef<SettingsFormHandle>(null);
+  const {
+    startTime,
+    laneIntervalMs,
+    playerIntervalMs,
+    laneCount,
+    avoidConsecutiveClubs,
+    laneIntervalOptions,
+    playerIntervalOptions,
+    status: settingsStatus,
+    onStartTimeChange,
+    onLaneIntervalChange,
+    onPlayerIntervalChange,
+    onLaneCountChange,
+    onAvoidConsecutiveClubsChange,
+    submit: submitSettings,
+  } = useSettingsForm();
 
   const viewModel = useMemo(() => {
     return createInputStepViewModel({ entries, activeTab });
@@ -48,8 +64,12 @@ const InputStepWorkflow = (): JSX.Element => {
     }
   }, [activeTab, viewModel.tabs]);
 
+  const handleSettingsFormSubmit = useCallback(() => {
+    submitSettings();
+  }, [submitSettings]);
+
   const handleComplete = useCallback(() => {
-    const nextSettings = settingsFormRef.current?.validateAndSave();
+    const { settings: nextSettings } = submitSettings();
     if (!nextSettings) {
       return;
     }
@@ -92,9 +112,24 @@ const InputStepWorkflow = (): JSX.Element => {
       activeTab={viewModel.activeTab}
       onTabChange={setActiveTab}
       filteredEntries={viewModel.filteredEntries}
-      onComplete={handleComplete}
+      onSubmit={handleComplete}
       status={statuses.lanes}
-      settingsFormRef={settingsFormRef}
+      settingsForm={{
+        startTime,
+        laneIntervalMs,
+        playerIntervalMs,
+        laneCount,
+        avoidConsecutiveClubs,
+        laneIntervalOptions,
+        playerIntervalOptions,
+        status: settingsStatus,
+        onStartTimeChange,
+        onLaneIntervalChange,
+        onPlayerIntervalChange,
+        onLaneCountChange,
+        onAvoidConsecutiveClubsChange,
+        onSubmit: handleSettingsFormSubmit,
+      } satisfies SettingsFormProps}
     />
   );
 };
