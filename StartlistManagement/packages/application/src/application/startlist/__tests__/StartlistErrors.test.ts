@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DomainError } from '@startlist-management/domain';
+import {
+  ClassAssignmentsNotCompletedError,
+  DomainError,
+  LaneAssignmentsNotCompletedError,
+  StartlistSettingsNotEnteredError,
+} from '@startlist-management/domain';
 import {
   InvalidCommandError,
   StartlistApplicationError,
@@ -19,6 +24,20 @@ describe('Startlist errors', () => {
 
     expect(appError).toBeInstanceOf(InvalidCommandError);
     expect(appError).toMatchObject({ message: 'domain', cause: domainError });
+  });
+
+  it('maps startlist guard errors to InvalidCommandError', () => {
+    const guardErrors = [
+      new StartlistSettingsNotEnteredError(),
+      new LaneAssignmentsNotCompletedError(),
+      new ClassAssignmentsNotCompletedError(),
+    ];
+
+    guardErrors.forEach((guardError) => {
+      const appError = mapToApplicationError(guardError);
+      expect(appError).toBeInstanceOf(InvalidCommandError);
+      expect(appError).toMatchObject({ message: guardError.message, cause: guardError });
+    });
   });
 
   it('wraps regular errors in StartlistApplicationError', () => {

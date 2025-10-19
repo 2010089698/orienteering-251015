@@ -3,7 +3,6 @@ import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { toLaneAssignments } from '../dto/StartlistMappers.js';
 import { AssignLaneOrderCommand } from '../dto/StartlistDtos.js';
-import { InvalidCommandError } from '../errors.js';
 import { StartlistCommandBase } from './StartlistCommandBase.js';
 
 export interface AssignLaneOrderUseCase {
@@ -21,11 +20,8 @@ export class AssignLaneOrderService extends StartlistCommandBase implements Assi
 
   async execute(command: AssignLaneOrderCommand): Promise<StartlistSnapshot> {
     return this.executeOnStartlist(command.startlistId, (startlist) => {
-      const settings = startlist.getSettings();
-      if (!settings) {
-        throw new InvalidCommandError('Startlist settings must be entered before assigning lane order.');
-      }
-      const assignments = toLaneAssignments(command.assignments, settings.laneCount);
+      const laneCount = startlist.getSettingsOrThrow().laneCount;
+      const assignments = toLaneAssignments(command.assignments, laneCount);
       startlist.assignLaneOrderAndIntervals(assignments);
     });
   }

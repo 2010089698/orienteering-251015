@@ -1,4 +1,10 @@
-import { DomainError, NoStartTimesAssignedError } from '@startlist-management/domain';
+import {
+  ClassAssignmentsNotCompletedError,
+  DomainError,
+  LaneAssignmentsNotCompletedError,
+  NoStartTimesAssignedError,
+  StartlistSettingsNotEnteredError,
+} from '@startlist-management/domain';
 
 export class StartlistApplicationError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -41,6 +47,13 @@ export const mapToApplicationError = (error: unknown): StartlistApplicationError
   }
   if (error instanceof NoStartTimesAssignedError) {
     return new NoStartTimesAssignedInvalidCommandError(error);
+  }
+  if (
+    error instanceof StartlistSettingsNotEnteredError ||
+    error instanceof LaneAssignmentsNotCompletedError ||
+    error instanceof ClassAssignmentsNotCompletedError
+  ) {
+    return new InvalidCommandError(error.message, error);
   }
   if (error instanceof DomainError) {
     return new InvalidCommandError(error.message, error);

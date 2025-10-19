@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Startlist, StartlistId, SystemClock } from '@startlist-management/domain';
 import { createStartlistModule } from '@startlist-management/infrastructure';
 import { createServer, StartlistServer } from '../server.js';
 
@@ -53,9 +54,10 @@ const START_TIMES = [
 
 describe('startlistRoutes', () => {
   let server: StartlistServer;
+  let module: ReturnType<typeof createStartlistModule>;
 
   beforeEach(async () => {
-    const module = createStartlistModule();
+    module = createStartlistModule();
     server = createServer({
       startlist: {
         useCases: module.useCases,
@@ -177,6 +179,41 @@ describe('startlistRoutes', () => {
     expect(response.statusCode).toBe(400);
     const body = response.json();
     expect(body.message).toContain('Startlist can only be finalized after assigning start times.');
+  });
+
+  it('returns 400 when assigning lane order before entering settings', async () => {
+    const startlist = Startlist.createNew(StartlistId.create(STARTLIST_ID), SystemClock);
+    await module.repository.save(startlist);
+
+    const response = await assignLaneOrder();
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.message).toContain('Startlist settings must be entered before performing this action.');
+  });
+
+  it('returns 400 when assigning player order before lane assignments', async () => {
+    const settingsResponse = await enterSettings();
+    expect(settingsResponse.statusCode).toBe(200);
+
+    const response = await assignPlayerOrder();
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.message).toContain('Lane assignments must be completed before performing this action.');
+  });
+
+  it('returns 400 when assigning start times before class assignments', async () => {
+    const settingsResponse = await enterSettings();
+    expect(settingsResponse.statusCode).toBe(200);
+    const laneResponse = await assignLaneOrder();
+    expect(laneResponse.statusCode).toBe(200);
+
+    const response = await assignStartTimes();
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.message).toContain('Class assignments must be completed before performing this action.');
   });
 
   it('clears start times when lane order is manually reassigned', async () => {
