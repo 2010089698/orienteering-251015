@@ -11,6 +11,13 @@ import { Startlist } from '../Startlist.js';
 import { StartlistId } from '../StartlistId.js';
 import { StartlistSettings } from '../StartlistSettings.js';
 import { StartlistStatus } from '../StartlistStatus.js';
+import {
+  toClassAssignmentDto,
+  toLaneAssignmentDto,
+  toStartTimeDto,
+  toStartlistSettingsDto,
+  toStartlistSnapshotDto,
+} from '../StartlistDtos.js';
 import { ClassStartOrderManuallyFinalizedEvent } from '../events/ClassStartOrderManuallyFinalizedEvent.js';
 import { LaneOrderAndIntervalsAssignedEvent } from '../events/LaneOrderAndIntervalsAssignedEvent.js';
 import { LaneOrderManuallyReassignedEvent } from '../events/LaneOrderManuallyReassignedEvent.js';
@@ -53,9 +60,8 @@ test('reconstitute clones provided state', () => {
     }),
   ];
 
-  const startlist = Startlist.reconstitute({
-    id: startlistId,
-    clock: clockStub,
+  const snapshotDto = toStartlistSnapshotDto({
+    id: startlistId.toString(),
     settings,
     laneAssignments,
     classAssignments,
@@ -63,54 +69,66 @@ test('reconstitute clones provided state', () => {
     status: StartlistStatus.START_TIMES_ASSIGNED,
   });
 
-  laneAssignments.push(
-    LaneAssignment.create({ laneNumber: 3, classOrder: ['class-c'], interval, laneCount: 3 }),
-  );
-  classAssignments[0] = ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-3'], interval });
-  startTimes[0] = StartTime.create({
-    playerId: 'player-4',
-    startTime: new Date(fixedDate.getTime() + interval.value * 2),
-    laneNumber: 1,
+  const startlist = Startlist.reconstitute({
+    id: startlistId,
+    clock: clockStub,
+    snapshot: snapshotDto,
   });
+
+  snapshotDto.laneAssignments.push({
+    laneNumber: 3,
+    classOrder: ['class-c'],
+    interval: { milliseconds: interval.value },
+  });
+  snapshotDto.classAssignments[0] = {
+    classId: 'class-a',
+    playerOrder: ['player-3'],
+    interval: { milliseconds: interval.value },
+  };
+  snapshotDto.startTimes[0] = {
+    playerId: 'player-4',
+    startTime: new Date(fixedDate.getTime() + interval.value * 2).toISOString(),
+    laneNumber: 1,
+  };
 
   assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
   const snapshot = startlist.toSnapshot();
-  assert.deepStrictEqual(snapshot, {
-    id: startlistId.toString(),
-    settings,
-    laneAssignments: [
-      LaneAssignment.create({ laneNumber: 1, classOrder: ['class-a'], interval, laneCount: 2 }),
-      LaneAssignment.create({ laneNumber: 2, classOrder: ['class-b'], interval, laneCount: 2 }),
-    ],
-    classAssignments: [
-      ClassAssignment.create({ classId: 'class-a', playerOrder: ['player-1'], interval }),
-      ClassAssignment.create({ classId: 'class-b', playerOrder: ['player-2'], interval }),
-    ],
-    startTimes: [
-      StartTime.create({ playerId: 'player-1', startTime: fixedDate, laneNumber: 1 }),
-      StartTime.create({
-        playerId: 'player-2',
-        startTime: new Date(fixedDate.getTime() + interval.value),
-        laneNumber: 2,
-      }),
-    ],
-    status: StartlistStatus.START_TIMES_ASSIGNED,
-  });
-
-  assert.notStrictEqual(startlist.getLaneAssignments(), laneAssignments);
-  assert.notStrictEqual(startlist.getClassAssignments(), classAssignments);
-  assert.notStrictEqual(startlist.getStartTimes(), startTimes);
-
-  const firstSnapshotLaneAssignments = snapshot.laneAssignments as LaneAssignment[];
-  firstSnapshotLaneAssignments.push(
-    LaneAssignment.create({ laneNumber: 4, classOrder: ['class-d'], interval, laneCount: 4 }),
+  assert.notStrictEqual(snapshot, snapshotDto);
+  assert.deepStrictEqual(
+    snapshot,
+    toStartlistSnapshotDto({
+      id: startlistId.toString(),
+      settings,
+      laneAssignments,
+      classAssignments,
+      startTimes,
+      status: StartlistStatus.START_TIMES_ASSIGNED,
+    }),
   );
-
-  const secondSnapshot = startlist.toSnapshot();
-  assert.strictEqual(secondSnapshot.laneAssignments.length, 2);
-  assert.strictEqual(secondSnapshot.classAssignments.length, 2);
-  assert.strictEqual(secondSnapshot.startTimes.length, 2);
 });
+
+const toLaneAssignmentDtos = (assignments: ReadonlyArray<LaneAssignment>) =>
+  Array.from(assignments, (assignment) => toLaneAssignmentDto(assignment));
+
+const toClassAssignmentDtos = (assignments: ReadonlyArray<ClassAssignment>) =>
+  Array.from(assignments, (assignment) => toClassAssignmentDto(assignment));
+
+const toStartTimeDtos = (startTimes: ReadonlyArray<StartTime>) =>
+  Array.from(startTimes, (startTime) => toStartTimeDto(startTime));
+
+const expectSnapshot = (
+  startlist: Startlist,
+  params: {
+    id: string;
+    settings?: StartlistSettings;
+    laneAssignments: ReadonlyArray<LaneAssignment>;
+    classAssignments: ReadonlyArray<ClassAssignment>;
+    startTimes: ReadonlyArray<StartTime>;
+    status: StartlistStatus;
+  },
+) => {
+  assert.deepStrictEqual(startlist.toSnapshot(), toStartlistSnapshotDto(params));
+};
 
 test('pullDomainEvents returns a copy and clears the queue', () => {
   const startlistId = StartlistId.create('startlist-events');
@@ -165,7 +183,7 @@ describe('Startlist lifecycle scenarios', () => {
     const interval = Duration.fromMinutes(1);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.DRAFT);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings: undefined,
       laneAssignments: [],
@@ -185,7 +203,7 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.enterSettings(settings);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.SETTINGS_ENTERED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
       laneAssignments: [],
@@ -198,7 +216,7 @@ describe('Startlist lifecycle scenarios', () => {
     const settingsEvent = events[0];
     assert(settingsEvent instanceof StartlistSettingsEnteredEvent);
     assert.strictEqual(settingsEvent.startlistId, startlistId.toString());
-    assert.strictEqual(settingsEvent.settings, settings);
+    assert.deepStrictEqual(settingsEvent.settings, toStartlistSettingsDto(settings));
     assert.strictEqual(settingsEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     const laneAssignments = [
@@ -208,7 +226,7 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.assignLaneOrderAndIntervals(laneAssignments);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.LANE_ORDER_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
       laneAssignments,
@@ -221,7 +239,7 @@ describe('Startlist lifecycle scenarios', () => {
     const laneEvent = events[0];
     assert(laneEvent instanceof LaneOrderAndIntervalsAssignedEvent);
     assert.strictEqual(laneEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(laneEvent.laneAssignments, startlist.getLaneAssignments());
+    assert.deepStrictEqual(laneEvent.laneAssignments, toLaneAssignmentDtos(startlist.getLaneAssignments()));
     assert.strictEqual(laneEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     const classAssignments = [
@@ -231,7 +249,7 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.assignPlayerOrderAndIntervals(classAssignments);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
       laneAssignments,
@@ -244,7 +262,7 @@ describe('Startlist lifecycle scenarios', () => {
     const classEvent = events[0];
     assert(classEvent instanceof PlayerOrderAndIntervalsAssignedEvent);
     assert.strictEqual(classEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(classEvent.classAssignments, startlist.getClassAssignments());
+    assert.deepStrictEqual(classEvent.classAssignments, toClassAssignmentDtos(startlist.getClassAssignments()));
     assert.strictEqual(classEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     const startTimes = [
@@ -258,7 +276,7 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.assignStartTimes(startTimes);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
       laneAssignments,
@@ -271,21 +289,24 @@ describe('Startlist lifecycle scenarios', () => {
     const startTimesEvent = events[0];
     assert(startTimesEvent instanceof StartTimesAssignedEvent);
     assert.strictEqual(startTimesEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(startTimesEvent.startTimes, startlist.getStartTimes());
+    assert.deepStrictEqual(startTimesEvent.startTimes, toStartTimeDtos(startlist.getStartTimes()));
     assert.strictEqual(startTimesEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     startlist.finalizeStartlist();
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.FINALIZED);
     const finalizedSnapshot = startlist.toSnapshot();
-    assert.deepStrictEqual(finalizedSnapshot, {
-      id: startlistId.toString(),
-      settings,
-      laneAssignments,
-      classAssignments,
-      startTimes,
-      status: StartlistStatus.FINALIZED,
-    });
+    assert.deepStrictEqual(
+      finalizedSnapshot,
+      toStartlistSnapshotDto({
+        id: startlistId.toString(),
+        settings,
+        laneAssignments,
+        classAssignments,
+        startTimes,
+        status: StartlistStatus.FINALIZED,
+      }),
+    );
     events = startlist.pullDomainEvents();
     assert.strictEqual(events.length, 1);
     const finalizedEvent = events[0];
@@ -343,10 +364,10 @@ describe('Startlist lifecycle scenarios', () => {
     );
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.LANE_ORDER_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
-      laneAssignments: startlist.getLaneAssignments(),
+      laneAssignments: startlist.getLaneAssignments() as LaneAssignment[],
       classAssignments: initialClassAssignments,
       startTimes: [],
       status: StartlistStatus.LANE_ORDER_ASSIGNED,
@@ -364,7 +385,10 @@ describe('Startlist lifecycle scenarios', () => {
     const laneReassignedEvent = events[1];
     assert(laneReassignedEvent instanceof LaneOrderManuallyReassignedEvent);
     assert.strictEqual(laneReassignedEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(laneReassignedEvent.laneAssignments, startlist.getLaneAssignments());
+    assert.deepStrictEqual(
+      laneReassignedEvent.laneAssignments,
+      toLaneAssignmentDtos(startlist.getLaneAssignments()),
+    );
     assert.strictEqual(laneReassignedEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     const reorderedClassAssignments = [
@@ -374,10 +398,10 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.assignPlayerOrderAndIntervals(reorderedClassAssignments);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
-      laneAssignments: startlist.getLaneAssignments(),
+      laneAssignments: startlist.getLaneAssignments() as LaneAssignment[],
       classAssignments: reorderedClassAssignments,
       startTimes: [],
       status: StartlistStatus.PLAYER_ORDER_ASSIGNED,
@@ -387,7 +411,10 @@ describe('Startlist lifecycle scenarios', () => {
     const reassignedClassEvent = events[0];
     assert(reassignedClassEvent instanceof PlayerOrderAndIntervalsAssignedEvent);
     assert.strictEqual(reassignedClassEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(reassignedClassEvent.classAssignments, startlist.getClassAssignments());
+    assert.deepStrictEqual(
+      reassignedClassEvent.classAssignments,
+      toClassAssignmentDtos(startlist.getClassAssignments()),
+    );
     assert.strictEqual(reassignedClassEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     const reorderedStartTimes = [
@@ -397,10 +424,10 @@ describe('Startlist lifecycle scenarios', () => {
     startlist.assignStartTimes(reorderedStartTimes);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
-      laneAssignments: startlist.getLaneAssignments(),
+      laneAssignments: startlist.getLaneAssignments() as LaneAssignment[],
       classAssignments: reorderedClassAssignments,
       startTimes: reorderedStartTimes,
       status: StartlistStatus.START_TIMES_ASSIGNED,
@@ -410,16 +437,19 @@ describe('Startlist lifecycle scenarios', () => {
     const reorderedStartTimesEvent = events[0];
     assert(reorderedStartTimesEvent instanceof StartTimesAssignedEvent);
     assert.strictEqual(reorderedStartTimesEvent.startlistId, startlistId.toString());
-    assert.deepStrictEqual(reorderedStartTimesEvent.startTimes, startlist.getStartTimes());
+    assert.deepStrictEqual(
+      reorderedStartTimesEvent.startTimes,
+      toStartTimeDtos(startlist.getStartTimes()),
+    );
     assert.strictEqual(reorderedStartTimesEvent.occurredAt.toISOString(), fixedDate.toISOString());
 
     startlist.manuallyFinalizeClassStartOrder(reorderedClassAssignments);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
-    assert.deepStrictEqual(startlist.toSnapshot(), {
+    expectSnapshot(startlist, {
       id: startlistId.toString(),
       settings,
-      laneAssignments: startlist.getLaneAssignments(),
+      laneAssignments: startlist.getLaneAssignments() as LaneAssignment[],
       classAssignments: reorderedClassAssignments,
       startTimes: [],
       status: StartlistStatus.PLAYER_ORDER_ASSIGNED,
@@ -439,7 +469,7 @@ describe('Startlist lifecycle scenarios', () => {
     assert.strictEqual(manuallyFinalizedClassEvent.startlistId, startlistId.toString());
     assert.deepStrictEqual(
       manuallyFinalizedClassEvent.classAssignments,
-      startlist.getClassAssignments(),
+      toClassAssignmentDtos(startlist.getClassAssignments()),
     );
     assert.strictEqual(manuallyFinalizedClassEvent.occurredAt.toISOString(), fixedDate.toISOString());
   });
@@ -605,7 +635,10 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(invalidatedEvent.reason, 'Lane order assigned - start times invalidated');
     const reassignedEvent = events[1];
     assert(reassignedEvent instanceof LaneOrderAndIntervalsAssignedEvent);
-    assert.deepStrictEqual(reassignedEvent.laneAssignments, startlist.getLaneAssignments());
+    assert.deepStrictEqual(
+      reassignedEvent.laneAssignments,
+      toLaneAssignmentDtos(startlist.getLaneAssignments()),
+    );
   });
 
   test('assignPlayerOrderAndIntervals requires lane assignments', () => {
@@ -745,7 +778,10 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(invalidatedEvent.reason, 'Player order assigned - start times invalidated');
     const reassignedEvent = events[1];
     assert(reassignedEvent instanceof PlayerOrderAndIntervalsAssignedEvent);
-    assert.deepStrictEqual(reassignedEvent.classAssignments, startlist.getClassAssignments());
+    assert.deepStrictEqual(
+      reassignedEvent.classAssignments,
+      toClassAssignmentDtos(startlist.getClassAssignments()),
+    );
   });
 
   test('assignStartTimes reopens a finalized startlist and can finalize again', () => {
@@ -792,7 +828,10 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(events.length, 1);
     const assignedEvent = events[0];
     assert(assignedEvent instanceof StartTimesAssignedEvent);
-    assert.deepStrictEqual(assignedEvent.startTimes, startlist.getStartTimes());
+    assert.deepStrictEqual(
+      assignedEvent.startTimes,
+      toStartTimeDtos(startlist.getStartTimes()),
+    );
 
     startlist.finalizeStartlist();
 
@@ -802,7 +841,10 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(events.length, 1);
     const finalizedEvent = events[0];
     assert(finalizedEvent instanceof StartlistFinalizedEvent);
-    assert.deepStrictEqual(finalizedEvent.finalStartlist, startlist.toSnapshot());
+    assert.deepStrictEqual(
+      finalizedEvent.finalStartlist,
+      startlist.toSnapshot(),
+    );
   });
 
   test('finalizeStartlist requires assigned start times', () => {
@@ -957,7 +999,10 @@ describe('Startlist failure scenarios', () => {
     );
     const reassignedEvent = manualLaneEvents[1];
     assert(reassignedEvent instanceof LaneOrderManuallyReassignedEvent);
-    assert.deepStrictEqual(reassignedEvent.laneAssignments, startlist.getLaneAssignments());
+    assert.deepStrictEqual(
+      reassignedEvent.laneAssignments,
+      toLaneAssignmentDtos(startlist.getLaneAssignments()),
+    );
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.LANE_ORDER_ASSIGNED);
     assert.deepStrictEqual(startlist.getStartTimes(), []);
@@ -1003,7 +1048,10 @@ describe('Startlist failure scenarios', () => {
     );
     const finalizedClassEvent = manualClassEvents[1];
     assert(finalizedClassEvent instanceof ClassStartOrderManuallyFinalizedEvent);
-    assert.deepStrictEqual(finalizedClassEvent.classAssignments, startlist.getClassAssignments());
+    assert.deepStrictEqual(
+      finalizedClassEvent.classAssignments,
+      toClassAssignmentDtos(startlist.getClassAssignments()),
+    );
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.PLAYER_ORDER_ASSIGNED);
     assert.deepStrictEqual(startlist.getStartTimes(), []);

@@ -1,36 +1,18 @@
-export interface DurationDto {
-  milliseconds: number;
-}
+import type {
+  StartlistSettingsDto,
+  LaneAssignmentDto,
+  ClassAssignmentDto,
+  StartTimeDto,
+} from '@startlist-management/domain';
 
-export interface StartlistIntervalsDto {
-  laneClass: DurationDto;
-  classPlayer: DurationDto;
-}
-
-export interface StartlistSettingsDto {
-  eventId: string;
-  startTime: Date | string;
-  intervals: StartlistIntervalsDto;
-  laneCount: number;
-}
-
-export interface LaneAssignmentDto {
-  laneNumber: number;
-  classOrder: string[];
-  interval: DurationDto;
-}
-
-export interface ClassAssignmentDto {
-  classId: string;
-  playerOrder: string[];
-  interval: DurationDto;
-}
-
-export interface StartTimeDto {
-  playerId: string;
-  startTime: Date | string;
-  laneNumber: number;
-}
+export type {
+  DurationDto,
+  StartlistIntervalsDto,
+  StartlistSettingsDto,
+  LaneAssignmentDto,
+  ClassAssignmentDto,
+  StartTimeDto,
+} from '@startlist-management/domain';
 
 export interface EnterStartlistSettingsCommand {
   startlistId: string;

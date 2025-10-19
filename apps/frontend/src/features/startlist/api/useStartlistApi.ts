@@ -11,109 +11,7 @@ import type {
   ManuallyFinalizeClassStartOrderCommand,
   ManuallyReassignLaneOrderCommand,
 } from '@startlist-management/application';
-
-export interface StartlistSnapshot {
-  settings?: unknown;
-  laneAssignments?: unknown;
-  classAssignments?: unknown;
-  startTimes?: unknown;
-  [key: string]: unknown;
-}
-
-type DurationLike = { milliseconds: number };
-type StartlistSettingsCommandInput = EnterStartlistSettingsCommand['settings'] & {
-  interval?: DurationLike;
-  laneClassInterval?: DurationLike;
-  classPlayerInterval?: DurationLike;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null;
-};
-
-const isDurationLike = (value: unknown): value is DurationLike => {
-  return isRecord(value) && typeof value.milliseconds === 'number';
-};
-
-const cloneDuration = (duration: DurationLike): DurationLike => ({ milliseconds: duration.milliseconds });
-
-const resolveDuration = (primary: unknown, fallback: unknown): DurationLike | undefined => {
-  if (isDurationLike(primary)) {
-    return cloneDuration(primary);
-  }
-  if (isDurationLike(fallback)) {
-    return cloneDuration(fallback);
-  }
-  return undefined;
-};
-
-const normalizeSettingsPayload = (
-  settings: StartlistSettingsCommandInput,
-): EnterStartlistSettingsCommand['settings'] => {
-  const laneClassInterval = resolveDuration(
-    settings.intervals?.laneClass,
-    settings.laneClassInterval ?? settings.interval,
-  );
-  const classPlayerInterval = resolveDuration(
-    settings.intervals?.classPlayer,
-    settings.classPlayerInterval ?? settings.interval,
-  );
-  if (!laneClassInterval || !classPlayerInterval) {
-    throw new Error('Both laneClassInterval and classPlayerInterval must be provided.');
-  }
-
-  const startTime =
-    settings.startTime instanceof Date ? settings.startTime.toISOString() : settings.startTime;
-
-  return {
-    eventId: settings.eventId,
-    startTime,
-    intervals: {
-      laneClass: laneClassInterval,
-      classPlayer: classPlayerInterval,
-    },
-    laneCount: settings.laneCount,
-  };
-};
-
-const normalizeSettingsResponse = (settings: unknown): unknown => {
-  if (!isRecord(settings)) {
-    return settings;
-  }
-  const laneClassInterval = resolveDuration(
-    isRecord(settings.intervals) ? settings.intervals.laneClass : undefined,
-    settings.laneClassInterval ?? settings.interval,
-  );
-  const classPlayerInterval = resolveDuration(
-    isRecord(settings.intervals) ? settings.intervals.classPlayer : undefined,
-    settings.classPlayerInterval ?? settings.interval,
-  );
-
-  if (!laneClassInterval || !classPlayerInterval) {
-    return settings;
-  }
-
-  const { laneClassInterval: _legacyLane, classPlayerInterval: _legacyPlayer, ...rest } = settings;
-
-  return {
-    ...rest,
-    intervals: {
-      laneClass: laneClassInterval,
-      classPlayer: classPlayerInterval,
-    },
-  };
-};
-
-const normalizeSnapshot = (snapshot: StartlistSnapshot | undefined): StartlistSnapshot | undefined => {
-  if (!snapshot) {
-    return snapshot;
-  }
-  const normalizedSettings = normalizeSettingsResponse(snapshot.settings);
-  if (normalizedSettings !== snapshot.settings) {
-    return { ...snapshot, settings: normalizedSettings };
-  }
-  return snapshot;
-};
+import type { StartlistSnapshot } from '@startlist-management/domain';
 
 const ensureOk = async (response: Response): Promise<unknown> => {
   if (!response.ok) {
@@ -165,22 +63,19 @@ export const useStartlistApi = () => {
 
   const enterSettings = useCallback(
     async (command: EnterStartlistSettingsCommand): Promise<StartlistSnapshot> => {
-      const payload = normalizeSettingsPayload(command.settings as StartlistSettingsCommandInput);
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/settings`,
-        payload,
+        command.settings,
       )) as StartlistSnapshot;
-      return normalizeSnapshot(response) as StartlistSnapshot;
+      return response;
     },
     [post],
   );
 
   const fetchSnapshot = useCallback(
     async (query: GetStartlistQuery): Promise<StartlistSnapshot> => {
-      const snapshot = (await get(
-        `/${encodeURIComponent(query.startlistId)}`,
-      )) as StartlistSnapshot;
-      return normalizeSnapshot(snapshot) as StartlistSnapshot;
+      const snapshot = (await get(`/${encodeURIComponent(query.startlistId)}`)) as StartlistSnapshot;
+      return snapshot;
     },
     [get],
   );
@@ -195,7 +90,7 @@ export const useStartlistApi = () => {
         `/${encodeURIComponent(command.startlistId)}/lane-order`,
         payload,
       )) as StartlistSnapshot | undefined;
-      return normalizeSnapshot(response);
+      return response;
     },
     [post],
   );
@@ -212,7 +107,7 @@ export const useStartlistApi = () => {
         `/${encodeURIComponent(command.startlistId)}/player-order`,
         payload,
       )) as StartlistSnapshot | undefined;
-      return normalizeSnapshot(response);
+      return response;
     },
     [post],
   );
@@ -222,7 +117,7 @@ export const useStartlistApi = () => {
       const response = (await post(`/${encodeURIComponent(command.startlistId)}/start-times`, {
         startTimes: command.startTimes,
       })) as StartlistSnapshot | undefined;
-      return normalizeSnapshot(response);
+      return response;
     },
     [post],
   );
@@ -232,7 +127,7 @@ export const useStartlistApi = () => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/finalize`,
       )) as StartlistSnapshot | undefined;
-      return normalizeSnapshot(response);
+      return response;
     },
     [post],
   );
@@ -245,7 +140,7 @@ export const useStartlistApi = () => {
           reason: command.reason,
         },
       )) as StartlistSnapshot | undefined;
-      return normalizeSnapshot(response);
+      return response;
     },
     [post],
   );
