@@ -9,7 +9,8 @@
 - `EntryFactory` がエントリー ID を生成し、現在時刻を利用して登録処理を組み立てます。
 
 ### `packages/application`
-- `RegisterEntryService` がユースケースとしてファクトリとリポジトリを協調させ、トランザクション境界内で登録・イベント発行・DTO 変換を行います。
+- `EntryCommandBase` がトランザクションマネージャとイベントパブリッシャーを協調させ、エントリー集約の永続化後にドメインイベントを取り出して送出します。将来的に追加されるコマンドサービスもこの基盤を継承することで、イベント発行のタイミングと失敗時のふるまいを統一できます。
+- `RegisterEntryService` がユースケースとしてファクトリとリポジトリを協調させ、`EntryCommandBase` 経由で登録・イベント発行・DTO 変換を行います。
 - `EntryQueryServiceImpl` がリポジトリから取得した集約を DTO に変換し、一覧・詳細の読み取りを提供します。
 
 ### `packages/infrastructure`
