@@ -21,7 +21,6 @@ interface ClassSplitRow {
 
 const methodOptions: Array<{ value: ClassSplitMethod; label: string }> = [
   { value: 'random', label: 'ランダムに分割' },
-  { value: 'balanced', label: '同人数を目指す' },
 ];
 
 const methodLabelMap = new Map(methodOptions.map((option) => [option.value, option.label]));

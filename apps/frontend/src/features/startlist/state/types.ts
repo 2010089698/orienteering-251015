@@ -5,7 +5,7 @@ import type {
   StartlistSettingsDto,
 } from '@startlist-management/application';
 
-export type ClassSplitMethod = string;
+export type ClassSplitMethod = 'random';
 
 export interface ClassSplitRule {
   baseClassId: string;
