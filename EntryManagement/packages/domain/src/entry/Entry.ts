@@ -1,13 +1,16 @@
 import { EntryRegisteredEvent } from './events/EntryRegisteredEvent.js';
 import { EntryId } from './EntryId.js';
 import { EntrySnapshot } from './EntrySnapshot.js';
+import { EntryName } from './EntryName.js';
+import { EntryClassId } from './EntryClassId.js';
+import { EntryCardNumber } from './EntryCardNumber.js';
 import type { DomainEvent } from '../common/DomainEvent.js';
 
 export interface EntryProps {
   id: EntryId;
-  name: string;
-  classId: string;
-  cardNumber: string;
+  name: EntryName;
+  classId: EntryClassId;
+  cardNumber: EntryCardNumber;
   club?: string;
   iofId?: string;
   createdAt: Date;
@@ -27,9 +30,9 @@ export class Entry {
   static rehydrate(snapshot: EntrySnapshot): Entry {
     return new Entry({
       id: EntryId.create(snapshot.id),
-      name: snapshot.name,
-      classId: snapshot.classId,
-      cardNumber: snapshot.cardNumber,
+      name: EntryName.create(snapshot.name),
+      classId: EntryClassId.create(snapshot.classId),
+      cardNumber: EntryCardNumber.create(snapshot.cardNumber),
       club: snapshot.club,
       iofId: snapshot.iofId,
       createdAt: new Date(snapshot.createdAt),
@@ -49,9 +52,9 @@ export class Entry {
   toSnapshot(): EntrySnapshot {
     return {
       id: this.props.id.toString(),
-      name: this.props.name,
-      classId: this.props.classId,
-      cardNumber: this.props.cardNumber,
+      name: this.props.name.value,
+      classId: this.props.classId.value,
+      cardNumber: this.props.cardNumber.value,
       club: this.props.club,
       ...(this.props.iofId !== undefined ? { iofId: this.props.iofId } : {}),
       createdAt: this.props.createdAt.toISOString(),
@@ -63,15 +66,15 @@ export class Entry {
   }
 
   get name(): string {
-    return this.props.name;
+    return this.props.name.value;
   }
 
   get classId(): string {
-    return this.props.classId;
+    return this.props.classId.value;
   }
 
   get cardNumber(): string {
-    return this.props.cardNumber;
+    return this.props.cardNumber.value;
   }
 
   get club(): string | undefined {
