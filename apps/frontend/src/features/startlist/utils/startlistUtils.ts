@@ -44,6 +44,53 @@ const createSplitSuffix = (index: number): string => {
   return suffix;
 };
 
+const MIN_RANDOM_SEED = 1;
+
+const mulberry32 = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+};
+
+const shuffleWithRandom = <T>(values: T[], random: () => number): T[] => {
+  const array = [...values];
+  for (let index = array.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(random() * (index + 1));
+    const temp = array[index];
+    array[index] = array[randomIndex];
+    array[randomIndex] = temp;
+  }
+  return array;
+};
+
+interface DeterministicShuffleResult<T> {
+  entries: T[];
+  seed: string;
+  orderSignature: string;
+}
+
+const createDeterministicShuffle = <T extends { id: string }>(
+  entries: T[],
+  baseClassId: string,
+): DeterministicShuffleResult<T> => {
+  const normalized = [...entries].sort((left, right) => left.id.localeCompare(right.id, 'ja'));
+  const seedBase = normalized.map((entry) => `${baseClassId}#${entry.id}`).join('|');
+  const seed = hashString(`split-random#${seedBase}`);
+  const numericSeed = Number.parseInt(seed, 16);
+  const random = mulberry32(Number.isNaN(numericSeed) || numericSeed === 0 ? MIN_RANDOM_SEED : numericSeed);
+  const shuffledIndices = shuffleWithRandom(
+    normalized.map((_, index) => index),
+    random,
+  );
+  const shuffledEntries = shuffledIndices.map((index) => normalized[index]);
+  const orderSignature = shuffledEntries.map((entry) => entry.id).join(',');
+  return { entries: shuffledEntries, seed, orderSignature };
+};
+
 export interface ClassSplitPreparation {
   signature: string;
   groups: ClassGroup[];
@@ -91,6 +138,7 @@ export const prepareClassSplits = (
   const splitIdToBaseClassId = new Map<string, string>();
   const splitIdToEntryIds = new Map<string, string[]>();
   const baseEntryIds = new Map<string, string[]>();
+  const shuffleMetadata: string[] = [];
 
   baseIds.forEach((baseClassId) => {
     const entriesForClass = grouped.get(baseClassId) ?? [];
@@ -108,6 +156,12 @@ export const prepareClassSplits = (
     }
 
     const partCount = rule.partCount;
+    let distributableEntries = entriesForClass;
+    if (rule.method === 'random' && entriesForClass.length > 1) {
+      const { entries: shuffled, seed, orderSignature } = createDeterministicShuffle(entriesForClass, baseClassId);
+      distributableEntries = shuffled;
+      shuffleMetadata.push(`${baseClassId}:${seed}:${orderSignature}`);
+    }
     const splitGroups = Array.from({ length: partCount }, (_, index) => {
       const suffix = createSplitSuffix(index);
       const splitId = `${baseClassId}-${suffix}`;
@@ -120,14 +174,35 @@ export const prepareClassSplits = (
       };
     });
 
-    entriesForClass.forEach((entry, index) => {
+    distributableEntries.forEach((entry, index) => {
       const target = splitGroups[index % partCount];
       target.group.entries.push(entry);
       target.entryIds.push(entry.id);
       entryToSplitId.set(entry.id, target.group.classId);
     });
 
-    baseEntryIds.set(baseClassId, entriesForClass.map((entry) => entry.id));
+    const counts = splitGroups.map(({ group }) => group.entries.length);
+    const minCount = counts.length > 0 ? Math.min(...counts) : 0;
+    const maxCount = counts.length > 0 ? Math.max(...counts) : 0;
+    if (maxCount - minCount > 1) {
+      const baseCount = Math.floor(distributableEntries.length / partCount);
+      const remainder = distributableEntries.length % partCount;
+      let index = 0;
+      splitGroups.forEach(({ group, entryIds }, groupIndex) => {
+        group.entries.length = 0;
+        entryIds.length = 0;
+        const targetSize = baseCount + (groupIndex < remainder ? 1 : 0);
+        for (let offset = 0; offset < targetSize; offset += 1) {
+          const entry = distributableEntries[index];
+          group.entries.push(entry);
+          entryIds.push(entry.id);
+          entryToSplitId.set(entry.id, group.classId);
+          index += 1;
+        }
+      });
+    }
+
+    baseEntryIds.set(baseClassId, distributableEntries.map((entry) => entry.id));
 
     splitGroups.forEach(({ group }) => {
       groups.push(group);
@@ -154,10 +229,11 @@ export const prepareClassSplits = (
   const ruleSignatureParts = normalizedRules
     .map((rule) => `${rule.baseClassId}:${rule.partCount}:${rule.method}`)
     .sort((a, b) => a.localeCompare(b, 'ja'));
+  const shuffleSignatureParts = shuffleMetadata.sort((a, b) => a.localeCompare(b, 'ja'));
   const distributionParts = groups
     .map((group) => `${group.classId}:${group.baseClassId}:${group.entries.map((entry) => entry.id).join(',')}`)
     .sort((a, b) => a.localeCompare(b, 'ja'));
-  const signatureBase = [...ruleSignatureParts, ...distributionParts].join('|');
+  const signatureBase = [...ruleSignatureParts, ...shuffleSignatureParts, ...distributionParts].join('|');
   const signature = hasSplits ? hashString(`split#${signatureBase}`) : 'no-split';
 
   const computedResult = hasSplits
