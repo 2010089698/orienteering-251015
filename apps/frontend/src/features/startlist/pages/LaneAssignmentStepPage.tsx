@@ -1,4 +1,4 @@
-import LaneAssignmentStep from '../components/LaneAssignmentStep';
+import LaneAssignmentWorkflow from '../workflow/LaneAssignmentWorkflow';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
 
 const LaneAssignmentStepPage = (): JSX.Element => {
@@ -6,7 +6,7 @@ const LaneAssignmentStepPage = (): JSX.Element => {
 
   return (
     <div className="card">
-      <LaneAssignmentStep />
+      <LaneAssignmentWorkflow />
     </div>
   );
 };

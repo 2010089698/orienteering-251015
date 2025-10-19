@@ -25,7 +25,8 @@ vi.mock('@dnd-kit/core', async () => {
   };
 });
 
-import LaneAssignmentStep from './LaneAssignmentStep';
+import LaneAssignmentWorkflow from '../workflow/LaneAssignmentWorkflow';
+const LaneAssignmentStep = LaneAssignmentWorkflow;
 import { renderWithStartlistRouter } from '../test/test-utils';
 import {
   useStartlistClassAssignments,
@@ -98,7 +99,7 @@ const splitResult = splitGeneration.splitResult!;
 
 describe('LaneAssignmentStep', () => {
   it('allows lane changes for split classes', async () => {
-    renderWithStartlistRouter(<LaneAssignmentStep />, {
+    renderWithStartlistRouter(<LaneAssignmentWorkflow />, {
       routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
@@ -116,7 +117,7 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('switches between overview and focused lane tabs with split metadata', async () => {
-    renderWithStartlistRouter(<LaneAssignmentStep />, {
+    renderWithStartlistRouter(<LaneAssignmentWorkflow />, {
       routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
@@ -156,7 +157,7 @@ describe('LaneAssignmentStep', () => {
   });
 
   it('shows split helper text and competitor counts in previews', async () => {
-    renderWithStartlistRouter(<LaneAssignmentStep />, {
+    renderWithStartlistRouter(<LaneAssignmentWorkflow />, {
       routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',
@@ -186,7 +187,7 @@ describe('LaneAssignmentStep', () => {
 
   it('supports dragging split classes between lanes', async () => {
     const user = userEvent.setup();
-    renderWithStartlistRouter(<LaneAssignmentStep />, {
+    renderWithStartlistRouter(<LaneAssignmentWorkflow />, {
       routerProps: { initialEntries: ['/startlist/lanes'] },
       initialState: {
         startlistId: 'SL-1',

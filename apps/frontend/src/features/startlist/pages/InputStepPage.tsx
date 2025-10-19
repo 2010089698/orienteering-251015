@@ -1,9 +1,9 @@
-import InputStep from '../components/InputStep';
+import InputStepWorkflow from '../workflow/InputStepWorkflow';
 
 const InputStepPage = (): JSX.Element => {
   return (
     <div className="card">
-      <InputStep />
+      <InputStepWorkflow />
     </div>
   );
 };
