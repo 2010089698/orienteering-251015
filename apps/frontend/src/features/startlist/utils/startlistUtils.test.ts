@@ -83,6 +83,42 @@ describe('prepareClassSplits', () => {
     expect(result?.splitClasses.map((item) => item.classId)).toEqual(['M21-A', 'M21-B']);
     expect(result?.splitIdToEntryIds.get('M21-A')).toEqual(['m21-1', 'm21-3']);
   });
+
+  it('deterministically shuffles entries for random split method keeping groups balanced', () => {
+    const entries: Entry[] = [
+      { id: 'rand-1', name: 'One', classId: 'RAND', cardNo: '1' },
+      { id: 'rand-2', name: 'Two', classId: 'RAND', cardNo: '2' },
+      { id: 'rand-3', name: 'Three', classId: 'RAND', cardNo: '3' },
+      { id: 'rand-4', name: 'Four', classId: 'RAND', cardNo: '4' },
+      { id: 'rand-5', name: 'Five', classId: 'RAND', cardNo: '5' },
+      { id: 'rand-6', name: 'Six', classId: 'RAND', cardNo: '6' },
+      { id: 'rand-7', name: 'Seven', classId: 'RAND', cardNo: '7' },
+    ];
+    const options = {
+      splitRules: [{ baseClassId: 'RAND', partCount: 3, method: 'random' }],
+    } as const;
+
+    const first = prepareClassSplits(entries, options);
+    const reversed = [...entries].reverse();
+    const second = prepareClassSplits(reversed, options);
+
+    const randGroups = first.groups.filter((group) => group.baseClassId === 'RAND');
+    expect(randGroups).toHaveLength(3);
+    const sizes = randGroups.map((group) => group.entries.length);
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+
+    expect(second.signature).toBe(first.signature);
+    expect(second.result?.signature).toBe(first.result?.signature);
+    expect(second.result?.splitIdToEntryIds.get('RAND-A')).toEqual(
+      first.result?.splitIdToEntryIds.get('RAND-A'),
+    );
+    expect(second.result?.splitIdToEntryIds.get('RAND-B')).toEqual(
+      first.result?.splitIdToEntryIds.get('RAND-B'),
+    );
+    expect(second.result?.splitIdToEntryIds.get('RAND-C')).toEqual(
+      first.result?.splitIdToEntryIds.get('RAND-C'),
+    );
+  });
 });
 
 describe('reorderLaneClass', () => {
