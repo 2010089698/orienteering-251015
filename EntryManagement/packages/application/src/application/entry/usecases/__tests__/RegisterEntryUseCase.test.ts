@@ -15,7 +15,16 @@ import { RegisterEntryService } from '../RegisterEntryUseCase.js';
 class StubEntryRepository implements EntryRepository {
   savedEntries: Entry[] = [];
 
+  constructor(
+    private readonly overrides: {
+      save?: (entry: Entry) => Promise<void>;
+    } = {},
+  ) {}
+
   async save(entry: Entry): Promise<void> {
+    if (this.overrides.save) {
+      return this.overrides.save(entry);
+    }
     this.savedEntries.push(entry);
   }
 
@@ -30,15 +39,20 @@ class StubEntryRepository implements EntryRepository {
   async delete(): Promise<void> {}
 }
 
-const createUseCase = (clock: DomainClock) => {
-  const repository = new StubEntryRepository();
+const createUseCase = (
+  clock: DomainClock,
+  options: {
+    repository?: StubEntryRepository;
+    eventPublisher?: ApplicationEventPublisher;
+  } = {},
+) => {
+  const repository = options.repository ?? new StubEntryRepository();
   const factory = new EntryFactory(clock);
   const transactionManager: TransactionManager = {
     execute: (work) => Promise.resolve(work()),
   };
-  const eventPublisher: ApplicationEventPublisher = {
-    publish: vi.fn(async () => {}),
-  };
+  const eventPublisher: ApplicationEventPublisher =
+    options.eventPublisher ?? ({ publish: vi.fn(async () => {}) } as ApplicationEventPublisher);
 
   return {
     repository,
@@ -48,6 +62,7 @@ const createUseCase = (clock: DomainClock) => {
       transactionManager,
       eventPublisher,
     ),
+    eventPublisher,
   };
 };
 
@@ -57,7 +72,7 @@ describe('RegisterEntryService', () => {
   };
 
   it('returns the IOF ID when registering an entry that provides one', async () => {
-    const { service, repository } = createUseCase(clock);
+    const { service, repository, eventPublisher } = createUseCase(clock);
 
     const result = await service.execute({
       name: 'Alice Runner',
@@ -69,10 +84,11 @@ describe('RegisterEntryService', () => {
 
     expect(result.iofId).toBe('IOF-123');
     expect(repository.savedEntries[0]?.iofId).toBe('IOF-123');
+    expect(eventPublisher.publish).toHaveBeenCalledWith(expect.any(Array));
   });
 
   it('omits the IOF ID when it is not provided', async () => {
-    const { service, repository } = createUseCase(clock);
+    const { service, repository, eventPublisher } = createUseCase(clock);
 
     const result = await service.execute({
       name: 'Bob Runner',
@@ -82,10 +98,11 @@ describe('RegisterEntryService', () => {
 
     expect(result.iofId).toBeUndefined();
     expect(repository.savedEntries[0]?.iofId).toBeUndefined();
+    expect(eventPublisher.publish).toHaveBeenCalledWith(expect.any(Array));
   });
 
   it('throws a DomainError when validation fails', async () => {
-    const { service, repository } = createUseCase(clock);
+    const { service, repository, eventPublisher } = createUseCase(clock);
 
     await expect(
       service.execute({
@@ -95,5 +112,26 @@ describe('RegisterEntryService', () => {
       }),
     ).rejects.toBeInstanceOf(DomainError);
     expect(repository.savedEntries).toHaveLength(0);
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  it('does not publish events when saving the entry fails', async () => {
+    const repository = new StubEntryRepository({
+      save: vi.fn().mockRejectedValue(new Error('failed to persist')),
+    });
+    const eventPublisher: ApplicationEventPublisher = {
+      publish: vi.fn(async () => {}),
+    };
+    const { service } = createUseCase(clock, { repository, eventPublisher });
+
+    await expect(
+      service.execute({
+        name: 'Charlie Runner',
+        classId: 'M35',
+        cardNumber: '777777',
+      }),
+    ).rejects.toThrow('failed to persist');
+
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
   });
 });
