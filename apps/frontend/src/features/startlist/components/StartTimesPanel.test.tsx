@@ -26,7 +26,7 @@ const startTimes: StartTimeDto[] = [
 const classAssignments: ClassAssignmentDto[] = [
   {
     laneNumber: 1,
-    classId: 'SP-A',
+    classId: 'SP1',
     playerOrder: ['player-1'],
   },
 ];
@@ -107,7 +107,7 @@ describe('StartTimesPanel', () => {
     expect(parts).toBeDefined();
     const csvString = parts.map((part) => (typeof part === 'string' ? part : String(part))).join('');
     expect(csvString).toBe(
-      '\ufeffクラス,スタート番号,氏名,所属,スタート時刻,カード番号\r\nSP-A,1001,田中 太郎,Tokyo OC,18:00,123456',
+      '\ufeffクラス,スタート番号,氏名,所属,スタート時刻,カード番号\r\nSP1,1001,田中 太郎,Tokyo OC,18:00,123456',
     );
 
     expect(clickMock).toHaveBeenCalled();
