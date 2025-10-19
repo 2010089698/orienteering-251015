@@ -5,14 +5,8 @@ import {
   StartlistId,
   StartlistRepository,
   StartlistSnapshot,
+  cloneStartlistSnapshotDto,
 } from '@startlist-management/domain';
-
-const cloneSnapshot = (snapshot: StartlistSnapshot): StartlistSnapshot => ({
-  ...snapshot,
-  laneAssignments: [...snapshot.laneAssignments],
-  classAssignments: [...snapshot.classAssignments],
-  startTimes: [...snapshot.startTimes],
-});
 
 export class InMemoryStartlistRepository implements StartlistRepository {
   private readonly store = new Map<string, StartlistSnapshot>();
@@ -27,16 +21,12 @@ export class InMemoryStartlistRepository implements StartlistRepository {
     return Startlist.reconstitute({
       id,
       clock: this.clock,
-      settings: snapshot.settings,
-      laneAssignments: [...snapshot.laneAssignments],
-      classAssignments: [...snapshot.classAssignments],
-      startTimes: [...snapshot.startTimes],
-      status: snapshot.status,
+      snapshot: cloneStartlistSnapshotDto(snapshot),
     });
   }
 
   async save(startlist: Startlist): Promise<void> {
-    const snapshot = cloneSnapshot(startlist.toSnapshot());
+    const snapshot = cloneStartlistSnapshotDto(startlist.toSnapshot());
     this.store.set(startlist.getId().toString(), snapshot);
   }
 

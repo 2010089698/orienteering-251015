@@ -7,6 +7,15 @@ import { StartTime } from './StartTime.js';
 import { StartTimeAssignmentPolicy } from './StartTimeAssignmentPolicy.js';
 import { StartlistId } from './StartlistId.js';
 import { StartlistSettings } from './StartlistSettings.js';
+import {
+  StartlistSnapshotDto,
+  toClassAssignmentDto,
+  toLaneAssignmentDto,
+  toStartTimeDto,
+  toStartlistSettingsDto,
+  toStartlistSnapshotDto,
+  fromStartlistSnapshotDto,
+} from './StartlistDtos.js';
 import { StartlistSnapshot } from './StartlistSnapshot.js';
 import { StartlistStatus } from './StartlistStatus.js';
 import { LaneAssignmentsNotCompletedError, NoStartTimesAssignedError, StartlistSettingsNotEnteredError } from './StartlistErrors.js';
@@ -36,28 +45,18 @@ export class Startlist {
   static reconstitute(params: {
     id: StartlistId;
     clock: DomainClock;
-    settings?: StartlistSettings;
-    laneAssignments?: LaneAssignment[];
-    classAssignments?: ClassAssignment[];
-    startTimes?: StartTime[];
-    status?: StartlistStatus;
+    snapshot: StartlistSnapshotDto;
   }): Startlist {
     const startlist = new Startlist(params.id, params.clock);
-    if (params.settings) {
-      startlist.settings = params.settings;
+    const { settings, laneAssignments, classAssignments, startTimes, status } =
+      fromStartlistSnapshotDto(params.snapshot);
+    if (settings) {
+      startlist.settings = settings;
     }
-    if (params.laneAssignments) {
-      startlist.laneAssignments = [...params.laneAssignments];
-    }
-    if (params.classAssignments) {
-      startlist.classAssignments = [...params.classAssignments];
-    }
-    if (params.startTimes) {
-      startlist.startTimes = [...params.startTimes];
-    }
-    if (params.status) {
-      startlist.status = params.status;
-    }
+    startlist.laneAssignments = laneAssignments;
+    startlist.classAssignments = classAssignments;
+    startlist.startTimes = startTimes;
+    startlist.status = status;
     return startlist;
   }
 
@@ -90,14 +89,14 @@ export class Startlist {
   }
 
   toSnapshot(): StartlistSnapshot {
-    return {
+    return toStartlistSnapshotDto({
       id: this.id.toString(),
       settings: this.settings,
-      laneAssignments: [...this.laneAssignments],
-      classAssignments: [...this.classAssignments],
-      startTimes: [...this.startTimes],
+      laneAssignments: this.laneAssignments,
+      classAssignments: this.classAssignments,
+      startTimes: this.startTimes,
       status: this.status,
-    };
+    });
   }
 
   pullDomainEvents(): DomainEvent[] {
@@ -110,7 +109,13 @@ export class Startlist {
     this.ensureStatus(StartlistStatus.DRAFT, 'Startlist settings can only be entered once while in draft.');
     this.settings = settings;
     this.status = StartlistStatus.SETTINGS_ENTERED;
-    this.record(new StartlistSettingsEnteredEvent(this.id.toString(), settings, this.clock.now()));
+    this.record(
+      new StartlistSettingsEnteredEvent(
+        this.id.toString(),
+        toStartlistSettingsDto(settings),
+        this.clock.now(),
+      ),
+    );
   }
 
   assignLaneOrderAndIntervals(assignments: LaneAssignment[]): void {
@@ -123,7 +128,7 @@ export class Startlist {
     this.record(
       new LaneOrderAndIntervalsAssignedEvent(
         this.id.toString(),
-        this.getLaneAssignments(),
+        this.laneAssignments.map(toLaneAssignmentDto),
         this.clock.now(),
       ),
     );
@@ -140,7 +145,7 @@ export class Startlist {
     this.record(
       new PlayerOrderAndIntervalsAssignedEvent(
         this.id.toString(),
-        this.getClassAssignments(),
+        this.classAssignments.map(toClassAssignmentDto),
         this.clock.now(),
       ),
     );
@@ -155,7 +160,11 @@ export class Startlist {
     this.startTimes = [...startTimes];
     this.status = StartlistStatus.START_TIMES_ASSIGNED;
     this.record(
-      new StartTimesAssignedEvent(this.id.toString(), this.getStartTimes(), this.clock.now()),
+      new StartTimesAssignedEvent(
+        this.id.toString(),
+        this.startTimes.map(toStartTimeDto),
+        this.clock.now(),
+      ),
     );
   }
 
@@ -180,7 +189,7 @@ export class Startlist {
     this.record(
       new LaneOrderManuallyReassignedEvent(
         this.id.toString(),
-        this.getLaneAssignments(),
+        this.laneAssignments.map(toLaneAssignmentDto),
         this.clock.now(),
       ),
     );
@@ -200,7 +209,7 @@ export class Startlist {
     this.record(
       new ClassStartOrderManuallyFinalizedEvent(
         this.id.toString(),
-        this.getClassAssignments(),
+        this.classAssignments.map(toClassAssignmentDto),
         this.clock.now(),
       ),
     );

@@ -1,27 +1,18 @@
-import {
+import type {
   StartlistSnapshot,
-  Duration,
-  StartlistSettings,
-  LaneAssignment,
-  ClassAssignment,
-  StartTime,
+  DurationDto,
+  StartlistSettingsDto,
+  LaneAssignmentDto,
+  ClassAssignmentDto,
+  StartTimeDto,
 } from '@startlist-management/domain';
+import { cloneStartlistSnapshotDto } from '@startlist-management/domain';
 import type { EnterStartlistSettingsCommand } from '@startlist-management/application';
 import { InvalidCommandError } from '@startlist-management/application';
 
-export interface DurationResponse {
-  milliseconds: number;
-}
+export type DurationResponse = DurationDto;
 
-export interface StartlistSettingsResponse {
-  eventId: string;
-  startTime: string;
-  intervals: {
-    laneClass: DurationResponse;
-    classPlayer: DurationResponse;
-  };
-  laneCount: number;
-}
+export type StartlistSettingsResponse = StartlistSettingsDto;
 
 export type StartlistSettingsRequestBody =
   | ({
@@ -43,36 +34,13 @@ export type StartlistSettingsRequestBody =
         interval: DurationResponse;
       } & Record<string, unknown>);
 
-export interface LaneAssignmentResponse {
-  laneNumber: number;
-  classOrder: string[];
-  interval: DurationResponse;
-}
+export type LaneAssignmentResponse = LaneAssignmentDto;
 
-export interface ClassAssignmentResponse {
-  classId: string;
-  playerOrder: string[];
-  interval: DurationResponse;
-}
+export type ClassAssignmentResponse = ClassAssignmentDto;
 
-export interface StartTimeResponse {
-  playerId: string;
-  startTime: string;
-  laneNumber: number;
-}
+export type StartTimeResponse = StartTimeDto;
 
-export interface StartlistHttpResponse {
-  id: string;
-  status: StartlistSnapshot['status'];
-  settings?: StartlistSettingsResponse;
-  laneAssignments: LaneAssignmentResponse[];
-  classAssignments: ClassAssignmentResponse[];
-  startTimes: StartTimeResponse[];
-}
-
-const toDurationResponse = (duration: Duration): DurationResponse => ({
-  milliseconds: duration.value,
-});
+export type StartlistHttpResponse = StartlistSnapshot;
 
 const copyDuration = (duration: DurationResponse): DurationResponse => ({
   milliseconds: duration.milliseconds,
@@ -126,50 +94,6 @@ export const toEnterStartlistSettingsCommand = (
   };
 };
 
-const mapSettings = (settings: StartlistSettings | undefined): StartlistSettingsResponse | undefined => {
-  if (!settings) {
-    return undefined;
-  }
-  return {
-    eventId: settings.eventId,
-    startTime: settings.startTime.toISOString(),
-    intervals: {
-      laneClass: toDurationResponse(settings.laneClassInterval),
-      classPlayer: toDurationResponse(settings.classPlayerInterval),
-    },
-    laneCount: settings.laneCount,
-  };
+export const toStartlistHttpResponse = (snapshot: StartlistSnapshot): StartlistHttpResponse => {
+  return cloneStartlistSnapshotDto(snapshot);
 };
-
-const mapLaneAssignments = (assignments: ReadonlyArray<LaneAssignment>): LaneAssignmentResponse[] => {
-  return assignments.map((assignment) => ({
-    laneNumber: assignment.laneNumber,
-    classOrder: [...assignment.classOrder],
-    interval: toDurationResponse(assignment.interval),
-  }));
-};
-
-const mapClassAssignments = (assignments: ReadonlyArray<ClassAssignment>): ClassAssignmentResponse[] => {
-  return assignments.map((assignment) => ({
-    classId: assignment.classId,
-    playerOrder: [...assignment.playerOrder],
-    interval: toDurationResponse(assignment.interval),
-  }));
-};
-
-const mapStartTimes = (startTimes: ReadonlyArray<StartTime>): StartTimeResponse[] => {
-  return startTimes.map((startTime) => ({
-    playerId: startTime.playerId,
-    startTime: startTime.startTime.toISOString(),
-    laneNumber: startTime.laneNumber,
-  }));
-};
-
-export const toStartlistHttpResponse = (snapshot: StartlistSnapshot): StartlistHttpResponse => ({
-  id: snapshot.id,
-  status: snapshot.status,
-  settings: mapSettings(snapshot.settings),
-  laneAssignments: mapLaneAssignments(snapshot.laneAssignments),
-  classAssignments: mapClassAssignments(snapshot.classAssignments),
-  startTimes: mapStartTimes(snapshot.startTimes),
-});

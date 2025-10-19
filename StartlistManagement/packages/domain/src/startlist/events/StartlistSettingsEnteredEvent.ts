@@ -1,5 +1,5 @@
 import { DomainEvent } from '../../common/DomainEvent.js';
-import { StartlistSettings } from '../StartlistSettings.js';
+import { StartlistSettingsDto } from '../StartlistDtos.js';
 
 export class StartlistSettingsEnteredEvent implements DomainEvent {
   readonly type = 'StartlistSettingsEnteredEvent';
@@ -7,9 +7,18 @@ export class StartlistSettingsEnteredEvent implements DomainEvent {
 
   constructor(
     public readonly startlistId: string,
-    public readonly settings: StartlistSettings,
+    public readonly settings: StartlistSettingsDto,
     occurredAt: Date,
   ) {
     this.occurredAt = new Date(occurredAt.getTime());
+    this.settings = {
+      eventId: settings.eventId,
+      startTime: settings.startTime,
+      laneCount: settings.laneCount,
+      intervals: {
+        laneClass: { milliseconds: settings.intervals.laneClass.milliseconds },
+        classPlayer: { milliseconds: settings.intervals.classPlayer.milliseconds },
+      },
+    };
   }
 }

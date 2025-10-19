@@ -4,6 +4,7 @@ import {
   Startlist,
   StartlistRepository,
   StartlistSettingsNotEnteredError,
+  StartlistStatus,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -30,7 +31,7 @@ const createBaseDeps = (startlist: Partial<Startlist> = {}) => {
       laneAssignments: [],
       classAssignments: [],
       startTimes: [],
-      status: 'DRAFT' as const,
+      status: StartlistStatus.DRAFT,
     })),
     pullDomainEvents: vi.fn(() => []),
   };
@@ -64,7 +65,7 @@ describe('Startlist application use cases', () => {
         laneAssignments: [],
         classAssignments: [],
         startTimes: [],
-        status: 'DRAFT' as const,
+        status: StartlistStatus.DRAFT,
       })),
       pullDomainEvents: vi.fn(() => []),
     } as unknown as Startlist;

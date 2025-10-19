@@ -7,6 +7,7 @@ import {
   StartlistId,
   StartlistRepository,
   StartlistSnapshot,
+  StartlistStatus,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -19,7 +20,7 @@ const snapshot: StartlistSnapshot = {
   laneAssignments: [],
   classAssignments: [],
   startTimes: [],
-  status: 'DRAFT' as const,
+  status: StartlistStatus.DRAFT,
 };
 
 class TestCommand extends StartlistCommandBase {

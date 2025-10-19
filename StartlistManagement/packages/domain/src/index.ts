@@ -10,6 +10,7 @@ export * from './startlist/StartTimeAssignmentPolicy.js';
 export * from './startlist/StartlistId.js';
 export * from './startlist/StartlistSettings.js';
 export * from './startlist/StartlistStatus.js';
+export * from './startlist/StartlistDtos.js';
 export * from './startlist/StartlistSnapshot.js';
 export * from './startlist/StartlistErrors.js';
 export * from './startlist/Startlist.js';
