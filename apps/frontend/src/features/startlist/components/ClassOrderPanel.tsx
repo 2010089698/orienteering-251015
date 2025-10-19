@@ -13,6 +13,7 @@ import {
 } from '../state/StartlistContext';
 import { createDefaultClassAssignments, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
 import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
+import { createSplitClassLookup } from '../utils/splitUtils';
 
 type ClassOrderPanelProps = {
   headingLevel?: 'h2' | 'h3' | 'h4';
@@ -46,6 +47,10 @@ const ClassOrderPanel = ({
   const api = useStartlistApi();
 
   const entryMap = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
+  const splitLookup = useMemo(
+    () => createSplitClassLookup({ classAssignments, splitResult: classSplitResult, entries }),
+    [classAssignments, classSplitResult, entries],
+  );
 
   const handleGenerate = () => {
     if (!settings) {
@@ -164,7 +169,7 @@ const ClassOrderPanel = ({
             {classAssignments.map((assignment) => (
               <details key={assignment.classId} open>
                 <summary>
-                  {assignment.classId} ({assignment.playerOrder.length} 人)
+                  {splitLookup.formatClassLabel(assignment.classId)} ({assignment.playerOrder.length} 人)
                 </summary>
                 <ol>
                   {assignment.playerOrder.map((playerId, index) => {

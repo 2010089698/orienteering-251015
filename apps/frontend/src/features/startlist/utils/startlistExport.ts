@@ -62,19 +62,30 @@ export const buildStartlistExportRows = ({
 }: BuildStartlistExportRowsOptions): StartlistExportRow[] => {
   const entryMap = new Map(entries.map((entry) => [entry.id, entry]));
   const playerClassMap = new Map<string, string>();
+  const classBaseMap = new Map<string, string>();
+  const classIntervalMap = new Map<string, number>();
+  const baseIntervalMap = new Map<string, number>();
+
   classAssignments.forEach((assignment) => {
+    let baseClassId = assignment.classId;
     assignment.playerOrder.forEach((playerId) => {
       if (!playerClassMap.has(playerId)) {
         playerClassMap.set(playerId, assignment.classId);
       }
+      if (baseClassId === assignment.classId) {
+        const candidate = entryMap.get(playerId)?.classId;
+        if (candidate) {
+          baseClassId = candidate;
+        }
+      }
     });
-  });
-
-  const classIntervalMap = new Map<string, number>();
-  classAssignments.forEach((assignment) => {
+    classBaseMap.set(assignment.classId, baseClassId);
     const intervalMs = assignment.interval?.milliseconds;
     if (typeof intervalMs === 'number') {
       classIntervalMap.set(assignment.classId, intervalMs);
+      if (!baseIntervalMap.has(baseClassId)) {
+        baseIntervalMap.set(baseClassId, intervalMs);
+      }
     }
   });
 
@@ -115,7 +126,8 @@ export const buildStartlistExportRows = ({
 
   startTimeEntries.forEach(({ item, normalized }) => {
     const entry = entryMap.get(item.playerId);
-    const classId = entry?.classId ?? playerClassMap.get(item.playerId) ?? '不明';
+    const classId = playerClassMap.get(item.playerId) ?? entry?.classId ?? '不明';
+    const baseClassId = entry?.classId ?? classBaseMap.get(classId) ?? classId;
     const name = entry?.name ?? '（名前未入力）';
     const club = entry?.club ?? '';
     let cardNo = entry?.cardNo ?? item.playerId;
@@ -135,7 +147,8 @@ export const buildStartlistExportRows = ({
     usedStartNumbers.add(startNumber);
     laneCounters.set(laneNumber, currentCount + 1);
 
-    const includeSeconds = classIntervalMap.get(classId) === 30_000;
+    const intervalMs = classIntervalMap.get(classId) ?? baseIntervalMap.get(baseClassId);
+    const includeSeconds = intervalMs === 30_000;
     const startTimeLabel = Number.isNaN(normalized.timestamp)
       ? normalized.iso
       : formatJstTime(normalized.iso, includeSeconds);

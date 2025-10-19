@@ -99,6 +99,26 @@ describe('buildStartlistExportRows', () => {
     expect(row.cardNo).toBe('');
   });
 
+  it('uses split class IDs from assignments while retaining base class formatting', () => {
+    const entries: Entry[] = [
+      { id: 'sp1', name: 'Split Alpha', classId: 'SP', cardNo: '2001', club: 'Alpha' },
+      { id: 'sp2', name: 'Split Beta', classId: 'SP', cardNo: '2002', club: 'Beta' },
+    ];
+    const startTimes = [
+      createStartTime('sp1', '2024-05-01T09:00:00+09:00', 1),
+      createStartTime('sp2', '2024-05-01T09:01:00+09:00', 1),
+    ];
+    const classAssignments = [
+      { classId: 'SP-A', playerOrder: ['sp1'], interval: { milliseconds: 60000 } },
+      { classId: 'SP-B', playerOrder: ['sp2'], interval: { milliseconds: 60000 } },
+    ];
+
+    const rows = buildStartlistExportRows({ entries, startTimes, classAssignments });
+
+    expect(rows.map((row) => row.classId)).toEqual(['SP-A', 'SP-B']);
+    expect(rows.map((row) => row.startTimeLabel)).toEqual(['09:00', '09:01']);
+  });
+
   it('throws when the start number sequence exceeds three digits', () => {
     const entries: Entry[] = [{ id: 'p5', name: 'Overflow', classId: 'M35', cardNo: '2000', club: '' }];
     const startTimes = [createStartTime('p5', '2024-05-01T05:00:00Z')];
