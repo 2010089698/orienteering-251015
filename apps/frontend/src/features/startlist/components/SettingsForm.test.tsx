@@ -2,14 +2,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import SettingsForm, { type SettingsFormProps } from './SettingsForm';
+import SettingsForm, {
+  type SettingsFormChangeHandlers,
+  type SettingsFormProps,
+} from './SettingsForm';
 
 const createProps = (overrides: Partial<SettingsFormProps> = {}): SettingsFormProps => ({
-  startTime: '2024-01-01T09:00',
-  laneIntervalMs: 0,
-  playerIntervalMs: 60000,
-  laneCount: 2,
-  avoidConsecutiveClubs: true,
+  fields: {
+    startTime: '2024-01-01T09:00',
+    laneIntervalMs: 0,
+    playerIntervalMs: 60000,
+    laneCount: 2,
+    avoidConsecutiveClubs: true,
+  },
+  errors: { form: null },
   laneIntervalOptions: [
     { label: '1分', value: 60000 },
     { label: 'なし', value: 0 },
@@ -20,11 +26,13 @@ const createProps = (overrides: Partial<SettingsFormProps> = {}): SettingsFormPr
     { label: '30秒', value: 30000 },
   ],
   status: { level: 'idle', text: '' },
-  onStartTimeChange: vi.fn(),
-  onLaneIntervalChange: vi.fn(),
-  onPlayerIntervalChange: vi.fn(),
-  onLaneCountChange: vi.fn(),
-  onAvoidConsecutiveClubsChange: vi.fn(),
+  onChange: {
+    startTime: vi.fn(),
+    laneIntervalMs: vi.fn(),
+    playerIntervalMs: vi.fn(),
+    laneCount: vi.fn(),
+    avoidConsecutiveClubs: vi.fn(),
+  } satisfies SettingsFormChangeHandlers,
   onSubmit: vi.fn(),
   ...overrides,
 });
@@ -59,13 +67,13 @@ describe('SettingsForm', () => {
     render(<SettingsForm {...props} />);
 
     await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
-    expect(props.onPlayerIntervalChange).toHaveBeenCalledWith(30000);
+    expect(props.onChange.playerIntervalMs).toHaveBeenCalledWith(30000);
 
     fireEvent.change(screen.getByLabelText('レーン数'), { target: { value: '3' } });
-    expect(props.onLaneCountChange).toHaveBeenCalledWith(3);
+    expect(props.onChange.laneCount).toHaveBeenCalledWith(3);
 
     await userEvent.click(screen.getByRole('checkbox', { name: /同じ所属が連続で並ばないようにする/ }));
-    expect(props.onAvoidConsecutiveClubsChange).toHaveBeenCalledWith(false);
+    expect(props.onChange.avoidConsecutiveClubs).toHaveBeenCalledWith(false);
   });
 });
 

@@ -54,20 +54,24 @@ vi.mock('../../state/StartlistContext', () => ({
 
 vi.mock('../../hooks/useSettingsForm', () => ({
   useSettingsForm: () => ({
-    startTime: '2024-01-01T09:00',
-    laneIntervalMs: 60000,
-    playerIntervalMs: 45000,
-    laneCount: 2,
-    avoidConsecutiveClubs: false,
+    fields: {
+      startTime: '2024-01-01T09:00',
+      laneIntervalMs: 60000,
+      playerIntervalMs: 45000,
+      laneCount: 2,
+      avoidConsecutiveClubs: false,
+    },
+    errors: { form: null },
     laneIntervalOptions: [],
     playerIntervalOptions: [],
     status: { text: '', level: 'info' },
-    validationError: null,
-    onStartTimeChange: vi.fn(),
-    onLaneIntervalChange: vi.fn(),
-    onPlayerIntervalChange: vi.fn(),
-    onLaneCountChange: vi.fn(),
-    onAvoidConsecutiveClubsChange: vi.fn(),
+    onChange: {
+      startTime: vi.fn(),
+      laneIntervalMs: vi.fn(),
+      playerIntervalMs: vi.fn(),
+      laneCount: vi.fn(),
+      avoidConsecutiveClubs: vi.fn(),
+    },
     submit: mocks.mockSubmitSettings,
   }),
 }));

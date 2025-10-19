@@ -34,12 +34,12 @@ describe('useSettingsForm', () => {
       },
     });
 
-    expect(hook.current.laneIntervalMs).toBe(0);
-    expect(hook.current.avoidConsecutiveClubs).toBe(true);
+    expect(hook.current.fields.laneIntervalMs).toBe(0);
+    expect(hook.current.fields.avoidConsecutiveClubs).toBe(true);
 
     act(() => {
-      hook.current.onStartTimeChange('2024-01-01T09:00');
-      hook.current.onLaneCountChange(3);
+      hook.current.onChange.startTime('2024-01-01T09:00');
+      hook.current.onChange.laneCount(3);
     });
 
     act(() => {
@@ -50,14 +50,14 @@ describe('useSettingsForm', () => {
 
     expect(hook.current.status.level).toBe('success');
     expect(hook.current.status.text).toBe('基本情報を保存しました。');
-    expect(hook.current.validationError).toBeNull();
+    expect(hook.current.errors.form).toBeNull();
   });
 
   it('returns validation error when required values are missing', () => {
     const hook = renderHook();
 
     act(() => {
-      hook.current.onStartTimeChange('');
+      hook.current.onChange.startTime('');
     });
 
     act(() => {
@@ -67,7 +67,28 @@ describe('useSettingsForm', () => {
     });
 
     expect(hook.current.status.level).toBe('error');
-    expect(hook.current.validationError).toBe('開始時刻を入力してください。');
+    expect(hook.current.errors.form).toBe('開始時刻を入力してください。');
+  });
+
+  it('hydrates new settings state via a single dispatch', () => {
+    const hook = renderHook({
+      initialState: {
+        settings: {
+          eventId: 'event-1',
+          startTime: new Date('2024-02-01T00:00:00Z').toISOString(),
+          laneCount: 4,
+          intervals: {
+            laneClass: { milliseconds: 120000 },
+            classPlayer: { milliseconds: 60000 },
+          },
+        },
+        classOrderPreferences: { avoidConsecutiveClubs: false },
+      },
+    });
+
+    expect(hook.current.fields.startTime).toBe('2024-02-01T09:00');
+    expect(hook.current.fields.laneCount).toBe(4);
+    expect(hook.current.fields.avoidConsecutiveClubs).toBe(false);
   });
 });
 

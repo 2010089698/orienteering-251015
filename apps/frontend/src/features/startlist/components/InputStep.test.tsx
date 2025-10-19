@@ -60,20 +60,24 @@ describe('InputStep', () => {
     const useSettingsFormSpy = vi.spyOn(SettingsFormHook, 'useSettingsForm');
     const submitMock = vi.fn(() => ({ error: 'レーン数は 1 以上の整数で入力してください。' }));
     useSettingsFormSpy.mockReturnValue({
-      startTime: '2024-01-01T09:00',
-      laneIntervalMs: 0,
-      playerIntervalMs: 60000,
-      laneCount: 1,
-      avoidConsecutiveClubs: true,
+      fields: {
+        startTime: '2024-01-01T09:00',
+        laneIntervalMs: 0,
+        playerIntervalMs: 60000,
+        laneCount: 1,
+        avoidConsecutiveClubs: true,
+      },
+      errors: { form: 'レーン数は 1 以上の整数で入力してください。' },
       laneIntervalOptions: [{ label: 'なし', value: 0 }],
       playerIntervalOptions: [{ label: '1分', value: 60000 }],
       status: { level: 'error', text: 'レーン数は 1 以上の整数で入力してください。' },
-      validationError: 'レーン数は 1 以上の整数で入力してください。',
-      onStartTimeChange: vi.fn(),
-      onLaneIntervalChange: vi.fn(),
-      onPlayerIntervalChange: vi.fn(),
-      onLaneCountChange: vi.fn(),
-      onAvoidConsecutiveClubsChange: vi.fn(),
+      onChange: {
+        startTime: vi.fn(),
+        laneIntervalMs: vi.fn(),
+        playerIntervalMs: vi.fn(),
+        laneCount: vi.fn(),
+        avoidConsecutiveClubs: vi.fn(),
+      },
       submit: submitMock,
     } as ReturnType<typeof SettingsFormHook.useSettingsForm>);
 
