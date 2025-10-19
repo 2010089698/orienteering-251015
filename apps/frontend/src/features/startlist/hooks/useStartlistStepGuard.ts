@@ -21,6 +21,8 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
   const startTimes = useStartlistStartTimes();
   const statuses = useStartlistStatuses();
   const laneStatusLevel = statuses.lanes.level;
+  const classStatusLevel = statuses.classes.level;
+  const startTimesStatusLevel = statuses.startTimes.level;
   const [isGuardInitialized, setIsGuardInitialized] = useState(false);
 
   useEffect(() => {
@@ -39,18 +41,22 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
       return;
     }
     if (step === 'order') {
-      const canProceed = classAssignments.length > 0 && startTimes.length > 0;
+      const canProceed =
+        (classAssignments.length > 0 || classStatusLevel === 'success') &&
+        (startTimes.length > 0 || startTimesStatusLevel === 'success');
       if (!canProceed && location.pathname !== redirectTargets.order) {
         navigate(redirectTargets.order, { replace: true });
       }
     }
   }, [
     classAssignments.length,
+    classStatusLevel,
     laneAssignments.length,
     laneStatusLevel,
     isGuardInitialized,
     location.pathname,
     navigate,
+    startTimesStatusLevel,
     startTimes.length,
     step,
   ]);
