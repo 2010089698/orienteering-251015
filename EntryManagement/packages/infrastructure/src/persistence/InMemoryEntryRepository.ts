@@ -1,7 +1,13 @@
 import { Entry, EntryRepository, EntrySnapshot } from '@entry-management/domain';
+import { EntryReadRepository } from '@entry-management/application';
+
+export type InMemoryEntryRepositoryStore = Map<string, EntrySnapshot>;
+
+export const createInMemoryEntryRepositoryStore = (): InMemoryEntryRepositoryStore =>
+  new Map<string, EntrySnapshot>();
 
 export class InMemoryEntryRepository implements EntryRepository {
-  private readonly entries = new Map<string, EntrySnapshot>();
+  constructor(private readonly entries: InMemoryEntryRepositoryStore = createInMemoryEntryRepositoryStore()) {}
 
   async save(entry: Entry): Promise<void> {
     this.entries.set(entry.id.toString(), entry.toSnapshot());
@@ -18,5 +24,21 @@ export class InMemoryEntryRepository implements EntryRepository {
 
   async delete(id: Entry['id']): Promise<void> {
     this.entries.delete(id.toString());
+  }
+
+  get store(): InMemoryEntryRepositoryStore {
+    return this.entries;
+  }
+}
+
+export class InMemoryEntryReadRepository implements EntryReadRepository {
+  constructor(private readonly entries: InMemoryEntryRepositoryStore) {}
+
+  async findById(id: string): Promise<EntrySnapshot | null> {
+    return this.entries.get(id) ?? null;
+  }
+
+  async findAll(): Promise<EntrySnapshot[]> {
+    return Array.from(this.entries.values());
   }
 }
