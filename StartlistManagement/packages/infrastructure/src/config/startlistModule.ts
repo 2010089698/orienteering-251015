@@ -1,5 +1,6 @@
 import {
   StartlistFactory,
+  StartlistSnapshot,
   SystemClock,
   StartlistRepository,
 } from '@startlist-management/domain';
@@ -23,9 +24,11 @@ import {
   ManuallyReassignLaneOrderUseCase,
   StartlistQueryService,
   StartlistQueryServiceImpl,
+  StartlistReadRepository,
   TransactionManager,
 } from '@startlist-management/application';
 import { DomainEventBus } from '../messaging/DomainEventBus.js';
+import { InMemoryStartlistReadRepository } from '../persistence/InMemoryStartlistReadRepository.js';
 import { InMemoryStartlistRepository } from '../persistence/InMemoryStartlistRepository.js';
 import { SimpleTransactionManager } from '../transaction/SimpleTransactionManager.js';
 
@@ -42,6 +45,7 @@ export interface StartlistUseCases {
 
 export interface StartlistModule {
   repository: StartlistRepository;
+  readRepository: StartlistReadRepository;
   transactionManager: TransactionManager;
   eventPublisher: ApplicationEventPublisher;
   useCases: StartlistUseCases;
@@ -49,7 +53,9 @@ export interface StartlistModule {
 }
 
 export const createStartlistModule = (): StartlistModule => {
-  const repository = new InMemoryStartlistRepository();
+  const store = new Map<string, StartlistSnapshot>();
+  const repository = new InMemoryStartlistRepository({ store });
+  const readRepository = new InMemoryStartlistReadRepository(store);
   const transactionManager = new SimpleTransactionManager();
   const eventPublisher = new DomainEventBus();
   const factory = new StartlistFactory(SystemClock);
@@ -84,10 +90,11 @@ export const createStartlistModule = (): StartlistModule => {
     eventPublisher,
   );
 
-  const queryService = new StartlistQueryServiceImpl(repository);
+  const queryService = new StartlistQueryServiceImpl(readRepository);
 
   return {
     repository,
+    readRepository,
     transactionManager,
     eventPublisher,
     useCases: {
