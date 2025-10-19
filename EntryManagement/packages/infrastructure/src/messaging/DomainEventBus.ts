@@ -3,8 +3,12 @@ import { ApplicationEventPublisher } from '@entry-management/application';
 
 export type DomainEventSubscriber = (event: DomainEvent) => Promise<void> | void;
 
+type ErrorLogger = Pick<Console, 'error'>;
+
 export class DomainEventBus implements ApplicationEventPublisher {
   private readonly subscribers: DomainEventSubscriber[] = [];
+
+  constructor(private readonly logger: ErrorLogger = console) {}
 
   subscribe(subscriber: DomainEventSubscriber): void {
     this.subscribers.push(subscriber);
@@ -12,9 +16,17 @@ export class DomainEventBus implements ApplicationEventPublisher {
 
   async publish(events: DomainEvent[]): Promise<void> {
     for (const event of events) {
-      for (const subscriber of this.subscribers) {
-        await subscriber(event);
-      }
+      const results = await Promise.allSettled(
+        this.subscribers.map((subscriber) =>
+          Promise.resolve().then(() => subscriber(event)),
+        ),
+      );
+
+      results.forEach((result) => {
+        if (result.status === 'rejected') {
+          this.logger.error('DomainEventBus subscriber failed', result.reason);
+        }
+      });
     }
   }
 }
