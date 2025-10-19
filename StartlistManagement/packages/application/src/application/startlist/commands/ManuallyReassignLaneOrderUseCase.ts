@@ -3,7 +3,6 @@ import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { toLaneAssignments } from '../dto/StartlistMappers.js';
 import { ManuallyReassignLaneOrderCommand } from '../dto/StartlistDtos.js';
-import { InvalidCommandError } from '../errors.js';
 import { StartlistCommandBase } from './StartlistCommandBase.js';
 
 export interface ManuallyReassignLaneOrderUseCase {
@@ -24,11 +23,8 @@ export class ManuallyReassignLaneOrderService
 
   async execute(command: ManuallyReassignLaneOrderCommand): Promise<StartlistSnapshot> {
     return this.executeOnStartlist(command.startlistId, (startlist) => {
-      const settings = startlist.getSettings();
-      if (!settings) {
-        throw new InvalidCommandError('Startlist settings must be entered before reassigning lane order.');
-      }
-      const assignments = toLaneAssignments(command.assignments, settings.laneCount);
+      const laneCount = startlist.getSettingsOrThrow().laneCount;
+      const assignments = toLaneAssignments(command.assignments, laneCount);
       startlist.manuallyReassignLaneOrder(assignments, command.reason);
     });
   }

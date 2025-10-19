@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Duration, Startlist, StartlistRepository } from '@startlist-management/domain';
+import {
+  Duration,
+  Startlist,
+  StartlistRepository,
+  StartlistSettingsNotEnteredError,
+} from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { AssignLaneOrderService } from '../commands/AssignLaneOrderUseCase.js';
@@ -13,9 +18,12 @@ import { ManuallyReassignLaneOrderService } from '../commands/ManuallyReassignLa
 import { StartlistFactory } from '@startlist-management/domain';
 import { InvalidCommandError } from '../errors.js';
 
-const createBaseDeps = (startlist: Partial<Startlist>) => {
-  const startlistStub = {
-    ...startlist,
+const createBaseDeps = (startlist: Partial<Startlist> = {}) => {
+  const defaultStartlist: Partial<Startlist> = {
+    getSettings: vi.fn(() => undefined),
+    getSettingsOrThrow: vi.fn(() => {
+      throw new StartlistSettingsNotEnteredError();
+    }),
     toSnapshot: vi.fn(() => ({
       id: 'startlist-1',
       settings: undefined,
@@ -25,7 +33,12 @@ const createBaseDeps = (startlist: Partial<Startlist>) => {
       status: 'DRAFT' as const,
     })),
     pullDomainEvents: vi.fn(() => []),
-  } as unknown as Startlist;
+  };
+
+  const startlistStub = {
+    ...defaultStartlist,
+    ...startlist,
+  } as Startlist;
 
   const repository: StartlistRepository = {
     findById: vi.fn().mockResolvedValue(startlistStub),
@@ -93,9 +106,7 @@ describe('Startlist application use cases', () => {
   });
 
   it('AssignLaneOrderService validates settings presence', async () => {
-    const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => undefined),
-    });
+    const { repository, transactionManager, publisher } = createBaseDeps();
     const service = new AssignLaneOrderService(repository, transactionManager, publisher);
 
     await expect(
@@ -108,12 +119,14 @@ describe('Startlist application use cases', () => {
 
   it('AssignLaneOrderService maps lane assignments with lane count', async () => {
     const assignLaneOrder = vi.fn();
+    const settings = {
+      laneCount: 3,
+      laneClassInterval: Duration.fromMilliseconds(60000),
+      classPlayerInterval: Duration.fromMilliseconds(45000),
+    };
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({
-        laneCount: 3,
-        laneClassInterval: Duration.fromMilliseconds(60000),
-        classPlayerInterval: Duration.fromMilliseconds(45000),
-      })),
+      getSettings: vi.fn(() => settings),
+      getSettingsOrThrow: vi.fn(() => settings),
       assignLaneOrderAndIntervals: assignLaneOrder,
     });
     const service = new AssignLaneOrderService(repository, transactionManager, publisher);
@@ -131,9 +144,7 @@ describe('Startlist application use cases', () => {
   });
 
   it('ManuallyReassignLaneOrderService validates settings presence', async () => {
-    const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => undefined),
-    });
+    const { repository, transactionManager, publisher } = createBaseDeps();
     const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);
 
     await expect(
@@ -147,12 +158,14 @@ describe('Startlist application use cases', () => {
 
   it('ManuallyReassignLaneOrderService maps assignments and reason', async () => {
     const manual = vi.fn();
+    const settings = {
+      laneCount: 2,
+      laneClassInterval: Duration.fromMilliseconds(60000),
+      classPlayerInterval: Duration.fromMilliseconds(45000),
+    };
     const { repository, transactionManager, publisher } = createBaseDeps({
-      getSettings: vi.fn(() => ({
-        laneCount: 2,
-        laneClassInterval: Duration.fromMilliseconds(60000),
-        classPlayerInterval: Duration.fromMilliseconds(45000),
-      })),
+      getSettings: vi.fn(() => settings),
+      getSettingsOrThrow: vi.fn(() => settings),
       manuallyReassignLaneOrder: manual,
     });
     const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);

@@ -17,6 +17,27 @@ import { StartTimesInvalidatedEvent } from './events/StartTimesInvalidatedEvent.
 import { StartlistFinalizedEvent } from './events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from './events/StartlistSettingsEnteredEvent.js';
 
+export class StartlistSettingsNotEnteredError extends DomainError {
+  constructor(message = 'Startlist settings must be entered before performing this action.') {
+    super(message);
+    this.name = 'StartlistSettingsNotEnteredError';
+  }
+}
+
+export class LaneAssignmentsNotCompletedError extends DomainError {
+  constructor(message = 'Lane assignments must be completed before performing this action.') {
+    super(message);
+    this.name = 'LaneAssignmentsNotCompletedError';
+  }
+}
+
+export class ClassAssignmentsNotCompletedError extends DomainError {
+  constructor(message = 'Class assignments must be completed before performing this action.') {
+    super(message);
+    this.name = 'ClassAssignmentsNotCompletedError';
+  }
+}
+
 export class NoStartTimesAssignedError extends DomainError {
   constructor(message = 'No start times are assigned to invalidate.') {
     super(message);
@@ -90,6 +111,10 @@ export class Startlist {
     return [...this.startTimes];
   }
 
+  getSettingsOrThrow(): StartlistSettings {
+    return this.ensureSettingsPresent();
+  }
+
   toSnapshot(): StartlistSnapshot {
     return {
       id: this.id.toString(),
@@ -115,8 +140,8 @@ export class Startlist {
   }
 
   assignLaneOrderAndIntervals(assignments: LaneAssignment[]): void {
-    this.ensureSettingsPresent();
-    this.updateLaneAssignments(assignments);
+    const settings = this.ensureSettingsPresent();
+    this.updateLaneAssignments(assignments, settings.laneCount);
     this.invalidateExistingStartTimes(
       'Lane order assigned - start times invalidated',
       StartlistStatus.LANE_ORDER_ASSIGNED,
@@ -148,7 +173,7 @@ export class Startlist {
   }
 
   assignStartTimes(startTimes: StartTime[]): void {
-    this.ensureSettingsPresent();
+    const settings = this.ensureSettingsPresent();
     this.ensureClassAssignmentsPresent();
     if (startTimes.length === 0) {
       throw new DomainError('At least one start time must be provided.');
@@ -157,7 +182,7 @@ export class Startlist {
       this.classAssignments.flatMap((assignment) => assignment.playerOrder),
     );
     const playerIds = new Set<string>();
-    const laneCount = this.settings!.laneCount;
+    const laneCount = settings.laneCount;
     startTimes.forEach((startTime) => {
       if (playerIds.has(startTime.playerId)) {
         throw new DomainError('Start times must be unique per player.');
@@ -191,8 +216,8 @@ export class Startlist {
   }
 
   manuallyReassignLaneOrder(assignments: LaneAssignment[], reason = 'Lane order manually reassigned'): void {
-    this.ensureSettingsPresent();
-    this.updateLaneAssignments(assignments);
+    const settings = this.ensureSettingsPresent();
+    this.updateLaneAssignments(assignments, settings.laneCount);
     this.invalidateExistingStartTimes(
       `${reason} - start times invalidated`,
       StartlistStatus.LANE_ORDER_ASSIGNED,
@@ -244,11 +269,10 @@ export class Startlist {
     this.record(new StartTimesInvalidatedEvent(this.id.toString(), reason, this.clock.now()));
   }
 
-  private updateLaneAssignments(assignments: LaneAssignment[]): void {
+  private updateLaneAssignments(assignments: LaneAssignment[], laneCount: number): void {
     if (assignments.length === 0) {
       throw new DomainError('At least one lane assignment is required.');
     }
-    const laneCount = this.settings!.laneCount;
     const laneNumbers = new Set<number>();
     assignments.forEach((assignment) => {
       if (assignment.laneNumber > laneCount) {
@@ -288,21 +312,22 @@ export class Startlist {
     this.status = StartlistStatus.PLAYER_ORDER_ASSIGNED;
   }
 
-  private ensureSettingsPresent(): void {
+  private ensureSettingsPresent(): StartlistSettings {
     if (!this.settings) {
-      throw new DomainError('Startlist settings must be entered before performing this action.');
+      throw new StartlistSettingsNotEnteredError();
     }
+    return this.settings;
   }
 
   private ensureLaneAssignmentsPresent(): void {
     if (this.laneAssignments.length === 0) {
-      throw new DomainError('Lane assignments must be completed before performing this action.');
+      throw new LaneAssignmentsNotCompletedError();
     }
   }
 
   private ensureClassAssignmentsPresent(): void {
     if (this.classAssignments.length === 0) {
-      throw new DomainError('Class assignments must be completed before performing this action.');
+      throw new ClassAssignmentsNotCompletedError();
     }
   }
 
