@@ -21,7 +21,6 @@ import {
   ManuallyFinalizeClassStartOrderUseCase,
   ManuallyReassignLaneOrderService,
   ManuallyReassignLaneOrderUseCase,
-  StartlistProcessManager,
   StartlistQueryService,
   StartlistQueryServiceImpl,
   TransactionManager,
@@ -45,7 +44,6 @@ export interface StartlistModule {
   repository: StartlistRepository;
   transactionManager: TransactionManager;
   eventPublisher: ApplicationEventPublisher;
-  processManager: StartlistProcessManager;
   useCases: StartlistUseCases;
   queryService: StartlistQueryService;
 }
@@ -86,16 +84,12 @@ export const createStartlistModule = (): StartlistModule => {
     eventPublisher,
   );
 
-  const processManager = new StartlistProcessManager(invalidateStartTimes);
-  eventPublisher.subscribe((event) => processManager.handle(event));
-
   const queryService = new StartlistQueryServiceImpl(repository);
 
   return {
     repository,
     transactionManager,
     eventPublisher,
-    processManager,
     useCases: {
       enterStartlistSettings,
       assignLaneOrder,

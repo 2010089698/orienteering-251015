@@ -9,5 +9,4 @@ export * from './commands/ManuallyReassignLaneOrderUseCase.js';
 export * from './dto/StartlistDtos.js';
 export * from './dto/StartlistMappers.js';
 export * from './errors.js';
-export * from './process-manager/StartlistProcessManager.js';
 export * from './queries/StartlistQueryService.js';
