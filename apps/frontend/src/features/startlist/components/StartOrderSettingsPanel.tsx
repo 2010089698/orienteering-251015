@@ -1,304 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
-import {
-  createStatus,
-  setLoading,
-  setStatus,
-  setStartOrderRules,
-  updateClassWorldRanking,
-  removeClassWorldRanking,
-  useStartlistDispatch,
-  useStartlistEntries,
-  useStartlistLoading,
-  useStartlistStartOrderRules,
-  useStartlistStatuses,
-} from '../state/StartlistContext';
-import { parseWorldRankingCsv } from '../utils/worldRankingCsv';
-import type { StartOrderRule } from '../state/types';
-
-type StartOrderRow = StartOrderRule;
-
-const readFileAsText = async (file: File): Promise<string> => {
-  if (typeof file.text === 'function') {
-    return file.text();
-  }
-  if (typeof FileReader !== 'undefined') {
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => {
-        reject(reader.error ?? new Error('ファイルの読み込みに失敗しました。'));
-      };
-      reader.onload = () => {
-        const result = reader.result;
-        resolve(typeof result === 'string' ? result : '');
-      };
-      reader.readAsText(file);
-    });
-  }
-  return new Response(file).text();
-};
-
-const deriveTargets = (rows: StartOrderRow[]): string[] => {
-  const targets = rows.reduce<Set<string>>((acc, row) => {
-    if (row.method === 'worldRanking' && row.classId) {
-      acc.add(row.classId);
-    }
-    return acc;
-  }, new Set<string>());
-  return Array.from(targets).sort((a, b) => a.localeCompare(b, 'ja'));
-};
-
-const serializeRules = (rules: StartOrderRow[]): string =>
-  JSON.stringify(
-    rules.map((rule) => ({
-      id: rule.id,
-      classId: rule.classId ?? null,
-      method: rule.method,
-      csvName: rule.csvName ?? null,
-    })),
-  );
+import useStartOrderSettings from '../hooks/useStartOrderSettings';
 
 const StartOrderSettingsPanel = (): JSX.Element => {
-  const entries = useStartlistEntries();
-  const statuses = useStartlistStatuses();
-  const loading = useStartlistLoading();
-  const startOrderRules = useStartlistStartOrderRules();
-  const dispatch = useStartlistDispatch();
-
-  const availableClassIds = useMemo(
-    () =>
-      Array.from(new Set(entries.map((entry) => entry.classId))).sort((a, b) =>
-        a.localeCompare(b, 'ja'),
-      ),
-    [entries],
-  );
-
-  const rowIdRef = useRef(0);
-  const createRow = (
-    classId?: string,
-    method: StartOrderRow['method'] = 'random',
-    csvName?: string,
-  ): StartOrderRow => ({
-    id: `start-order-row-${rowIdRef.current++}`,
-    classId,
-    method,
-    csvName,
-  });
-
-  const updateRowIdCounter = (rules: StartOrderRow[]): void => {
-    const next = rules.reduce((max, rule) => {
-      const match = rule.id.match(/(\d+)$/);
-      if (!match) {
-        return max;
-      }
-      const value = Number.parseInt(match[1], 10);
-      if (Number.isNaN(value)) {
-        return max;
-      }
-      return Math.max(max, value + 1);
-    }, rowIdRef.current);
-    rowIdRef.current = Math.max(rowIdRef.current, next);
-  };
-
-  const [rows, setRows] = useState<StartOrderRow[]>(() => {
-    if (startOrderRules.length > 0) {
-      const initial = startOrderRules.map((rule) => ({ ...rule }));
-      updateRowIdCounter(initial);
-      return initial;
-    }
-    return [createRow()];
-  });
-
-  const rowsRef = useRef(rows);
-
-  useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
-
-  useEffect(() => {
-    const stateSignature = serializeRules(startOrderRules);
-    const localSignature = serializeRules(rowsRef.current);
-    if (stateSignature === localSignature) {
-      return;
-    }
-    if (startOrderRules.length === 0) {
-      if (rowsRef.current.length === 0) {
-        setRows([createRow()]);
-      }
-      return;
-    }
-    const next = startOrderRules.map((rule) => ({ ...rule }));
-    updateRowIdCounter(next);
-    setRows(next);
-  }, [startOrderRules]);
-
-  useEffect(() => {
-    const stateSignature = serializeRules(startOrderRules);
-    const localSignature = serializeRules(rows);
-    if (stateSignature === localSignature) {
-      return;
-    }
-    setStartOrderRules(dispatch, rows);
-  }, [dispatch, rows, startOrderRules]);
-
-  useEffect(() => {
-    const availableSet = new Set(availableClassIds);
-    const removed: string[] = [];
-    setRows((prev) => {
-      let changed = false;
-      const next = prev.map((row) => {
-        if (row.classId && !availableSet.has(row.classId)) {
-          if (row.method === 'worldRanking') {
-            removed.push(row.classId);
-          }
-          changed = true;
-          return { ...row, classId: undefined, method: 'random', csvName: undefined };
-        }
-        return row;
-      });
-      return changed ? next : prev;
-    });
-    removed.forEach((classId) => removeClassWorldRanking(dispatch, classId));
-  }, [availableClassIds, dispatch]);
-
-  useEffect(() => {
-    const targets = deriveTargets(rows);
-    if (statuses.startOrder.level === 'success' || statuses.startOrder.level === 'error') {
-      return;
-    }
-    const message =
-      targets.length === 0
-        ? '世界ランキング対象クラスを選択していません。'
-        : `世界ランキング対象クラス: ${targets.join(', ')}`;
-    setStatus(dispatch, 'startOrder', createStatus(message, 'info'));
-  }, [dispatch, rows, statuses.startOrder.level]);
-
-  const handleAddRow = () => {
-    setRows((prev) => [...prev, createRow()]);
-  };
-
-  const handleRemoveRow = (rowId: string) => {
-    let removedClassId: string | undefined;
-    setRows((prev) => {
-      const target = prev.find((row) => row.id === rowId);
-      if (target?.method === 'worldRanking' && target.classId) {
-        removedClassId = target.classId;
-      }
-      const next = prev.filter((row) => row.id !== rowId);
-      return next.length > 0 ? next : [createRow()];
-    });
-    if (removedClassId) {
-      removeClassWorldRanking(dispatch, removedClassId);
-    }
-  };
-
-  const handleClassChange = (rowId: string, event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value.trim();
-    let removedClassId: string | undefined;
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.id !== rowId) {
-          return row;
-        }
-        const nextClassId = value.length > 0 ? value : undefined;
-        if (row.method === 'worldRanking' && row.classId && row.classId !== nextClassId) {
-          removedClassId = row.classId;
-        }
-        return {
-          ...row,
-          classId: nextClassId,
-          csvName: nextClassId === row.classId ? row.csvName : undefined,
-        };
-      }),
-    );
-    if (removedClassId) {
-      removeClassWorldRanking(dispatch, removedClassId);
-    }
-  };
-
-  const handleMethodChange = (rowId: string, event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value as StartOrderRow['method'];
-    let removedClassId: string | undefined;
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.id !== rowId) {
-          return row;
-        }
-        if (value === 'random') {
-          if (row.method === 'worldRanking' && row.classId) {
-            removedClassId = row.classId;
-          }
-          return { ...row, method: value, csvName: undefined };
-        }
-        return { ...row, method: value };
-      }),
-    );
-    if (removedClassId) {
-      removeClassWorldRanking(dispatch, removedClassId);
-    }
-  };
-
-  const handleWorldRankingUpload =
-    (rowId: string) => async (event: ChangeEvent<HTMLInputElement>) => {
-      const [file] = Array.from(event.target.files ?? []);
-      if (!file) {
-        return;
-      }
-
-      const targetRow = rows.find((row) => row.id === rowId);
-      if (!targetRow) {
-        event.target.value = '';
-        return;
-      }
-      if (!targetRow.classId) {
-        setStatus(dispatch, 'startOrder', createStatus('先にクラスを選択してください。', 'error'));
-        event.target.value = '';
-        return;
-      }
-
-      try {
-        setLoading(dispatch, 'startOrder', true);
-        const text = await readFileAsText(file);
-        const ranking = parseWorldRankingCsv(text);
-        updateClassWorldRanking(dispatch, targetRow.classId, ranking);
-        setRows((prev) =>
-          prev.map((row) => (row.id === rowId ? { ...row, csvName: file.name } : row)),
-        );
-        if (ranking.size === 0) {
-          setStatus(
-            dispatch,
-            'startOrder',
-            createStatus(
-              `クラス ${targetRow.classId} の世界ランキングに順位データが見つかりませんでした。`,
-              'info',
-            ),
-          );
-        } else {
-          setStatus(
-            dispatch,
-            'startOrder',
-            createStatus(
-              `クラス ${targetRow.classId} の世界ランキングを ${ranking.size} 件読み込みました。`,
-              'success',
-            ),
-          );
-        }
-      } catch (error) {
-        removeClassWorldRanking(dispatch, targetRow.classId);
-        setRows((prev) =>
-          prev.map((row) => (row.id === rowId ? { ...row, csvName: undefined } : row)),
-        );
-        const message =
-          error instanceof Error
-            ? error.message
-            : '世界ランキングファイルの解析に失敗しました。';
-        setStatus(dispatch, 'startOrder', createStatus(message, 'error'));
-      } finally {
-        setLoading(dispatch, 'startOrder', false);
-        event.target.value = '';
-      }
-    };
+  const {
+    rows,
+    availableClassIds,
+    status,
+    isLoading,
+    handleAddRow,
+    handleRemoveRow,
+    handleClassChange,
+    handleMethodChange,
+    handleWorldRankingUpload,
+  } = useStartOrderSettings();
 
   return (
     <section aria-labelledby="start-order-settings-heading" className="start-order-settings">
@@ -357,7 +71,7 @@ const StartOrderSettingsPanel = (): JSX.Element => {
                       type="file"
                       accept=".csv,text/csv"
                       onChange={handleWorldRankingUpload(row.id)}
-                      disabled={!row.classId || Boolean(loading.startOrder)}
+                      disabled={!row.classId || isLoading}
                     />
                     <p className="muted">
                       {row.classId
@@ -396,7 +110,7 @@ const StartOrderSettingsPanel = (): JSX.Element => {
       {availableClassIds.length === 0 ? (
         <p className="muted">エントリーにクラスがまだ登録されていません。</p>
       ) : null}
-      <StatusMessage tone={statuses.startOrder.level} message={statuses.startOrder.text} />
+      <StatusMessage tone={status.level} message={status.text} />
     </section>
   );
 };
