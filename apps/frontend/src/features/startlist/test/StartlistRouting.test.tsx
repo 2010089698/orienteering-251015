@@ -114,6 +114,22 @@ describe('Startlist workflow routing', () => {
     expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.lanes);
   });
 
+  it('keeps order route when STEP2 statuses indicate success', async () => {
+    renderWorkflow(['/startlist/order'], {
+      initialState: {
+        startlistId: 'SL-1',
+        laneAssignments: [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }],
+        statuses: {
+          classes: createSuccessStatus('done'),
+          startTimes: createSuccessStatus('done'),
+        },
+      },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 3 クラス内順序とスタート時間' })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.order);
+  });
+
   it('progresses through nested routes and keeps history in sync', async () => {
     const user = userEvent.setup();
     renderWorkflow(['/startlist/input'], {
