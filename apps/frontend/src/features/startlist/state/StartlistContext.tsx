@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from 'react';
+import React, { createContext, useContext, useMemo, useReducer, type Dispatch } from 'react';
 import type {
   ClassAssignmentDto,
   LaneAssignmentDto,
@@ -26,8 +19,9 @@ import type {
   WorldRankingMap,
 } from './types';
 import {
-  createStartlistStore,
-  type StartlistStore,
+  startlistReducer,
+  createInitialStartlistState,
+  type StartlistAction,
   createLaneAssignmentAction,
   createClassAssignmentsAction,
   createStartTimesAction,
@@ -51,114 +45,123 @@ import { generateEntryId } from './store/entriesSlice';
 
 type EntryInput = Entry | EntryDraft;
 
-type EqualityFn<T> = (a: T, b: T) => boolean;
-
-const StartlistStoreContext = createContext<StartlistStore | undefined>(undefined);
+const StartlistStateContext = createContext<StartlistState | undefined>(undefined);
+const StartlistDispatchContext = createContext<Dispatch<StartlistAction> | undefined>(undefined);
 
 export const StartlistProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const storeRef = useRef<StartlistStore>();
+  const [state, dispatch] = useReducer(startlistReducer, undefined, createInitialStartlistState);
 
-  if (!storeRef.current) {
-    storeRef.current = createStartlistStore();
-  }
+  const stateValue = useMemo(() => state, [state]);
 
-  const store = storeRef.current;
-
-  const contextValue = useMemo(() => store, [store]);
-
-  return <StartlistStoreContext.Provider value={contextValue}>{children}</StartlistStoreContext.Provider>;
+  return (
+    <StartlistStateContext.Provider value={stateValue}>
+      <StartlistDispatchContext.Provider value={dispatch}>{children}</StartlistDispatchContext.Provider>
+    </StartlistStateContext.Provider>
+  );
 };
 
-const useStartlistStoreInternal = (): StartlistStore => {
-  const store = useContext(StartlistStoreContext);
-  if (!store) {
+const useStartlistStateContext = (): StartlistState => {
+  const state = useContext(StartlistStateContext);
+  if (state === undefined) {
     throw new Error('StartlistProvider の外部で state を参照することはできません。');
   }
-  return store;
+  return state;
 };
 
-export const useStartlistStore = (): StartlistStore => useStartlistStoreInternal();
-
-export const useStartlistDispatch = (): StartlistStore['dispatch'] => {
-  const store = useStartlistStoreInternal();
-  return store.dispatch;
+const useStartlistDispatchContext = (): Dispatch<StartlistAction> => {
+  const dispatch = useContext(StartlistDispatchContext);
+  if (dispatch === undefined) {
+    throw new Error('StartlistProvider の外部で dispatch を呼び出すことはできません。');
+  }
+  return dispatch;
 };
 
-export const useStartlistSelector = <T,>(
-  selector: (state: StartlistState) => T,
-  equalityFn: EqualityFn<T> = Object.is,
-): T => {
-  const store = useStartlistStoreInternal();
-  const latestSelectionRef = useRef<T>();
+export const useStartlistDispatch = (): Dispatch<StartlistAction> => useStartlistDispatchContext();
 
-  const getSelectedSnapshot = useCallback(() => {
-    const next = selector(store.getState());
-    const previous = latestSelectionRef.current;
-    if (previous !== undefined && equalityFn(previous, next)) {
-      return previous;
-    }
-    latestSelectionRef.current = next;
-    return next;
-  }, [equalityFn, selector, store]);
+export const useStartlistState = (): StartlistState => useStartlistStateContext();
 
-  const subscribe = useCallback((listener: () => void) => store.subscribe(listener), [store]);
-
-  return useSyncExternalStore(subscribe, getSelectedSnapshot, getSelectedSnapshot);
+export const useStartlistStartlistId = (): StartlistState['startlistId'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.startlistId, [state.startlistId]);
 };
 
-export const useStartlistState = (): StartlistState =>
-  useStartlistSelector((state) => state, (a, b) => a === b);
+export const useStartlistSettings = (): StartlistState['settings'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.settings, [state.settings]);
+};
 
-export const useStartlistStartlistId = (): StartlistState['startlistId'] =>
-  useStartlistSelector((state) => state.startlistId);
+export const useStartlistEntries = (): StartlistState['entries'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.entries, [state.entries]);
+};
 
-export const useStartlistSettings = (): StartlistState['settings'] =>
-  useStartlistSelector((state) => state.settings);
+export const useStartlistLaneAssignments = (): StartlistState['laneAssignments'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.laneAssignments, [state.laneAssignments]);
+};
 
-export const useStartlistEntries = (): StartlistState['entries'] =>
-  useStartlistSelector((state) => state.entries);
+export const useStartlistClassAssignments = (): StartlistState['classAssignments'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classAssignments, [state.classAssignments]);
+};
 
-export const useStartlistLaneAssignments = (): StartlistState['laneAssignments'] =>
-  useStartlistSelector((state) => state.laneAssignments);
+export const useStartlistClassOrderSeed = (): StartlistState['classOrderSeed'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classOrderSeed, [state.classOrderSeed]);
+};
 
-export const useStartlistClassAssignments = (): StartlistState['classAssignments'] =>
-  useStartlistSelector((state) => state.classAssignments);
+export const useStartlistClassOrderWarnings = (): StartlistState['classOrderWarnings'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classOrderWarnings, [state.classOrderWarnings]);
+};
 
-export const useStartlistClassOrderSeed = (): StartlistState['classOrderSeed'] =>
-  useStartlistSelector((state) => state.classOrderSeed);
+export const useStartlistClassOrderPreferences = (): StartlistState['classOrderPreferences'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classOrderPreferences, [state.classOrderPreferences]);
+};
 
-export const useStartlistClassOrderWarnings = (): StartlistState['classOrderWarnings'] =>
-  useStartlistSelector((state) => state.classOrderWarnings);
+export const useStartlistStartTimes = (): StartlistState['startTimes'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.startTimes, [state.startTimes]);
+};
 
-export const useStartlistClassOrderPreferences = (): StartlistState['classOrderPreferences'] =>
-  useStartlistSelector((state) => state.classOrderPreferences);
+export const useStartlistStatuses = (): StartlistState['statuses'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.statuses, [state.statuses]);
+};
 
-export const useStartlistStartTimes = (): StartlistState['startTimes'] =>
-  useStartlistSelector((state) => state.startTimes);
+export const useStartlistLoading = (): StartlistState['loading'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.loading, [state.loading]);
+};
 
-export const useStartlistStatuses = (): StartlistState['statuses'] =>
-  useStartlistSelector((state) => state.statuses);
+export const useStartlistSnapshot = (): StartlistState['snapshot'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.snapshot, [state.snapshot]);
+};
 
-export const useStartlistLoading = (): StartlistState['loading'] =>
-  useStartlistSelector((state) => state.loading);
+export const useStartlistStartOrderRules = (): StartlistState['startOrderRules'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.startOrderRules, [state.startOrderRules]);
+};
 
-export const useStartlistSnapshot = (): StartlistState['snapshot'] =>
-  useStartlistSelector((state) => state.snapshot);
+export const useStartlistWorldRankingByClass = (): StartlistState['worldRankingByClass'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.worldRankingByClass, [state.worldRankingByClass]);
+};
 
-export const useStartlistStartOrderRules = (): StartlistState['startOrderRules'] =>
-  useStartlistSelector((state) => state.startOrderRules);
+export const useStartlistClassSplitRules = (): StartlistState['classSplitRules'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classSplitRules, [state.classSplitRules]);
+};
 
-export const useStartlistWorldRankingByClass = (): StartlistState['worldRankingByClass'] =>
-  useStartlistSelector((state) => state.worldRankingByClass);
-
-export const useStartlistClassSplitRules = (): StartlistState['classSplitRules'] =>
-  useStartlistSelector((state) => state.classSplitRules);
-
-export const useStartlistClassSplitResult = (): StartlistState['classSplitResult'] =>
-  useStartlistSelector((state) => state.classSplitResult);
+export const useStartlistClassSplitResult = (): StartlistState['classSplitResult'] => {
+  const state = useStartlistStateContext();
+  return useMemo(() => state.classSplitResult, [state.classSplitResult]);
+};
 
 export const setStatus = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   key: StatusKey,
   status: StatusMessageState,
 ): void => {
@@ -166,7 +169,7 @@ export const setStatus = (
 };
 
 export const setLoading = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   key: StatusKey,
   value: boolean,
 ): void => {
@@ -174,28 +177,28 @@ export const setLoading = (
 };
 
 export const appendEntry = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   entry: EntryInput,
 ): void => {
   dispatch(createEntriesActions.add(entry));
 };
 
 export const removeEntry = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   id: string,
 ): void => {
   dispatch(createEntriesActions.remove(id));
 };
 
 export const updateEntries = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   entries: EntryInput[],
 ): void => {
   dispatch(createEntriesActions.set(entries));
 };
 
 export const updateLaneAssignments = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   assignments: LaneAssignmentDto[],
   splitResult?: ClassSplitResult,
 ): void => {
@@ -206,7 +209,7 @@ export const updateLaneAssignments = (
 };
 
 export const updateClassAssignments = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   assignments: ClassAssignmentDto[],
   seed?: string,
   warnings?: ClassOrderWarning[],
@@ -219,7 +222,7 @@ export const updateClassAssignments = (
 };
 
 export const updateStartTimes = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   startTimes: StartTimeDto[],
   splitResult?: ClassSplitResult,
 ): void => {
@@ -230,35 +233,35 @@ export const updateStartTimes = (
 };
 
 export const updateSettings = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   payload: { startlistId: string; settings: StartlistSettingsDto; snapshot?: unknown },
 ): void => {
   dispatch(createSetSettingsAction(payload));
 };
 
 export const updateSnapshot = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   snapshot?: unknown,
 ): void => {
   dispatch(createSetSnapshotAction(snapshot));
 };
 
 export const updateClassOrderPreferences = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   preferences: ClassOrderPreferences,
 ): void => {
   dispatch(createSetClassOrderPreferencesAction(preferences));
 };
 
 export const setStartOrderRules = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   rules: StartOrderRules,
 ): void => {
   dispatch(createSetStartOrderRulesAction(rules));
 };
 
 export const updateClassWorldRanking = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   classId: string,
   worldRanking: WorldRankingMap,
 ): void => {
@@ -266,21 +269,21 @@ export const updateClassWorldRanking = (
 };
 
 export const removeClassWorldRanking = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   classId: string,
 ): void => {
   dispatch(createRemoveClassWorldRankingAction(classId));
 };
 
 export const setClassSplitRules = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   rules: ClassSplitRules,
 ): void => {
   dispatch(createSetClassSplitRulesAction(rules));
 };
 
 export const setClassSplitResult = (
-  dispatch: StartlistStore['dispatch'],
+  dispatch: Dispatch<StartlistAction>,
   result: ClassSplitResult | undefined,
 ): void => {
   dispatch(createSetClassSplitResultAction(result));
