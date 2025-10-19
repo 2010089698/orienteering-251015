@@ -1,8 +1,18 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { MemoryRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import { renderWithStartlist } from './test-utils';
+import { useEffect } from 'react';
+import {
+  MemoryRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  type NavigateFunction,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { createSuccessStatus, renderWithStartlist } from './test-utils';
 import StartlistWorkflowPage from '../pages/StartlistWorkflowPage';
 import InputStepPage from '../pages/InputStepPage';
 import LaneAssignmentStepPage from '../pages/LaneAssignmentStepPage';
@@ -14,7 +24,13 @@ const LocationProbe = () => {
   return <div data-testid="current-path">{location.pathname}</div>;
 };
 
-const LayoutWithLocation = (): JSX.Element => {
+const LayoutWithLocation = ({ onNavigateReady }: { onNavigateReady?: (navigate: NavigateFunction) => void }): JSX.Element => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    onNavigateReady?.(navigate);
+  }, [navigate, onNavigateReady]);
+
   return (
     <>
       <LocationProbe />
@@ -23,12 +39,18 @@ const LayoutWithLocation = (): JSX.Element => {
   );
 };
 
-const renderWorkflow = (initialEntries: string[], options?: Parameters<typeof renderWithStartlist>[1]) => {
+type RenderWorkflowOptions = Parameters<typeof renderWithStartlist>[1] & {
+  onNavigateReady?: (navigate: NavigateFunction) => void;
+};
+
+const renderWorkflow = (initialEntries: string[], options?: RenderWorkflowOptions) => {
+  const { onNavigateReady, ...renderOptions } = options ?? {};
+
   return renderWithStartlist(
     <MemoryRouter initialEntries={initialEntries}>
       <Routes>
         <Route path="/startlist" element={<StartlistWorkflowPage />}>
-          <Route element={<LayoutWithLocation />}>
+          <Route element={<LayoutWithLocation onNavigateReady={onNavigateReady} />}>
             <Route index element={<Navigate to="input" replace />} />
             <Route path="input" element={<InputStepPage />} />
             <Route path="lanes" element={<LaneAssignmentStepPage />} />
@@ -39,7 +61,7 @@ const renderWorkflow = (initialEntries: string[], options?: Parameters<typeof re
         <Route path="*" element={<Navigate to={STARTLIST_STEP_PATHS.input} replace />} />
       </Routes>
     </MemoryRouter>,
-    options,
+    renderOptions,
   );
 };
 
@@ -51,6 +73,33 @@ describe('Startlist workflow routing', () => {
 
     expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
     expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.input);
+  });
+
+  it('keeps lanes route when lane status already indicates success', async () => {
+    let capturedNavigate: NavigateFunction | undefined;
+
+    renderWorkflow(['/startlist/input'], {
+      initialState: {
+        startlistId: 'SL-1',
+        statuses: { lanes: createSuccessStatus('done') },
+      },
+      onNavigateReady: (navigate) => {
+        capturedNavigate = navigate;
+      },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(capturedNavigate).toBeDefined();
+    });
+
+    act(() => {
+      capturedNavigate?.('/startlist/lanes');
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 2 レーン割り当ての調整' })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.lanes);
   });
 
   it('redirects order route to lanes until class order is prepared', async () => {
