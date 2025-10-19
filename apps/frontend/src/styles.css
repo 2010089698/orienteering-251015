@@ -649,6 +649,26 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+.step-indicator__button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: inherit;
+}
+
+.unstyled-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.step-indicator__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .step-indicator__item--current {
   background-color: rgba(255, 255, 255, 0.35);
   font-weight: 700;

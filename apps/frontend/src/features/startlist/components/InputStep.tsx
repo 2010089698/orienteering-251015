@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatusMessage } from '@orienteering/shared-ui';
 import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
 import EntryForm from './EntryForm';
@@ -17,16 +18,16 @@ import {
 } from '../state/StartlistContext';
 import { generateLaneAssignments } from '../utils/startlistUtils';
 
-type InputStepProps = {
-  onComplete: () => void;
-};
+import { STARTLIST_STEP_PATHS } from '../routes';
 
-const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
+const InputStep = (): JSX.Element => {
   const entries = useStartlistEntries();
   const statuses = useStartlistStatuses();
   const classSplitRules = useStartlistClassSplitRules();
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
+
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<string>('all');
   const settingsFormRef = useRef<SettingsFormHandle>(null);
@@ -88,7 +89,7 @@ const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
 
     updateLaneAssignments(dispatch, assignments, splitResult);
     setStatus(dispatch, 'lanes', createStatus('自動でレーン割り当てを作成しました。', 'success'));
-    onComplete();
+    navigate(STARTLIST_STEP_PATHS.lanes);
   };
 
   return (

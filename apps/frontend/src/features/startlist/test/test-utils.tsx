@@ -1,6 +1,7 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { PropsWithChildren, useEffect, type Dispatch } from 'react';
+import { MemoryRouter, type MemoryRouterProps } from 'react-router-dom';
 import {
   StartlistProvider,
   useStartlistDispatch,
@@ -157,3 +158,14 @@ export const renderWithStartlist = (
 };
 
 export const createSuccessStatus = (message: string): StatusMessageState => createStatus(message, 'success');
+
+interface RenderWithRouterOptions extends RenderWithStartlistOptions {
+  routerProps?: MemoryRouterProps;
+}
+
+export const renderWithStartlistRouter = (
+  ui: ReactElement,
+  { routerProps, ...options }: RenderWithRouterOptions = {},
+) => {
+  return renderWithStartlist(<MemoryRouter {...routerProps}>{ui}</MemoryRouter>, options);
+};

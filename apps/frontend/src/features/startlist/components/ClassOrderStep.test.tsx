@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import ClassOrderStep from './ClassOrderStep';
-import { renderWithStartlist } from '../test/test-utils';
+import { renderWithStartlistRouter } from '../test/test-utils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import { prepareClassSplits } from '../utils/startlistUtils';
 
@@ -66,7 +66,8 @@ const startTimes = [
 
 describe('ClassOrderStep', () => {
   it('reorders players and recalculates times', async () => {
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-1',
         settings,
@@ -88,7 +89,8 @@ describe('ClassOrderStep', () => {
   });
 
   it('orders tabs by lane assignment and switches between class views', async () => {
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-1',
         settings,
@@ -123,7 +125,8 @@ describe('ClassOrderStep', () => {
   it('allows exporting CSV from the step actions row', async () => {
     downloadStartlistCsvMock.mockReturnValue(3);
 
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-1',
         settings,
@@ -145,7 +148,8 @@ describe('ClassOrderStep', () => {
   });
 
   it('disables the export button when start times are unavailable', async () => {
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-1',
         settings,
@@ -162,7 +166,8 @@ describe('ClassOrderStep', () => {
   });
 
   it('shows warnings when consecutive club assignments exist', () => {
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-1',
         settings,
@@ -191,7 +196,8 @@ describe('ClassOrderStep', () => {
     const splitRule = { baseClassId: 'SP', partCount: 2, method: 'balanced' as const };
     const { result: splitResult } = prepareClassSplits(splitEntries, { splitRules: [splitRule] });
 
-    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+    renderWithStartlistRouter(<ClassOrderStep />, {
+      routerProps: { initialEntries: ['/startlist/order'] },
       initialState: {
         startlistId: 'SL-2',
         settings,
