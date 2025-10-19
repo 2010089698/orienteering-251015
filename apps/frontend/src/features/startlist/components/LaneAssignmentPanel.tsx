@@ -8,22 +8,27 @@ import {
   setStatus,
   updateLaneAssignments,
   updateSnapshot,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLaneAssignments,
+  useStartlistLoading,
+  useStartlistSettings,
+  useStartlistStartlistId,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import { generateLaneAssignments, reorderLaneClass } from '../utils/startlistUtils';
 
 const LaneAssignmentPanel = (): JSX.Element => {
-  const {
-    entries,
-    settings,
-    laneAssignments,
-    startlistId,
-    statuses,
-    loading,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const entries = useStartlistEntries();
+  const settings = useStartlistSettings();
+  const laneAssignments = useStartlistLaneAssignments();
+  const startlistId = useStartlistStartlistId();
+  const statuses = useStartlistStatuses();
+  const loading = useStartlistLoading();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 

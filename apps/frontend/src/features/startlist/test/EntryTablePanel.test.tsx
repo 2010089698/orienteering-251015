@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { useMemo, useState } from 'react';
 import EntryTablePanel from '../components/EntryTablePanel';
-import { useStartlistState } from '../state/StartlistContext';
+import { useStartlistEntries } from '../state/StartlistContext';
 import type { Entry } from '../state/types';
 import { renderWithStartlist } from './test-utils';
 
 const TabbedEntryTable = (): JSX.Element => {
-  const { entries } = useStartlistState();
+  const entries = useStartlistEntries();
   const [activeTab, setActiveTab] = useState('all');
 
   const { tabs, filteredEntries } = useMemo(() => {

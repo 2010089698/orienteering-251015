@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import StartOrderSettingsPanel from '../StartOrderSettingsPanel';
 import ClassOrderPanel from '../ClassOrderPanel';
 import { renderWithStartlist } from '../../test/test-utils';
-import { useStartlistState } from '../../state/StartlistContext';
+import { useStartlistStartOrderRules } from '../../state/StartlistContext';
 
 const entries = [
   { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
@@ -172,6 +172,6 @@ describe('ClassOrderPanel and start order status', () => {
   });
 });
 const StartOrderRulesPreview = () => {
-  const { startOrderRules } = useStartlistState();
+  const startOrderRules = useStartlistStartOrderRules();
   return <pre data-testid="start-order-rules">{JSON.stringify(startOrderRules)}</pre>;
 };

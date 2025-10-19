@@ -5,8 +5,10 @@ import {
   createStatus,
   setClassSplitRules,
   setStatus,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import type { ClassSplitMethod, ClassSplitRule, ClassSplitRules } from '../state/types';
 
@@ -43,7 +45,9 @@ const serializeRules = (rules: ClassSplitRules): string =>
   );
 
 const ClassSplitSettingsPanel = (): JSX.Element => {
-  const { entries, statuses, classSplitRules } = useStartlistState();
+  const entries = useStartlistEntries();
+  const statuses = useStartlistStatuses();
+  const classSplitRules = useStartlistClassSplitRules();
   const dispatch = useStartlistDispatch();
 
   const availableClassIds = useMemo(

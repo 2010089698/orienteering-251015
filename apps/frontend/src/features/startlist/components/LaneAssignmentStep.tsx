@@ -10,8 +10,19 @@ import {
   updateClassAssignments,
   updateLaneAssignments,
   updateStartTimes,
+  useStartlistClassAssignments,
+  useStartlistClassOrderPreferences,
+  useStartlistClassOrderSeed,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLaneAssignments,
+  useStartlistSettings,
+  useStartlistStartOrderRules,
+  useStartlistStartlistId,
+  useStartlistStatuses,
+  useStartlistWorldRankingByClass,
 } from '../state/StartlistContext';
 import { calculateStartTimes, createDefaultClassAssignments, prepareClassSplits } from '../utils/startlistUtils';
 import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
@@ -216,20 +227,18 @@ const LaneColumn = ({
 };
 
 const LaneAssignmentStep = ({ onBack, onConfirm }: LaneAssignmentStepProps): JSX.Element => {
-  const {
-    laneAssignments,
-    entries,
-    settings,
-    statuses,
-    startlistId,
-    classAssignments: existingClassAssignments,
-    classOrderSeed,
-    classOrderPreferences,
-    startOrderRules,
-    worldRankingByClass,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const laneAssignments = useStartlistLaneAssignments();
+  const entries = useStartlistEntries();
+  const settings = useStartlistSettings();
+  const statuses = useStartlistStatuses();
+  const startlistId = useStartlistStartlistId();
+  const existingClassAssignments = useStartlistClassAssignments();
+  const classOrderSeed = useStartlistClassOrderSeed();
+  const classOrderPreferences = useStartlistClassOrderPreferences();
+  const startOrderRules = useStartlistStartOrderRules();
+  const worldRankingByClass = useStartlistWorldRankingByClass();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
 
   const splitPreparation = useMemo(

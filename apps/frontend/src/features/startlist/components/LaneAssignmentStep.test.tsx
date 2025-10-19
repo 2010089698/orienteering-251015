@@ -27,11 +27,16 @@ vi.mock('@dnd-kit/core', async () => {
 
 import LaneAssignmentStep from './LaneAssignmentStep';
 import { renderWithStartlist } from '../test/test-utils';
-import { useStartlistState } from '../state/StartlistContext';
+import {
+  useStartlistClassAssignments,
+  useStartlistClassOrderSeed,
+  useStartlistStatuses,
+} from '../state/StartlistContext';
 import { generateLaneAssignments } from '../utils/startlistUtils';
 
 const ClassOrderPreview = () => {
-  const { classAssignments, classOrderSeed } = useStartlistState();
+  const classAssignments = useStartlistClassAssignments();
+  const classOrderSeed = useStartlistClassOrderSeed();
   return (
     <div data-testid="class-order-preview" data-seed={classOrderSeed ?? ''}>
       {classAssignments.map((assignment) => (
@@ -46,7 +51,7 @@ const ClassOrderPreview = () => {
 };
 
 const StartOrderStatusPreview = () => {
-  const { statuses } = useStartlistState();
+  const statuses = useStartlistStatuses();
   return <div data-testid="start-order-status">{statuses.startOrder.text}</div>;
 };
 

@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import InputStep from './InputStep';
 import { renderWithStartlist } from '../test/test-utils';
-import { useStartlistState } from '../state/StartlistContext';
+import {
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
+  useStartlistLaneAssignments,
+} from '../state/StartlistContext';
 
 const baseSettings = {
   eventId: 'event-1',
@@ -28,7 +32,9 @@ const splitEntries = [
 ];
 
 const StatePreview = () => {
-  const { classSplitRules, laneAssignments, classSplitResult } = useStartlistState();
+  const classSplitRules = useStartlistClassSplitRules();
+  const laneAssignments = useStartlistLaneAssignments();
+  const classSplitResult = useStartlistClassSplitResult();
   return (
     <>
       <pre data-testid="input-step-split-rules">{JSON.stringify(classSplitRules)}</pre>

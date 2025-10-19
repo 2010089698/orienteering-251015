@@ -6,7 +6,8 @@ import {
   setStatus,
   updateEntries,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import { RENTAL_CARD_LABEL, type EntryDraft } from '../state/types';
 import { parseEntriesFromCsvFile } from '../utils/entryCsv';
@@ -20,7 +21,8 @@ const emptyEntry: EntryDraft = {
 };
 
 const EntryForm = (): JSX.Element => {
-  const { entries, statuses } = useStartlistState();
+  const entries = useStartlistEntries();
+  const statuses = useStartlistStatuses();
   const dispatch = useStartlistDispatch();
   const [form, setForm] = useState<EntryDraft>({ ...emptyEntry });
   const fileInputRef = useRef<HTMLInputElement | null>(null);

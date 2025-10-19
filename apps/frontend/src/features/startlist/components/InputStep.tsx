@@ -9,8 +9,11 @@ import {
   createStatus,
   setStatus,
   updateLaneAssignments,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import { generateLaneAssignments } from '../utils/startlistUtils';
 
@@ -19,7 +22,10 @@ type InputStepProps = {
 };
 
 const InputStep = ({ onComplete }: InputStepProps): JSX.Element => {
-  const { entries, statuses, classSplitRules, classSplitResult } = useStartlistState();
+  const entries = useStartlistEntries();
+  const statuses = useStartlistStatuses();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
 
   const [activeTab, setActiveTab] = useState<string>('all');

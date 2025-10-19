@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useMemo, useReducer } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 import type {
   ClassAssignmentDto,
   LaneAssignmentDto,
@@ -250,28 +259,83 @@ const startlistReducer = (state: StartlistState, action: StartlistAction): Start
   }
 };
 
-const StartlistStateContext = createContext<StartlistState | undefined>(undefined);
+type StartlistStore = {
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => StartlistState;
+};
+
+const StartlistStoreContext = createContext<StartlistStore | undefined>(undefined);
 const StartlistDispatchContext = createContext<React.Dispatch<StartlistAction> | undefined>(undefined);
 
 export const StartlistProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [state, dispatch] = useReducer(startlistReducer, initialState);
+  const storeRef = useRef<{ state: StartlistState; listeners: Set<() => void> }>({
+    state,
+    listeners: new Set(),
+  });
 
-  const memoizedState = useMemo(() => state, [state]);
+  storeRef.current.state = state;
+
+  useEffect(() => {
+    storeRef.current.listeners.forEach((listener) => listener());
+  }, [state]);
+
+  const subscribe = useCallback((listener: () => void) => {
+    storeRef.current.listeners.add(listener);
+    return () => {
+      storeRef.current.listeners.delete(listener);
+    };
+  }, []);
+
+  const getSnapshot = useCallback(() => storeRef.current.state, []);
+
+  const store = useMemo<StartlistStore>(
+    () => ({
+      subscribe,
+      getSnapshot,
+    }),
+    [getSnapshot, subscribe],
+  );
 
   return (
-    <StartlistStateContext.Provider value={memoizedState}>
+    <StartlistStoreContext.Provider value={store}>
       <StartlistDispatchContext.Provider value={dispatch}>{children}</StartlistDispatchContext.Provider>
-    </StartlistStateContext.Provider>
+    </StartlistStoreContext.Provider>
   );
 };
 
-export const useStartlistState = (): StartlistState => {
-  const context = useContext(StartlistStateContext);
+const useStartlistStore = (): StartlistStore => {
+  const context = useContext(StartlistStoreContext);
   if (!context) {
-    throw new Error('useStartlistState は StartlistProvider 内で使用してください。');
+    throw new Error('StartlistProvider の外部で state を参照することはできません。');
   }
   return context;
 };
+
+type EqualityFn<T> = (a: T, b: T) => boolean;
+
+export const useStartlistSelector = <T,>(
+  selector: (state: StartlistState) => T,
+  equalityFn: EqualityFn<T> = Object.is,
+): T => {
+  const store = useStartlistStore();
+  const latestSelectionRef = useRef<T>();
+
+  const getSelectedSnapshot = useCallback(() => {
+    const next = selector(store.getSnapshot());
+    const previous = latestSelectionRef.current;
+    if (previous !== undefined && equalityFn(previous, next)) {
+      return previous;
+    }
+    latestSelectionRef.current = next;
+    return next;
+  }, [equalityFn, selector, store]);
+
+  return useSyncExternalStore(store.subscribe, getSelectedSnapshot, getSelectedSnapshot);
+};
+
+export const useStartlistState = (): StartlistState =>
+  useStartlistSelector((state) => state, (a, b) => a === b);
 
 export const useStartlistDispatch = (): React.Dispatch<StartlistAction> => {
   const context = useContext(StartlistDispatchContext);
@@ -280,6 +344,54 @@ export const useStartlistDispatch = (): React.Dispatch<StartlistAction> => {
   }
   return context;
 };
+
+export const useStartlistStartlistId = (): StartlistState['startlistId'] =>
+  useStartlistSelector((state) => state.startlistId);
+
+export const useStartlistSettings = (): StartlistState['settings'] =>
+  useStartlistSelector((state) => state.settings);
+
+export const useStartlistEntries = (): StartlistState['entries'] =>
+  useStartlistSelector((state) => state.entries);
+
+export const useStartlistLaneAssignments = (): StartlistState['laneAssignments'] =>
+  useStartlistSelector((state) => state.laneAssignments);
+
+export const useStartlistClassAssignments = (): StartlistState['classAssignments'] =>
+  useStartlistSelector((state) => state.classAssignments);
+
+export const useStartlistClassOrderSeed = (): StartlistState['classOrderSeed'] =>
+  useStartlistSelector((state) => state.classOrderSeed);
+
+export const useStartlistClassOrderWarnings = (): StartlistState['classOrderWarnings'] =>
+  useStartlistSelector((state) => state.classOrderWarnings);
+
+export const useStartlistClassOrderPreferences = (): StartlistState['classOrderPreferences'] =>
+  useStartlistSelector((state) => state.classOrderPreferences);
+
+export const useStartlistStartTimes = (): StartlistState['startTimes'] =>
+  useStartlistSelector((state) => state.startTimes);
+
+export const useStartlistStatuses = (): StartlistState['statuses'] =>
+  useStartlistSelector((state) => state.statuses);
+
+export const useStartlistLoading = (): StartlistState['loading'] =>
+  useStartlistSelector((state) => state.loading);
+
+export const useStartlistSnapshot = (): StartlistState['snapshot'] =>
+  useStartlistSelector((state) => state.snapshot);
+
+export const useStartlistStartOrderRules = (): StartlistState['startOrderRules'] =>
+  useStartlistSelector((state) => state.startOrderRules);
+
+export const useStartlistWorldRankingByClass = (): StartlistState['worldRankingByClass'] =>
+  useStartlistSelector((state) => state.worldRankingByClass);
+
+export const useStartlistClassSplitRules = (): StartlistState['classSplitRules'] =>
+  useStartlistSelector((state) => state.classSplitRules);
+
+export const useStartlistClassSplitResult = (): StartlistState['classSplitResult'] =>
+  useStartlistSelector((state) => state.classSplitResult);
 
 export const createStatus = (text: string, level: StatusMessageState['level']): StatusMessageState => ({
   level,

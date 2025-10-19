@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import ClassSplitSettingsPanel from '../ClassSplitSettingsPanel';
 import { renderWithStartlist } from '../../test/test-utils';
-import { useStartlistState } from '../../state/StartlistContext';
+import {
+  useStartlistClassSplitRules,
+  useStartlistStatuses,
+} from '../../state/StartlistContext';
 
 const entries = [
   { id: 'entry-1', name: 'Runner 1', classId: 'M21', cardNo: '1' },
@@ -12,12 +15,12 @@ const entries = [
 ];
 
 const ClassSplitRulesPreview = () => {
-  const { classSplitRules } = useStartlistState();
+  const classSplitRules = useStartlistClassSplitRules();
   return <pre data-testid="class-split-rules">{JSON.stringify(classSplitRules)}</pre>;
 };
 
 const ClassSplitStatusPreview = () => {
-  const { statuses } = useStartlistState();
+  const statuses = useStartlistStatuses();
   return <span data-testid="class-split-status">{statuses.classSplit.text}</span>;
 };
 
