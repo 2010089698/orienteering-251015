@@ -8,10 +8,19 @@ import {
   cloneStartlistSnapshotDto,
 } from '@startlist-management/domain';
 
-export class InMemoryStartlistRepository implements StartlistRepository {
-  private readonly store = new Map<string, StartlistSnapshot>();
+export interface InMemoryStartlistRepositoryDependencies {
+  clock?: DomainClock;
+  store?: Map<string, StartlistSnapshot>;
+}
 
-  constructor(private readonly clock: DomainClock = SystemClock) {}
+export class InMemoryStartlistRepository implements StartlistRepository {
+  private readonly clock: DomainClock;
+  private readonly store: Map<string, StartlistSnapshot>;
+
+  constructor({ clock = SystemClock, store = new Map<string, StartlistSnapshot>() }: InMemoryStartlistRepositoryDependencies = {}) {
+    this.clock = clock;
+    this.store = store;
+  }
 
   async findById(id: StartlistId): Promise<Startlist | undefined> {
     const snapshot = this.store.get(id.toString());

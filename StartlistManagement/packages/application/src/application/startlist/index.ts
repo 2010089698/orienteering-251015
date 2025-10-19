@@ -9,4 +9,5 @@ export * from './commands/ManuallyReassignLaneOrderUseCase.js';
 export * from './dto/StartlistDtos.js';
 export * from './dto/StartlistMappers.js';
 export * from './errors.js';
+export * from './queries/StartlistReadRepository.js';
 export * from './queries/StartlistQueryService.js';

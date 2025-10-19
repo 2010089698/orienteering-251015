@@ -1,20 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Startlist, StartlistId, StartlistRepository } from '@startlist-management/domain';
+import { StartlistId, StartlistSnapshot } from '@startlist-management/domain';
 import { StartlistNotFoundError } from '../errors.js';
 import { StartlistQueryServiceImpl } from '../queries/StartlistQueryService.js';
+import { StartlistReadRepository } from '../queries/StartlistReadRepository.js';
 
 describe('StartlistQueryService', () => {
   it('returns snapshot when startlist exists', async () => {
-    const snapshot = { id: 'startlist-1' } as any;
-    const startlist = {
-      toSnapshot: vi.fn(() => snapshot),
-    } as unknown as Startlist;
-    const repository: StartlistRepository = {
+    const snapshot = { id: 'startlist-1' } as StartlistSnapshot;
+    const repository: StartlistReadRepository = {
       findById: vi.fn(async (id) => {
         expect(id).toEqual(StartlistId.create('startlist-1'));
-        return startlist;
+        return snapshot;
       }),
-      save: vi.fn(),
     };
 
     const service = new StartlistQueryServiceImpl(repository);
@@ -24,9 +21,8 @@ describe('StartlistQueryService', () => {
   });
 
   it('throws when startlist is missing', async () => {
-    const repository: StartlistRepository = {
+    const repository: StartlistReadRepository = {
       findById: vi.fn().mockResolvedValue(undefined),
-      save: vi.fn(),
     };
     const service = new StartlistQueryServiceImpl(repository);
 
