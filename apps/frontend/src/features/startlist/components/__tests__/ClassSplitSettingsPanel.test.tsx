@@ -52,18 +52,18 @@ describe('ClassSplitSettingsPanel', () => {
     await userEvent.type(partInput, '3');
 
     const methodSelect = screen.getByLabelText('分割方法');
-    await userEvent.selectOptions(methodSelect, 'balanced');
+    await userEvent.selectOptions(methodSelect, 'random');
 
     await waitFor(() =>
       expect(screen.getByTestId('class-split-status')).toHaveTextContent(
-        'クラス分割設定: M21 → 3組（同人数を目指す）',
+        'クラス分割設定: M21 → 3組（ランダムに分割）',
       ),
     );
 
     const preview = screen.getByTestId('class-split-rules').textContent ?? '';
     expect(preview).toContain('"baseClassId":"M21"');
     expect(preview).toContain('"partCount":3');
-    expect(preview).toContain('"method":"balanced"');
+    expect(preview).toContain('"method":"random"');
   });
 
   it('reports invalid split counts', async () => {
@@ -106,7 +106,7 @@ describe('ClassSplitSettingsPanel', () => {
           startlistId: 'SL-1',
           classSplitRules: [
             { baseClassId: 'M21', partCount: 2, method: 'random' },
-            { baseClassId: 'M21', partCount: 3, method: 'balanced' },
+            { baseClassId: 'M21', partCount: 3, method: 'random' },
           ],
         },
       },

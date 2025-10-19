@@ -124,7 +124,7 @@ describe('StartlistContext', () => {
       setStatus(result.current.dispatch, 'entries', createStatus('ok', 'success'));
       setLoading(result.current.dispatch, 'entries', true);
       setClassSplitRules(result.current.dispatch, [
-        { baseClassId: 'M21', partCount: 2, method: 'balanced' },
+        { baseClassId: 'M21', partCount: 2, method: 'random' },
       ]);
       const splitResult = createSplitResult({
         signature: 'sig-1',
@@ -157,7 +157,7 @@ describe('StartlistContext', () => {
     expect(result.current.state.classAssignments).toHaveLength(1);
     expect(result.current.state.startTimes).toHaveLength(1);
     expect(result.current.state.classSplitRules).toEqual([
-      { baseClassId: 'M21', partCount: 2, method: 'balanced' },
+      { baseClassId: 'M21', partCount: 2, method: 'random' },
     ]);
     expect(result.current.state.classSplitResult?.signature).toBe('sig-1');
     expect(result.current.state.snapshot).toEqual({ foo: 'bar' });
@@ -242,7 +242,7 @@ describe('StartlistContext', () => {
 
     act(() => {
       setClassSplitRules(result.current.dispatch, [
-        { baseClassId: 'M21', partCount: 2, method: 'balanced' },
+        { baseClassId: 'M21', partCount: 2, method: 'random' },
       ]);
       setClassSplitResult(result.current.dispatch, initialSplit);
       updateLaneAssignments(result.current.dispatch, [

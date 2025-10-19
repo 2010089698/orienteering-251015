@@ -194,7 +194,7 @@ describe('ClassOrderStep', () => {
   });
 
   it('displays split class labels with base metadata and warnings', async () => {
-    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'balanced' as const };
+    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'random' as const };
     const { result: splitResult } = prepareClassSplits(splitEntries, { splitRules: [splitRule] });
 
     renderWithStartlistRouter(<ClassOrderStep />, {

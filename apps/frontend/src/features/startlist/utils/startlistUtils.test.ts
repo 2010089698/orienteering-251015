@@ -70,7 +70,7 @@ describe('prepareClassSplits', () => {
       { id: 'm21-4', name: 'Delta', classId: 'M21', cardNo: '4' },
     ];
     const { groups, entryToSplitId, splitIdToBaseClassId, result, signature } = prepareClassSplits(entries, {
-      splitRules: [{ baseClassId: 'M21', partCount: 2, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'M21', partCount: 2, method: 'random' }],
     });
 
     expect(signature).not.toBe('no-split');
@@ -84,7 +84,7 @@ describe('prepareClassSplits', () => {
     expect(result?.splitIdToEntryIds.get('M21-A')).toEqual(['m21-1', 'm21-3']);
   });
 
-  it('deterministically shuffles entries for random split method keeping groups balanced', () => {
+  it('deterministically shuffles entries for random split method keeping groups even', () => {
     const entries: Entry[] = [
       { id: 'rand-1', name: 'One', classId: 'RAND', cardNo: '1' },
       { id: 'rand-2', name: 'Two', classId: 'RAND', cardNo: '2' },
@@ -238,7 +238,7 @@ describe('createDefaultClassAssignments', () => {
       playerIntervalMs: 60000,
       laneAssignments: splitLaneAssignments,
       startlistId: 'SL-SPLIT',
-      splitRules: [{ baseClassId: 'SPLIT', partCount: 2, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'SPLIT', partCount: 2, method: 'random' }],
     } as const;
 
     const first = createDefaultClassAssignments(baseOptions);
@@ -250,7 +250,7 @@ describe('createDefaultClassAssignments', () => {
 
     const adjusted = createDefaultClassAssignments({
       ...baseOptions,
-      splitRules: [{ baseClassId: 'SPLIT', partCount: 3, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'SPLIT', partCount: 3, method: 'random' }],
     });
 
     expect(adjusted.splitSignature).not.toBe(first.splitSignature);
@@ -443,7 +443,7 @@ describe('deriveClassOrderWarnings', () => {
     ];
 
     const warnings = deriveClassOrderWarnings(assignments, entries, {
-      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'random' }],
     });
 
     expect(warnings).toHaveLength(1);
@@ -512,7 +512,7 @@ describe('calculateStartTimes', () => {
       { id: 'split-4', name: 'Four', classId: 'SP', cardNo: '4' },
     ];
     const { result: splitResult } = prepareClassSplits(splitEntries, {
-      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'random' }],
     });
     const laneAssignments = [
       { laneNumber: 1, classOrder: ['SP-A', 'SP-B'], interval: { milliseconds: 60000 } },
@@ -536,7 +536,7 @@ describe('calculateStartTimes', () => {
       laneAssignments,
       classAssignments,
       entries: splitEntries,
-      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'balanced' }],
+      splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'random' }],
       splitResult: splitResult,
     });
 

@@ -16,7 +16,7 @@ describe('classSplitSlice', () => {
   it('sets rules and results', () => {
     const withRules = classSplitReducer(initialClassSplitState, {
       type: 'classSplit/setRules',
-      payload: [{ baseClassId: 'M21', partCount: 2, method: 'balanced' }],
+      payload: [{ baseClassId: 'M21', partCount: 2, method: 'random' }],
     });
 
     expect(withRules.classSplitRules).toHaveLength(1);
