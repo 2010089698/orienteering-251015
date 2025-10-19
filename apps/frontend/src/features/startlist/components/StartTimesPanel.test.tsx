@@ -9,7 +9,7 @@ const entries: Entry[] = [
   {
     id: 'player-1',
     name: '田中 太郎',
-    classId: 'M21A',
+    classId: 'SP',
     club: 'Tokyo OC',
     cardNo: '123456',
   },
@@ -26,7 +26,7 @@ const startTimes: StartTimeDto[] = [
 const classAssignments: ClassAssignmentDto[] = [
   {
     laneNumber: 1,
-    classId: 'M21A',
+    classId: 'SP-A',
     playerOrder: ['player-1'],
   },
 ];
@@ -107,7 +107,7 @@ describe('StartTimesPanel', () => {
     expect(parts).toBeDefined();
     const csvString = parts.map((part) => (typeof part === 'string' ? part : String(part))).join('');
     expect(csvString).toBe(
-      '\ufeffクラス,スタート番号,氏名,所属,スタート時刻,カード番号\r\nM21A,1001,田中 太郎,Tokyo OC,18:00,123456',
+      '\ufeffクラス,スタート番号,氏名,所属,スタート時刻,カード番号\r\nSP-A,1001,田中 太郎,Tokyo OC,18:00,123456',
     );
 
     expect(clickMock).toHaveBeenCalled();

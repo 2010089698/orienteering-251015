@@ -25,6 +25,7 @@ import type { ClassAssignmentDto } from '@startlist-management/application';
 import { Tabs } from '../../../components/tabs';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import ClassOrderPanel from './ClassOrderPanel';
+import { createSplitClassLookup } from '../utils/splitUtils';
 
 type ClassOrderStepProps = {
   onBack: () => void;
@@ -59,6 +60,7 @@ type StartTimeRow = {
   name: string;
   club: string;
   classId: string;
+  baseClassId: string;
   laneNumber: number;
   startTimeIso: string;
   startTimeLabel: string;
@@ -135,10 +137,18 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     return new Map(entries.map((entry) => [entry.id, entry]));
   }, [entries]);
 
+  const splitLookup = useMemo(
+    () => createSplitClassLookup({ classAssignments, splitResult: classSplitResult, entries }),
+    [classAssignments, classSplitResult, entries],
+  );
+
   const startTimeRowsByClass = useMemo(() => {
     const byClass = new Map<string, StartTimeRow[]>();
     startTimes.forEach((item) => {
       const entry = entryMap.get(item.playerId);
+      const assignedClassId =
+        splitLookup.getPlayerClassId(item.playerId) ?? entry?.classId ?? '不明';
+      const baseClassId = splitLookup.getBaseClassId(assignedClassId);
       const isoValue =
         typeof item.startTime === 'string' ? item.startTime : new Date(item.startTime).toISOString();
       const timestamp = new Date(isoValue).getTime();
@@ -147,7 +157,8 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         cardNo: entry?.cardNo ?? item.playerId,
         name: entry?.name ?? '（名前未入力）',
         club: entry?.club ?? '（所属未入力）',
-        classId: entry?.classId ?? '不明',
+        classId: assignedClassId,
+        baseClassId,
         laneNumber: item.laneNumber,
         startTimeIso: isoValue,
         startTimeLabel: formatStartTime(isoValue),
@@ -161,7 +172,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
       }
     });
     return byClass;
-  }, [startTimes, entryMap]);
+  }, [startTimes, entryMap, splitLookup]);
 
   const classSummaries = useMemo(
     () =>
@@ -197,11 +208,29 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     const map = new Map<string, { laneNumber?: number; sortKey: number }>();
     laneAssignments.forEach((lane) => {
       lane.classOrder.forEach((classId, index) => {
-        map.set(classId, { laneNumber: lane.laneNumber, sortKey: lane.laneNumber * 1000 + index });
+        const baseClassId = splitLookup.getBaseClassId(classId);
+        const baseSortKey = lane.laneNumber * 1000 + index;
+        const info = { laneNumber: lane.laneNumber, sortKey: baseSortKey };
+        map.set(classId, info);
+        if (!map.has(baseClassId)) {
+          map.set(baseClassId, info);
+        }
+        const related = splitLookup.baseToClassIds.get(baseClassId);
+        if (related) {
+          related.forEach((relatedId, relatedIndex) => {
+            const offsetInfo = {
+              laneNumber: lane.laneNumber,
+              sortKey: baseSortKey + relatedIndex / 10,
+            };
+            if (!map.has(relatedId)) {
+              map.set(relatedId, offsetInfo);
+            }
+          });
+        }
       });
     });
     return map;
-  }, [laneAssignments]);
+  }, [laneAssignments, splitLookup]);
 
   const classTabItems = useMemo(() => {
     return classAssignments
@@ -222,14 +251,14 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
         return {
           tabId,
           panelId: `${tabId}-panel`,
-          label: `${assignment.classId}（${labelMeta.join('・')}）`,
+          label: `${splitLookup.formatClassLabel(assignment.classId)}（${labelMeta.join('・')}）`,
           assignment,
           laneLabel,
           sortKey: laneInfo?.sortKey ?? Number.MAX_SAFE_INTEGER - (classAssignments.length - index),
         };
       })
       .sort((a, b) => a.sortKey - b.sortKey);
-  }, [classAssignments, classSummaries, laneSortInfo]);
+  }, [classAssignments, classSummaries, laneSortInfo, splitLookup]);
 
   const tabItems = useMemo(
     () => classTabItems.map((item) => ({ id: item.tabId, label: item.label, panelId: item.panelId })),
@@ -258,13 +287,40 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
     if (!avoidConsecutiveClubs) {
       return [] as { classId: string; clubs: string[] }[];
     }
-    return classOrderWarnings.map((warning) => {
-      const clubs = Array.from(
-        new Set(warning.occurrences.flatMap((occurrence) => occurrence.clubs)),
-      ).sort((a, b) => a.localeCompare(b, 'ja'));
-      return { classId: warning.classId, clubs };
+    const map = new Map<string, Set<string>>();
+    classOrderWarnings.forEach((warning) => {
+      const classIds = new Set<string>();
+      warning.occurrences.forEach((occurrence) => {
+        const prevClassId = splitLookup.getPlayerClassId(occurrence.previousPlayerId);
+        const nextClassId = splitLookup.getPlayerClassId(occurrence.nextPlayerId);
+        if (prevClassId) {
+          classIds.add(prevClassId);
+        }
+        if (nextClassId) {
+          classIds.add(nextClassId);
+        }
+      });
+      const targets = classIds.size > 0 ? Array.from(classIds) : [warning.classId];
+      targets.forEach((classId) => {
+        const set = map.get(classId) ?? new Set<string>();
+        warning.occurrences.forEach((occurrence) => {
+          occurrence.clubs.forEach((club) => set.add(club));
+        });
+        map.set(classId, set);
+      });
     });
-  }, [classOrderWarnings, avoidConsecutiveClubs]);
+
+    return Array.from(map.entries())
+      .map(([classId, clubs]) => ({
+        classId,
+        clubs: Array.from(clubs).sort((a, b) => a.localeCompare(b, 'ja')),
+      }))
+      .sort((a, b) =>
+        splitLookup
+          .formatClassLabel(a.classId)
+          .localeCompare(splitLookup.formatClassLabel(b.classId), 'ja'),
+      );
+  }, [classOrderWarnings, avoidConsecutiveClubs, splitLookup]);
 
   const reorderWithinClass = (classId: string, fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) {
@@ -379,7 +435,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           <ul className="class-order-warning__list">
             {warningSummaries.map((item) => (
               <li key={item.classId}>
-                {item.classId}
+                {splitLookup.formatClassLabel(item.classId)}
                 {item.clubs.length > 0 ? `（${item.clubs.join('・')}）` : ''}
               </li>
             ))}
@@ -402,12 +458,12 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
           <div className="class-order-panels">
             {tabItems.map((item) => {
               const isActive = item.id === activeTab;
-              const tabInfo = classTabMap.get(item.id);
-              if (!tabInfo) {
-                return null;
-              }
-              const rows = startTimeRowsByClass.get(tabInfo.assignment.classId) ?? [];
-              const summary = classSummaries.get(tabInfo.assignment.classId);
+        const tabInfo = classTabMap.get(item.id);
+        if (!tabInfo) {
+          return null;
+        }
+        const rows = startTimeRowsByClass.get(tabInfo.assignment.classId) ?? [];
+        const summary = classSummaries.get(tabInfo.assignment.classId);
               const metaParts = [`参加者 ${summary?.count ?? tabInfo.assignment.playerOrder.length}人`];
               if (summary?.firstStart) {
                 if (summary.lastStart && summary.lastStart !== summary.firstStart) {
@@ -434,7 +490,7 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                             <div className="class-card">
                             <div className="class-card__header">
                               <h3>
-                                {tabInfo.assignment.classId}
+                                {splitLookup.formatClassLabel(tabInfo.assignment.classId)}
                                 {tabInfo.laneLabel ? `（${tabInfo.laneLabel}）` : ''}
                               </h3>
                               <p className="muted class-card__meta">{metaText}</p>
@@ -497,8 +553,8 @@ const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
                             <table>
                               <caption>
                                 {tabInfo.laneLabel
-                                  ? `${tabInfo.assignment.classId}（${tabInfo.laneLabel}）のスタートリスト`
-                                  : `${tabInfo.assignment.classId} のスタートリスト`}
+                                  ? `${splitLookup.formatClassLabel(tabInfo.assignment.classId)}（${tabInfo.laneLabel}）のスタートリスト`
+                                  : `${splitLookup.formatClassLabel(tabInfo.assignment.classId)} のスタートリスト`}
                               </caption>
                               <thead>
                                 <tr>

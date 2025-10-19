@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import ClassOrderStep from './ClassOrderStep';
 import { renderWithStartlist } from '../test/test-utils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
+import { prepareClassSplits } from '../utils/startlistUtils';
 
 vi.mock('../utils/startlistExport', () => ({
   downloadStartlistCsv: vi.fn(),
@@ -30,6 +31,25 @@ const laneAssignments = [{ laneNumber: 1, classOrder: ['M21', 'W21'], interval: 
 const classAssignments = [
   { classId: 'M21', playerOrder: ['entry-1', 'entry-2'], interval: { milliseconds: 60000 } },
   { classId: 'W21', playerOrder: ['entry-3'], interval: { milliseconds: 60000 } },
+];
+
+const splitEntries = [
+  { id: 'split-1', name: 'Split One', classId: 'SP', cardNo: '10', club: 'Alpha OC' },
+  { id: 'split-2', name: 'Split Two', classId: 'SP', cardNo: '11', club: 'Alpha OC' },
+  { id: 'split-3', name: 'Split Three', classId: 'SP', cardNo: '12', club: 'Beta OC' },
+];
+
+const splitAssignments = [
+  { classId: 'SP-A', playerOrder: ['split-1', 'split-3'], interval: { milliseconds: 60000 } },
+  { classId: 'SP-B', playerOrder: ['split-2'], interval: { milliseconds: 60000 } },
+];
+
+const splitLaneAssignments = [{ laneNumber: 1, classOrder: ['SP'], interval: { milliseconds: 60000 } }];
+
+const splitStartTimes = [
+  { playerId: 'split-1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 },
+  { playerId: 'split-3', startTime: new Date('2024-01-01T09:01:00Z').toISOString(), laneNumber: 1 },
+  { playerId: 'split-2', startTime: new Date('2024-01-01T09:02:00Z').toISOString(), laneNumber: 1 },
 ];
 
 const entries = [
@@ -165,5 +185,38 @@ describe('ClassOrderStep', () => {
       screen.getByText('人数の組み合わせの都合で所属が連続するクラスがあります。下記をご確認ください。'),
     ).toBeInTheDocument();
     expect(screen.getByText('M21（Alpha OC）')).toBeInTheDocument();
+  });
+
+  it('displays split class labels with base metadata and warnings', async () => {
+    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'balanced' as const };
+    const { result: splitResult } = prepareClassSplits(splitEntries, { splitRules: [splitRule] });
+
+    renderWithStartlist(<ClassOrderStep onBack={() => {}} />, {
+      initialState: {
+        startlistId: 'SL-2',
+        settings,
+        laneAssignments: splitLaneAssignments,
+        classAssignments: splitAssignments,
+        entries: splitEntries,
+        startTimes: splitStartTimes,
+        classOrderWarnings: [
+          {
+            classId: 'SP',
+            occurrences: [
+              { previousPlayerId: 'split-1', nextPlayerId: 'split-2', clubs: ['Alpha OC'] },
+            ],
+          },
+        ],
+        classSplitResult: splitResult!,
+        classSplitRules: [splitRule],
+      },
+    });
+
+    expect(await screen.findByRole('tab', { name: /SP-A（SP・分割 A）/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /SP-B（SP・分割 B）/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('table', { name: 'SP-A（SP・分割 A）（レーン1）のスタートリスト' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('SP-A（SP・分割 A）（Alpha OC）')).toBeInTheDocument();
   });
 });
