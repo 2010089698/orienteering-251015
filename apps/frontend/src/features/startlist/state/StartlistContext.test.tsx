@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import {
@@ -30,6 +30,62 @@ describe('StartlistContext', () => {
     expect(() => renderHook(() => useStartlistState())).toThrowError();
     expect(() => renderHook(() => useStartlistDispatch())).toThrowError();
     expect(() => renderHook(() => useStartlistEntries())).toThrowError();
+  });
+
+  it('avoids re-rendering unrelated subscribers when slices change', () => {
+    let dispatch: ReturnType<typeof useStartlistDispatch> | undefined;
+    const entriesRefs: StartlistState['entries'][] = [];
+    const statusesRefs: StartlistState['statuses'][] = [];
+
+    const EntriesSubscriber = () => {
+      entriesRefs.push(useStartlistEntries());
+      return null;
+    };
+
+    const StatusesSubscriber = () => {
+      statusesRefs.push(useStartlistStatuses());
+      return null;
+    };
+
+    const DispatchSubscriber = () => {
+      dispatch = useStartlistDispatch();
+      return null;
+    };
+
+    render(
+      <StartlistProvider>
+        <EntriesSubscriber />
+        <StatusesSubscriber />
+        <DispatchSubscriber />
+      </StartlistProvider>,
+    );
+
+    if (!dispatch) {
+      throw new Error('dispatch is not available');
+    }
+
+    const uniqueEntriesCount = () => new Set(entriesRefs).size;
+    const uniqueStatusesCount = () => new Set(statusesRefs).size;
+
+    const initialEntriesCount = uniqueEntriesCount();
+    const initialStatusesCount = uniqueStatusesCount();
+
+    expect(initialEntriesCount).toBeGreaterThan(0);
+    expect(initialStatusesCount).toBeGreaterThan(0);
+
+    act(() => {
+      setStatus(dispatch, 'entries', createStatus('ok', 'success'));
+    });
+
+    expect(uniqueEntriesCount()).toBe(initialEntriesCount);
+    expect(uniqueStatusesCount()).toBe(initialStatusesCount + 1);
+
+    act(() => {
+      appendEntry(dispatch, { name: 'Runner', classId: 'M21', cardNo: '1' });
+    });
+
+    expect(uniqueEntriesCount()).toBe(initialEntriesCount + 1);
+    expect(uniqueStatusesCount()).toBe(initialStatusesCount + 1);
   });
 
   it('updates state via exposed helpers', () => {
