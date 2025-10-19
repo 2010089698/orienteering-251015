@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import InputStepWorkflow from '../workflow/InputStepWorkflow';
 import { renderWithStartlistRouter } from '../test/test-utils';
 import {
@@ -8,6 +8,7 @@ import {
   useStartlistClassSplitRules,
   useStartlistLaneAssignments,
 } from '../state/StartlistContext';
+import * as SettingsFormHook from '../hooks/useSettingsForm';
 
 const baseSettings = {
   eventId: 'event-1',
@@ -56,14 +57,36 @@ describe('InputStep', () => {
   });
 
   it('shows validation errors from the settings form when inputs are invalid', async () => {
+    const useSettingsFormSpy = vi.spyOn(SettingsFormHook, 'useSettingsForm');
+    const submitMock = vi.fn(() => ({ error: 'レーン数は 1 以上の整数で入力してください。' }));
+    useSettingsFormSpy.mockReturnValue({
+      startTime: '2024-01-01T09:00',
+      laneIntervalMs: 0,
+      playerIntervalMs: 60000,
+      laneCount: 1,
+      avoidConsecutiveClubs: true,
+      laneIntervalOptions: [{ label: 'なし', value: 0 }],
+      playerIntervalOptions: [{ label: '1分', value: 60000 }],
+      status: { level: 'error', text: 'レーン数は 1 以上の整数で入力してください。' },
+      validationError: 'レーン数は 1 以上の整数で入力してください。',
+      onStartTimeChange: vi.fn(),
+      onLaneIntervalChange: vi.fn(),
+      onPlayerIntervalChange: vi.fn(),
+      onLaneCountChange: vi.fn(),
+      onAvoidConsecutiveClubsChange: vi.fn(),
+      submit: submitMock,
+    } as ReturnType<typeof SettingsFormHook.useSettingsForm>);
+
     renderWithStartlistRouter(<InputStepWorkflow />, {
       routerProps: { initialEntries: ['/startlist/input'] },
     });
 
-    await userEvent.clear(screen.getByLabelText('開始時刻'));
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
-    expect(await screen.findByText('開始時刻を入力してください。')).toBeInTheDocument();
+    expect(submitMock).toHaveBeenCalled();
+    expect(await screen.findByText('レーン数は 1 以上の整数で入力してください。')).toBeInTheDocument();
+
+    useSettingsFormSpy.mockRestore();
   });
 
   it('generates lane assignments and navigates forward', async () => {

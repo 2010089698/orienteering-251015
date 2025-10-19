@@ -1,57 +1,71 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
-import { describe, expect, it } from 'vitest';
-import SettingsForm, { type SettingsFormHandle } from './SettingsForm';
-import { renderWithStartlist } from '../test/test-utils';
+import { describe, expect, it, vi } from 'vitest';
+
+import SettingsForm, { type SettingsFormProps } from './SettingsForm';
+
+const createProps = (overrides: Partial<SettingsFormProps> = {}): SettingsFormProps => ({
+  startTime: '2024-01-01T09:00',
+  laneIntervalMs: 0,
+  playerIntervalMs: 60000,
+  laneCount: 2,
+  avoidConsecutiveClubs: true,
+  laneIntervalOptions: [
+    { label: '1分', value: 60000 },
+    { label: 'なし', value: 0 },
+    { label: '30秒', value: 30000 },
+  ],
+  playerIntervalOptions: [
+    { label: '1分', value: 60000 },
+    { label: '30秒', value: 30000 },
+  ],
+  status: { level: 'idle', text: '' },
+  onStartTimeChange: vi.fn(),
+  onLaneIntervalChange: vi.fn(),
+  onPlayerIntervalChange: vi.fn(),
+  onLaneCountChange: vi.fn(),
+  onAvoidConsecutiveClubsChange: vi.fn(),
+  onSubmit: vi.fn(),
+  ...overrides,
+});
 
 describe('SettingsForm', () => {
-  it('defaults lane interval to "なし" and saves zero milliseconds without requiring a startlist ID', async () => {
-    const ref = createRef<SettingsFormHandle>();
-    renderWithStartlist(<SettingsForm ref={ref} />);
-
-    expect(screen.queryByLabelText('スタートリスト ID')).not.toBeInTheDocument();
-
-    const laneIntervalSelect = screen.getByLabelText('レーン内クラス間隔') as HTMLSelectElement;
-    expect(laneIntervalSelect.value).toBe('0');
-
-    const preferenceCheckbox = screen.getByRole('checkbox', { name: /同じ所属が連続で並ばないようにする/ });
-    expect(preferenceCheckbox).toBeChecked();
-
-    fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '2024-01-01T09:00' } });
-    await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
-    fireEvent.change(screen.getByLabelText('レーン数'), { target: { value: '3' } });
-
-    await act(async () => {
-      const result = ref.current?.validateAndSave();
-      expect(result).not.toBeNull();
-      expect(result?.intervals.laneClass.milliseconds).toBe(0);
-    });
-
-    expect(await screen.findByText('基本情報を保存しました。')).toBeInTheDocument();
-  });
-
-  it('lists the zero interval option labelled 「なし」 first', () => {
-    renderWithStartlist(<SettingsForm />);
+  it('renders lane interval options sorted by value', () => {
+    const props = createProps();
+    render(<SettingsForm {...props} />);
 
     const laneIntervalSelect = screen.getByLabelText('レーン内クラス間隔') as HTMLSelectElement;
     const options = Array.from(laneIntervalSelect.querySelectorAll('option'));
 
-    expect(options[0]).toHaveValue('0');
-    expect(options[0]).toHaveTextContent('なし');
+    expect(options.map((option) => option.value)).toEqual(['0', '30000', '60000']);
   });
 
-  it('shows validation errors when required fields are missing', async () => {
-    const ref = createRef<SettingsFormHandle>();
-    renderWithStartlist(<SettingsForm ref={ref} />);
+  it('delegates form submission to the provided callback', () => {
+    const props = createProps();
+    const { container } = render(<SettingsForm {...props} />);
 
-    await userEvent.clear(screen.getByLabelText('開始時刻'));
+    const form = container.querySelector('form');
+    if (!form) {
+      throw new Error('フォームが見つかりません');
+    }
 
-    await act(async () => {
-      const result = ref.current?.validateAndSave();
-      expect(result).toBeNull();
-    });
+    fireEvent.submit(form);
 
-    expect(await screen.findByText('開始時刻を入力してください。')).toBeInTheDocument();
+    expect(props.onSubmit).toHaveBeenCalled();
+  });
+
+  it('notifies when field values change', async () => {
+    const props = createProps();
+    render(<SettingsForm {...props} />);
+
+    await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
+    expect(props.onPlayerIntervalChange).toHaveBeenCalledWith(30000);
+
+    fireEvent.change(screen.getByLabelText('レーン数'), { target: { value: '3' } });
+    expect(props.onLaneCountChange).toHaveBeenCalledWith(3);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /同じ所属が連続で並ばないようにする/ }));
+    expect(props.onAvoidConsecutiveClubsChange).toHaveBeenCalledWith(false);
   });
 });
+
