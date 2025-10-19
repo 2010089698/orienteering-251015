@@ -4,10 +4,12 @@ import { DomainEvent } from '../common/DomainEvent.js';
 import { ClassAssignment } from './ClassAssignment.js';
 import { LaneAssignment } from './LaneAssignment.js';
 import { StartTime } from './StartTime.js';
+import { StartTimeAssignmentPolicy } from './StartTimeAssignmentPolicy.js';
 import { StartlistId } from './StartlistId.js';
 import { StartlistSettings } from './StartlistSettings.js';
 import { StartlistSnapshot } from './StartlistSnapshot.js';
 import { StartlistStatus } from './StartlistStatus.js';
+import { LaneAssignmentsNotCompletedError, NoStartTimesAssignedError, StartlistSettingsNotEnteredError } from './StartlistErrors.js';
 import { ClassStartOrderManuallyFinalizedEvent } from './events/ClassStartOrderManuallyFinalizedEvent.js';
 import { LaneOrderAndIntervalsAssignedEvent } from './events/LaneOrderAndIntervalsAssignedEvent.js';
 import { LaneOrderManuallyReassignedEvent } from './events/LaneOrderManuallyReassignedEvent.js';
@@ -16,34 +18,6 @@ import { StartTimesAssignedEvent } from './events/StartTimesAssignedEvent.js';
 import { StartTimesInvalidatedEvent } from './events/StartTimesInvalidatedEvent.js';
 import { StartlistFinalizedEvent } from './events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from './events/StartlistSettingsEnteredEvent.js';
-
-export class StartlistSettingsNotEnteredError extends DomainError {
-  constructor(message = 'Startlist settings must be entered before performing this action.') {
-    super(message);
-    this.name = 'StartlistSettingsNotEnteredError';
-  }
-}
-
-export class LaneAssignmentsNotCompletedError extends DomainError {
-  constructor(message = 'Lane assignments must be completed before performing this action.') {
-    super(message);
-    this.name = 'LaneAssignmentsNotCompletedError';
-  }
-}
-
-export class ClassAssignmentsNotCompletedError extends DomainError {
-  constructor(message = 'Class assignments must be completed before performing this action.') {
-    super(message);
-    this.name = 'ClassAssignmentsNotCompletedError';
-  }
-}
-
-export class NoStartTimesAssignedError extends DomainError {
-  constructor(message = 'No start times are assigned to invalidate.') {
-    super(message);
-    this.name = 'NoStartTimesAssignedError';
-  }
-}
 
 export class Startlist {
   private settings?: StartlistSettings;
@@ -173,29 +147,10 @@ export class Startlist {
   }
 
   assignStartTimes(startTimes: StartTime[]): void {
-    const settings = this.ensureSettingsPresent();
-    this.ensureClassAssignmentsPresent();
-    if (startTimes.length === 0) {
-      throw new DomainError('At least one start time must be provided.');
-    }
-    const allowedPlayerIds = new Set<string>(
-      this.classAssignments.flatMap((assignment) => assignment.playerOrder),
-    );
-    const playerIds = new Set<string>();
-    const laneCount = settings.laneCount;
-    startTimes.forEach((startTime) => {
-      if (playerIds.has(startTime.playerId)) {
-        throw new DomainError('Start times must be unique per player.');
-      }
-      if (!allowedPlayerIds.has(startTime.playerId)) {
-        throw new DomainError(
-          `Player ${startTime.playerId} does not have a class assignment and cannot receive a start time.`,
-        );
-      }
-      if (startTime.laneNumber > laneCount) {
-        throw new DomainError('Start time lane number exceeds configured lane count.');
-      }
-      playerIds.add(startTime.playerId);
+    StartTimeAssignmentPolicy.ensureCanAssign({
+      startTimes,
+      settings: this.settings,
+      classAssignments: this.classAssignments,
     });
     this.startTimes = [...startTimes];
     this.status = StartlistStatus.START_TIMES_ASSIGNED;
@@ -322,12 +277,6 @@ export class Startlist {
   private ensureLaneAssignmentsPresent(): void {
     if (this.laneAssignments.length === 0) {
       throw new LaneAssignmentsNotCompletedError();
-    }
-  }
-
-  private ensureClassAssignmentsPresent(): void {
-    if (this.classAssignments.length === 0) {
-      throw new ClassAssignmentsNotCompletedError();
     }
   }
 
