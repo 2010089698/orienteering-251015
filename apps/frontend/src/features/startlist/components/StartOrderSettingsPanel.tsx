@@ -9,7 +9,10 @@ import {
   updateClassWorldRanking,
   removeClassWorldRanking,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLoading,
+  useStartlistStartOrderRules,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import { parseWorldRankingCsv } from '../utils/worldRankingCsv';
 import type { StartOrderRule } from '../state/types';
@@ -57,7 +60,10 @@ const serializeRules = (rules: StartOrderRow[]): string =>
   );
 
 const StartOrderSettingsPanel = (): JSX.Element => {
-  const { entries, statuses, loading, startOrderRules } = useStartlistState();
+  const entries = useStartlistEntries();
+  const statuses = useStartlistStatuses();
+  const loading = useStartlistLoading();
+  const startOrderRules = useStartlistStartOrderRules();
   const dispatch = useStartlistDispatch();
 
   const availableClassIds = useMemo(

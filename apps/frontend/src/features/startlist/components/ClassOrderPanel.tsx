@@ -8,8 +8,20 @@ import {
   setStatus,
   updateClassAssignments,
   updateSnapshot,
+  useStartlistClassAssignments,
+  useStartlistClassOrderPreferences,
+  useStartlistClassOrderSeed,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLaneAssignments,
+  useStartlistLoading,
+  useStartlistSettings,
+  useStartlistStartOrderRules,
+  useStartlistStartlistId,
+  useStartlistStatuses,
+  useStartlistWorldRankingByClass,
 } from '../state/StartlistContext';
 import { createDefaultClassAssignments, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
 import { seededRandomClassOrderPolicy, seededRandomUnconstrainedClassOrderPolicy } from '../utils/classOrderPolicy';
@@ -28,21 +40,19 @@ const ClassOrderPanel = ({
   showAssignmentPreview = true,
   className,
 }: ClassOrderPanelProps): JSX.Element => {
-  const {
-    entries,
-    settings,
-    classAssignments,
-    startlistId,
-    statuses,
-    loading,
-    laneAssignments,
-    classOrderSeed,
-    classOrderPreferences,
-    startOrderRules,
-    worldRankingByClass,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const entries = useStartlistEntries();
+  const settings = useStartlistSettings();
+  const classAssignments = useStartlistClassAssignments();
+  const startlistId = useStartlistStartlistId();
+  const statuses = useStartlistStatuses();
+  const loading = useStartlistLoading();
+  const laneAssignments = useStartlistLaneAssignments();
+  const classOrderSeed = useStartlistClassOrderSeed();
+  const classOrderPreferences = useStartlistClassOrderPreferences();
+  const startOrderRules = useStartlistStartOrderRules();
+  const worldRankingByClass = useStartlistWorldRankingByClass();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 

@@ -10,8 +10,15 @@ import {
   updateClassAssignments,
   updateSettings,
   updateClassOrderPreferences,
+  useStartlistClassAssignments,
+  useStartlistClassOrderPreferences,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistSettings,
+  useStartlistStartlistId,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 
 const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -118,16 +125,14 @@ export type SettingsFormHandle = {
 };
 
 const SettingsForm = (_: unknown, ref: ForwardedRef<SettingsFormHandle>): JSX.Element => {
-  const {
-    settings,
-    startlistId,
-    statuses,
-    classOrderPreferences,
-    classAssignments,
-    entries,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const settings = useStartlistSettings();
+  const startlistId = useStartlistStartlistId();
+  const statuses = useStartlistStatuses();
+  const classOrderPreferences = useStartlistClassOrderPreferences();
+  const classAssignments = useStartlistClassAssignments();
+  const entries = useStartlistEntries();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
 
   const [startTime, setStartTime] = useState(() => toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()));

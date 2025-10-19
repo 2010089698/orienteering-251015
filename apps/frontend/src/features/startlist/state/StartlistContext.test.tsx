@@ -5,6 +5,8 @@ import {
   StartlistProvider,
   useStartlistState,
   useStartlistDispatch,
+  useStartlistEntries,
+  useStartlistStatuses,
   createStatus,
   setStatus,
   setLoading,
@@ -27,6 +29,7 @@ describe('StartlistContext', () => {
   it('throws when hooks used outside provider', () => {
     expect(() => renderHook(() => useStartlistState())).toThrowError();
     expect(() => renderHook(() => useStartlistDispatch())).toThrowError();
+    expect(() => renderHook(() => useStartlistEntries())).toThrowError();
   });
 
   it('updates state via exposed helpers', () => {
@@ -138,6 +141,26 @@ describe('StartlistContext', () => {
     expect(first.cardNo).toBe('レンタル');
     expect(second.cardNo).toBe('レンタル');
     expect(first.id).not.toBe(second.id);
+  });
+
+  it('selects slices via dedicated hooks', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => <StartlistProvider>{children}</StartlistProvider>;
+    const { result } = renderHook(
+      () => ({
+        entries: useStartlistEntries(),
+        statuses: useStartlistStatuses(),
+        dispatch: useStartlistDispatch(),
+      }),
+      { wrapper },
+    );
+
+    act(() => {
+      appendEntry(result.current.dispatch, { name: 'Runner', classId: 'M21', cardNo: '1' });
+      setStatus(result.current.dispatch, 'entries', createStatus('ok', 'success'));
+    });
+
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.statuses.entries.text).toBe('ok');
   });
 
   it('resets assignments when split signature changes and retains world ranking', () => {

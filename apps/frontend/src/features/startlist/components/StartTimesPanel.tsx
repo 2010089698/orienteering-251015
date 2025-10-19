@@ -6,8 +6,17 @@ import {
   setStatus,
   updateSnapshot,
   updateStartTimes,
+  useStartlistClassAssignments,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLaneAssignments,
+  useStartlistLoading,
+  useStartlistSettings,
+  useStartlistStartTimes,
+  useStartlistStartlistId,
+  useStartlistStatuses,
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
@@ -29,18 +38,16 @@ const formatDateTime = (iso: string): string => {
 };
 
 const StartTimesPanel = (): JSX.Element => {
-  const {
-    settings,
-    entries,
-    laneAssignments,
-    classAssignments,
-    startTimes,
-    startlistId,
-    statuses,
-    loading,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const settings = useStartlistSettings();
+  const entries = useStartlistEntries();
+  const laneAssignments = useStartlistLaneAssignments();
+  const classAssignments = useStartlistClassAssignments();
+  const startTimes = useStartlistStartTimes();
+  const startlistId = useStartlistStartlistId();
+  const statuses = useStartlistStatuses();
+  const loading = useStartlistLoading();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 

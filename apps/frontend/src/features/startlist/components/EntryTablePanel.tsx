@@ -6,7 +6,7 @@ import {
   removeEntry,
   setStatus,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
 } from '../state/StartlistContext';
 import type { Entry } from '../state/types';
 
@@ -24,7 +24,7 @@ type EntryTablePanelProps = {
 };
 
 const EntryTablePanel = ({ tabs, activeTab, onTabChange, entries }: EntryTablePanelProps): JSX.Element => {
-  const { entries: allEntries } = useStartlistState();
+  const allEntries = useStartlistEntries();
   const dispatch = useStartlistDispatch();
 
   const tabItems = useMemo(

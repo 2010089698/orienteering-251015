@@ -16,8 +16,18 @@ import {
   setStatus,
   updateClassAssignments,
   updateStartTimes,
+  useStartlistClassAssignments,
+  useStartlistClassOrderPreferences,
+  useStartlistClassOrderWarnings,
+  useStartlistClassSplitResult,
+  useStartlistClassSplitRules,
   useStartlistDispatch,
-  useStartlistState,
+  useStartlistEntries,
+  useStartlistLaneAssignments,
+  useStartlistLoading,
+  useStartlistSettings,
+  useStartlistStartTimes,
+  useStartlistStatuses,
   setLoading,
 } from '../state/StartlistContext';
 import { calculateStartTimes, deriveClassOrderWarnings, updateClassPlayerOrder } from '../utils/startlistUtils';
@@ -112,19 +122,17 @@ const DroppableList = ({ assignment, children }: { assignment: ClassAssignmentDt
 };
 
 const ClassOrderStep = ({ onBack }: ClassOrderStepProps): JSX.Element => {
-  const {
-    classAssignments,
-    startTimes,
-    settings,
-    laneAssignments,
-    entries,
-    statuses,
-    loading,
-    classOrderWarnings,
-    classOrderPreferences,
-    classSplitRules,
-    classSplitResult,
-  } = useStartlistState();
+  const classAssignments = useStartlistClassAssignments();
+  const startTimes = useStartlistStartTimes();
+  const settings = useStartlistSettings();
+  const laneAssignments = useStartlistLaneAssignments();
+  const entries = useStartlistEntries();
+  const statuses = useStartlistStatuses();
+  const loading = useStartlistLoading();
+  const classOrderWarnings = useStartlistClassOrderWarnings();
+  const classOrderPreferences = useStartlistClassOrderPreferences();
+  const classSplitRules = useStartlistClassSplitRules();
+  const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
 
   const sensors = useSensors(
