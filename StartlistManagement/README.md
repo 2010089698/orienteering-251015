@@ -32,7 +32,7 @@ StartlistManagement/
 │   └── frontend/           # （廃止）フロントエンドは /apps/frontend へ統合済み
 ├── packages/
 │   ├── domain/             # 集約とドメインイベント、値オブジェクト
-│   ├── application/        # ユースケース、DTO、クエリサービス、プロセスマネージャ
+│   ├── application/        # ユースケース、DTO、クエリサービス
 │   ├── infrastructure/     # 永続化、イベントバス、トランザクション管理、DI 構成
 │   ├── adapters-http/      # Fastify HTTP サーバーとルーティング
 │   └── ui-components/      # フロント共通 UI コンポーネント
@@ -52,14 +52,14 @@ StartlistManagement/
 
 ### アプリケーション層
 - すべてのユースケースサービスは `StartlistCommandBase` を継承し、リポジトリの読み込み・作成、トランザクション実行、イベント発行を共通化しています。
-- プロセスマネージャは手動操作のドメインイベントを監視し、スタート時間の自動無効化コマンドを発行します。
+- 手動操作は集約内部でスタート時間の無効化を行い、イベント経由でも状態変化を通知します。
 - クエリサービスはインメモリのリポジトリからスタートリストのスナップショットを再利用します。
 
 ### インフラストラクチャ
 - `InMemoryStartlistRepository` が集約スナップショットをメモリ上に保存します。
-- `DomainEventBus` は購読者へ逐次イベントを配信し、プロセスマネージャをトリガーします。
+- `DomainEventBus` は購読者へ逐次イベントを配信する仕組みを提供し、外部システム連携の拡張ポイントになります。
 - `SimpleTransactionManager` はトランザクション境界の抽象化のみを提供するシンプルな実装です。
-- `createStartlistModule` はこれらの実装を束ね、イベント購読をセットアップします。
+- `createStartlistModule` はこれらの実装を束ね、ユースケースとクエリサービスを初期化します。
 
 ### プレゼンテーション層（HTTP API）
 `/health` および `/api/startlists/:id` 配下に以下のエンドポイントを提供します。
@@ -82,16 +82,16 @@ StartlistManagement/
 ### フロントエンド統合
 フロントエンドの画面構成やバックエンド連携手順は [apps/frontend/README.md](../apps/frontend/README.md) に集約しています。スタートリストウィザードの操作方法や `VITE_STARTLIST_API_BASE_URL` の設定方法を確認したい場合はそちらを参照してください。
 
-### ドメインイベントとプロセスマネージャ
-- 手動レーン再割当てまたはクラス順手動確定のイベントを購読し、スタート時間の再計算が必要な状態を自動的に作ります。
-- イベントは `DomainEventBus` を通じてプロセスマネージャへ伝播され、無効化コマンドが実行されます。
+### ドメインイベント
+- 手動レーン再割当てやクラス順手動確定などの操作はドメインイベントとして発行され、スタート時間の無効化を含む状態変化を共有します。
+- `DomainEventBus` はこれらのイベントをアプリケーション層外へ配信するための拡張ポイントとして利用できます。
 
 ### テスト
 Vitest によるユースケース・クエリ・HTTP 層のテストが用意されています。`npm test` で全テストを実行できます。主なテストスイート:
-- `packages/application/src/application/startlist/__tests__` – コマンド、クエリ、プロセスマネージャ、マッパーのテスト
+- `packages/application/src/application/startlist/__tests__` – コマンド、クエリ、マッパーのテスト
 - `packages/adapters-http/src/__tests__/startlistRoutes.test.ts` – HTTP ルートとバリデーションのテスト
 
 ### 今後の発展・貢献ガイド
 - 永続化層をデータベース実装に差し替え、`StartlistRepository` のインターフェースを活かした実運用対応を検討できます。
-- 外部メッセージングシステムと連携するイベントバスの拡張や、複数集約にまたがるプロセスマネージャの追加が可能です。
+- 外部メッセージングシステムと連携するイベントバスの拡張や、複数集約にまたがる調停ロジックの追加が可能です。
 - コントリビューション時は Issue/Pull Request を作成し、テストが通ることを確認してください。

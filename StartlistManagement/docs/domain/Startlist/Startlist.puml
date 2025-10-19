@@ -154,14 +154,6 @@ package "スタートリスト管理コンテキスト" {
     Startlist --> ClassStartOrderManuallyFinalizedEvent : "publishes"
     Startlist --> StartTimesInvalidatedEvent : "publishes"
     
-    ' 調停（プロセスマネージャ）による因果連鎖（購読→判断→コマンド発行）
-    package "Coordination (Process)" {
-      class StartlistProcessManager <<ProcessManager>>
-    }
-    LaneOrderManuallyReassignedEvent ..> StartlistProcessManager : subscribed
-    ClassStartOrderManuallyFinalizedEvent ..> StartlistProcessManager : subscribed
-    StartlistProcessManager ..> InvalidateStartTimesCommand : decides & sends
-    
     ' 値オブジェクトの関係
     Startlist --> StartlistSettings : "contains"
     Startlist --> LaneAssignment : "contains"
@@ -225,15 +217,13 @@ end note
 note bottom of StartTimesInvalidatedEvent
   集約のコマンド実行結果として発生するドメインイベント。
   手動でのレーン順変更やクラス順確定により
-  既存のスタート時刻が無効化される場合に発行される。
-  因果関係の調停は集約外の StartlistProcessManager が担当。
+  既存のスタート時刻が集約内部のロジックで無効化される場合に発行される。
 end note
 
 legend left
   <<Aggregate Root>>: 一貫性境界
   <<Event>>: 既に起きた重要事実（過去形）
   <<Command>>: 意図・要求（命令形/動詞句）
-  <<ProcessManager>>: イベント購読→判断→コマンド発行の調停
 endlegend
 
 @enduml
