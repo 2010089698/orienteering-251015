@@ -6,7 +6,7 @@ import { useSettingsForm, type UseSettingsFormReturn } from '../useSettingsForm'
 
 describe('useSettingsForm', () => {
   const renderHook = (options?: Parameters<typeof renderWithStartlist>[1]) => {
-    let current: UseSettingsFormReturn;
+    let current: UseSettingsFormReturn | undefined;
 
     const Harness = () => {
       current = useSettingsForm();

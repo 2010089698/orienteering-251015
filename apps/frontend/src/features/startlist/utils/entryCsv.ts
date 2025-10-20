@@ -133,7 +133,7 @@ const mapHeaders = (
     .slice(startRow, endRow)
     .reduce((max, row) => Math.max(max, row.length), 0);
 
-  const headers: (keyof Entry | undefined)[] = Array.from({ length: columnCount }, () => undefined);
+  const headers: (keyof EntryDraft | undefined)[] = Array.from({ length: columnCount }, () => undefined);
   const headerRowByColumn: number[] = Array.from({ length: columnCount }, () => startRow);
 
   for (let rowIndex = startRow; rowIndex < endRow; rowIndex += 1) {
