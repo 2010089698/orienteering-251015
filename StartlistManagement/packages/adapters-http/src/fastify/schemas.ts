@@ -1,4 +1,5 @@
 import { Type } from '@sinclair/typebox';
+import type { TSchema } from '@sinclair/typebox';
 import { StartlistStatus } from '@startlist-management/domain';
 
 export const StartlistIdParamsSchema = Type.Object({
@@ -99,6 +100,30 @@ const ClassAssignmentResponseSchema = Type.Object({
   interval: DurationSchema,
 });
 
+export const StartlistVersionSummarySchema = Type.Object({
+  version: Type.Integer({ minimum: 1 }),
+  confirmedAt: Type.String({ format: 'date-time' }),
+});
+
+const createDiffValueSchema = <T extends TSchema>(schema: T) =>
+  Type.Object({
+    previous: Type.Optional(schema),
+    current: Type.Optional(schema),
+  });
+
+const StartlistDiffSchema = Type.Object({
+  startlistId: Type.String(),
+  to: StartlistVersionSummarySchema,
+  from: Type.Optional(StartlistVersionSummarySchema),
+  changes: Type.Object({
+    settings: Type.Optional(createDiffValueSchema(StartlistSettingsResponseSchema)),
+    laneAssignments: Type.Optional(createDiffValueSchema(Type.Array(LaneAssignmentResponseSchema))),
+    classAssignments: Type.Optional(createDiffValueSchema(Type.Array(ClassAssignmentResponseSchema))),
+    startTimes: Type.Optional(createDiffValueSchema(Type.Array(StartTimeSchema))),
+    status: Type.Optional(createDiffValueSchema(Type.Enum(StartlistStatus))),
+  }),
+});
+
 export const StartlistResponseSchema = Type.Object({
   id: Type.String(),
   status: Type.Enum(StartlistStatus),
@@ -106,6 +131,40 @@ export const StartlistResponseSchema = Type.Object({
   laneAssignments: Type.Array(LaneAssignmentResponseSchema),
   classAssignments: Type.Array(ClassAssignmentResponseSchema),
   startTimes: Type.Array(StartTimeSchema),
+  versions: Type.Optional(Type.Array(StartlistVersionSummarySchema)),
+  diff: Type.Optional(StartlistDiffSchema),
+});
+
+export const StartlistVersionResponseSchema = Type.Object({
+  version: Type.Integer({ minimum: 1 }),
+  confirmedAt: Type.String({ format: 'date-time' }),
+  snapshot: StartlistResponseSchema,
+});
+
+export const StartlistVersionListResponseSchema = Type.Object({
+  startlistId: Type.String(),
+  total: Type.Integer({ minimum: 0 }),
+  items: Type.Array(StartlistVersionResponseSchema),
+});
+
+export const StartlistDiffResponseSchema = StartlistDiffSchema;
+
+export const StartlistQueryOptionsSchema = Type.Object({
+  includeVersions: Type.Optional(Type.Boolean()),
+  versionLimit: Type.Optional(Type.Integer({ minimum: 1 })),
+  includeDiff: Type.Optional(Type.Boolean()),
+  diffFromVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+  diffToVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+});
+
+export const StartlistVersionListQuerySchema = Type.Object({
+  limit: Type.Optional(Type.Integer({ minimum: 1 })),
+  offset: Type.Optional(Type.Integer({ minimum: 0 })),
+});
+
+export const StartlistDiffQuerySchema = Type.Object({
+  fromVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+  toVersion: Type.Optional(Type.Integer({ minimum: 1 })),
 });
 
 export const AssignLaneOrderBodySchema = Type.Object({

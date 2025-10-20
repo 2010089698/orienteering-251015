@@ -136,6 +136,8 @@ describe('startlistRoutes', () => {
     expect(body.settings.eventId).toBe(SETTINGS_PAYLOAD.eventId);
     expect(body.settings.intervals.laneClass).toEqual(SETTINGS_PAYLOAD.intervals.laneClass);
     expect(body.settings.intervals.classPlayer).toEqual(SETTINGS_PAYLOAD.intervals.classPlayer);
+    expect(body.versions).toBeUndefined();
+    expect(body.diff).toBeUndefined();
   });
 
   it('accepts legacy interval payloads and returns the expanded structure', async () => {
@@ -165,6 +167,29 @@ describe('startlistRoutes', () => {
     expect(response.statusCode).toBe(404);
     const body = response.json();
     expect(body.message).toContain('was not found');
+  });
+
+  it('returns version summaries and diff when requested explicitly', async () => {
+    await enterSettings();
+    await assignLaneOrder();
+    await assignPlayerOrder();
+    await assignStartTimes();
+    const finalizeResponse = await server.inject({
+      method: 'POST',
+      url: `/api/startlists/${STARTLIST_ID}/finalize`,
+    });
+    expect(finalizeResponse.statusCode).toBe(200);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: `/api/startlists/${STARTLIST_ID}?includeVersions=true&includeDiff=true`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.versions).toBeDefined();
+    expect(body.versions[0].version).toBeGreaterThan(0);
+    expect(body.diff?.to.version).toBeGreaterThan(0);
   });
 
   it('maps domain validation errors to HTTP 400', async () => {
@@ -298,5 +323,37 @@ describe('startlistRoutes', () => {
     const queryBody = queryResponse.json();
     expect(queryBody.startTimes).toHaveLength(0);
     expect(queryBody.status).toBe('LANE_ORDER_ASSIGNED');
+  });
+
+  it('provides version history and diff endpoints', async () => {
+    await enterSettings();
+    await assignLaneOrder();
+    await assignPlayerOrder();
+    await assignStartTimes();
+    const finalizeResponse = await server.inject({
+      method: 'POST',
+      url: `/api/startlists/${STARTLIST_ID}/finalize`,
+    });
+    expect(finalizeResponse.statusCode).toBe(200);
+
+    const versionsResponse = await server.inject({
+      method: 'GET',
+      url: `/api/startlists/${STARTLIST_ID}/versions?limit=2`,
+    });
+
+    expect(versionsResponse.statusCode).toBe(200);
+    const versionsBody = versionsResponse.json();
+    expect(versionsBody.total).toBeGreaterThan(0);
+    expect(versionsBody.items[0].snapshot.id).toBe(STARTLIST_ID);
+
+    const diffResponse = await server.inject({
+      method: 'GET',
+      url: `/api/startlists/${STARTLIST_ID}/diff`,
+    });
+
+    expect(diffResponse.statusCode).toBe(200);
+    const diffBody = diffResponse.json();
+    expect(diffBody.to.version).toBeGreaterThan(0);
+    expect(diffBody.changes).toBeDefined();
   });
 });

@@ -7,7 +7,13 @@ import type {
   StartTimeDto,
 } from '@startlist-management/domain';
 import { cloneStartlistSnapshotDto } from '@startlist-management/domain';
-import type { EnterStartlistSettingsCommand } from '@startlist-management/application';
+import type {
+  EnterStartlistSettingsCommand,
+  StartlistDiffDto,
+  StartlistDiffValue,
+  StartlistVersionSummaryDto,
+  StartlistWithHistoryDto,
+} from '@startlist-management/application';
 import { InvalidCommandError } from '@startlist-management/application';
 
 export type DurationResponse = DurationDto;
@@ -40,7 +46,11 @@ export type ClassAssignmentResponse = ClassAssignmentDto;
 
 export type StartTimeResponse = StartTimeDto;
 
-export type StartlistHttpResponse = StartlistSnapshot;
+export type StartlistVersionSummaryResponse = StartlistVersionSummaryDto;
+
+export type StartlistDiffResponse = StartlistDiffDto;
+
+export type StartlistHttpResponse = StartlistWithHistoryDto;
 
 const copyDuration = (duration: DurationResponse): DurationResponse => ({
   milliseconds: duration.milliseconds,
@@ -94,6 +104,76 @@ export const toEnterStartlistSettingsCommand = (
   };
 };
 
-export const toStartlistHttpResponse = (snapshot: StartlistSnapshot): StartlistHttpResponse => {
-  return cloneStartlistSnapshotDto(snapshot);
+const cloneVersionSummary = (summary: StartlistVersionSummaryDto): StartlistVersionSummaryDto => ({
+  version: summary.version,
+  confirmedAt: summary.confirmedAt,
+});
+
+const cloneLaneAssignments = (assignments: LaneAssignmentDto[]): LaneAssignmentDto[] =>
+  assignments.map((assignment) => ({
+    laneNumber: assignment.laneNumber,
+    classOrder: [...assignment.classOrder],
+    interval: { milliseconds: assignment.interval.milliseconds },
+  }));
+
+const cloneClassAssignments = (assignments: ClassAssignmentDto[]): ClassAssignmentDto[] =>
+  assignments.map((assignment) => ({
+    classId: assignment.classId,
+    playerOrder: [...assignment.playerOrder],
+    interval: { milliseconds: assignment.interval.milliseconds },
+  }));
+
+const cloneStartTimes = (startTimes: StartTimeDto[]): StartTimeDto[] =>
+  startTimes.map((startTime) => ({
+    playerId: startTime.playerId,
+    startTime: startTime.startTime,
+    laneNumber: startTime.laneNumber,
+  }));
+
+const cloneSettings = (settings: StartlistSettingsDto): StartlistSettingsDto => ({
+  eventId: settings.eventId,
+  startTime: settings.startTime,
+  laneCount: settings.laneCount,
+  intervals: {
+    laneClass: { milliseconds: settings.intervals.laneClass.milliseconds },
+    classPlayer: { milliseconds: settings.intervals.classPlayer.milliseconds },
+  },
+});
+
+const cloneDiffValue = <T>(value: StartlistDiffValue<T>, clone: (inner: T) => T): StartlistDiffValue<T> => ({
+  ...(value.previous !== undefined ? { previous: clone(value.previous) } : {}),
+  ...(value.current !== undefined ? { current: clone(value.current) } : {}),
+});
+
+const cloneDiff = (diff: StartlistDiffDto): StartlistDiffDto => ({
+  startlistId: diff.startlistId,
+  to: cloneVersionSummary(diff.to),
+  ...(diff.from ? { from: cloneVersionSummary(diff.from) } : {}),
+  changes: {
+    ...(diff.changes.settings
+      ? { settings: cloneDiffValue(diff.changes.settings, cloneSettings) }
+      : {}),
+    ...(diff.changes.laneAssignments
+      ? { laneAssignments: cloneDiffValue(diff.changes.laneAssignments, cloneLaneAssignments) }
+      : {}),
+    ...(diff.changes.classAssignments
+      ? { classAssignments: cloneDiffValue(diff.changes.classAssignments, cloneClassAssignments) }
+      : {}),
+    ...(diff.changes.startTimes
+      ? { startTimes: cloneDiffValue(diff.changes.startTimes, cloneStartTimes) }
+      : {}),
+    ...(diff.changes.status
+      ? { status: cloneDiffValue(diff.changes.status, (status) => status) }
+      : {}),
+  },
+});
+
+export const toStartlistHttpResponse = (result: StartlistWithHistoryDto): StartlistHttpResponse => {
+  const { versions, diff, ...snapshot } = result;
+  const baseSnapshot = cloneStartlistSnapshotDto(snapshot);
+  return {
+    ...baseSnapshot,
+    ...(versions ? { versions: versions.map(cloneVersionSummary) } : {}),
+    ...(diff ? { diff: cloneDiff(diff) } : {}),
+  };
 };

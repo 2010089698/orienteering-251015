@@ -10,6 +10,11 @@ import {
   StartlistIdParamsSchema,
   StartlistResponseSchema,
   StartlistSettingsSchema,
+  StartlistVersionListResponseSchema,
+  StartlistDiffResponseSchema,
+  StartlistVersionListQuerySchema,
+  StartlistDiffQuerySchema,
+  StartlistQueryOptionsSchema,
 } from './schemas.js';
 import { toEnterStartlistSettingsCommand, toStartlistHttpResponse } from './mappers.js';
 import {
@@ -26,6 +31,7 @@ import {
   PersistenceError,
   StartlistApplicationError,
   StartlistNotFoundError,
+  StartlistVersionNotFoundError,
 } from '@startlist-management/application';
 
 export interface StartlistRoutesOptions {
@@ -50,6 +56,9 @@ type AssignStartTimesBody = Static<typeof AssignStartTimesBodySchema>;
 type ManualLaneOrderBody = Static<typeof ManualLaneOrderBodySchema>;
 type ManualClassOrderBody = Static<typeof ManualClassOrderBodySchema>;
 type InvalidateStartTimesBody = Static<typeof InvalidateStartTimesBodySchema>;
+type StartlistQueryOptions = Static<typeof StartlistQueryOptionsSchema>;
+type StartlistVersionListQuery = Static<typeof StartlistVersionListQuerySchema>;
+type StartlistDiffQuery = Static<typeof StartlistDiffQuerySchema>;
 type JapanRankingParams = { categoryId: string; page: string };
 
 type ErrorPayload = {
@@ -82,7 +91,7 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
       return;
     }
 
-    if (error instanceof StartlistNotFoundError) {
+    if (error instanceof StartlistNotFoundError || error instanceof StartlistVersionNotFoundError) {
       const payload = buildErrorResponse(404, error.message);
       reply.status(payload.statusCode).send(payload);
       return;
@@ -285,18 +294,75 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
     },
   );
 
-  fastify.get<{ Params: StartlistParams }>(
+  fastify.get<{ Params: StartlistParams; Querystring: StartlistQueryOptions }>(
     '/api/startlists/:id',
     {
       schema: {
         params: StartlistIdParamsSchema,
+        querystring: StartlistQueryOptionsSchema,
         response: { 200: StartlistResponseSchema },
       },
     },
     async (request) => {
-      const query = { startlistId: request.params.id };
+      const query = {
+        startlistId: request.params.id,
+        includeVersions: request.query.includeVersions,
+        versionLimit: request.query.versionLimit,
+        includeDiff: request.query.includeDiff,
+        diffFromVersion: request.query.diffFromVersion,
+        diffToVersion: request.query.diffToVersion,
+      };
       const snapshot = await queryService.execute(query);
       return toStartlistHttpResponse(snapshot);
+    },
+  );
+
+  fastify.get<{ Params: StartlistParams; Querystring: StartlistVersionListQuery }>(
+    '/api/startlists/:id/versions',
+    {
+      schema: {
+        params: StartlistIdParamsSchema,
+        querystring: StartlistVersionListQuerySchema,
+        response: { 200: StartlistVersionListResponseSchema },
+      },
+    },
+    async (request) => {
+      const result = await queryService.listVersions({
+        startlistId: request.params.id,
+        limit: request.query.limit,
+        offset: request.query.offset,
+      });
+      return {
+        startlistId: result.startlistId,
+        total: result.total,
+        items: result.items.map((item) => ({
+          version: item.version,
+          confirmedAt: item.confirmedAt,
+          snapshot: toStartlistHttpResponse(item.snapshot),
+        })),
+      };
+    },
+  );
+
+  fastify.get<{ Params: StartlistParams; Querystring: StartlistDiffQuery }>(
+    '/api/startlists/:id/diff',
+    {
+      schema: {
+        params: StartlistIdParamsSchema,
+        querystring: StartlistDiffQuerySchema,
+        response: { 200: StartlistDiffResponseSchema },
+      },
+    },
+    async (request) => {
+      const diff = await queryService.diff({
+        startlistId: request.params.id,
+        fromVersion: request.query.fromVersion,
+        toVersion: request.query.toVersion,
+      });
+      if (!diff) {
+        throw new StartlistVersionNotFoundError(request.params.id, request.query.toVersion ?? 1);
+      }
+      return diff;
     },
   );
 };

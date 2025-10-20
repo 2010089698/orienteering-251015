@@ -3,6 +3,7 @@ import type {
   LaneAssignmentDto,
   StartTimeDto,
   StartlistSettingsDto,
+  StartlistWithHistoryDto,
 } from '@startlist-management/application';
 import type {
   ClassOrderPreferences,
@@ -70,10 +71,10 @@ export const createInitialStartlistState = (): StartlistState => {
 
 export type SettingsAction = {
   type: 'settings/set';
-  payload: { startlistId: string; settings: StartlistSettingsDto; snapshot?: unknown };
+  payload: { startlistId: string; settings: StartlistSettingsDto; snapshot?: StartlistWithHistoryDto };
 };
 
-export type SnapshotAction = { type: 'settings/setSnapshot'; payload?: unknown };
+export type SnapshotAction = { type: 'settings/setSnapshot'; payload?: StartlistWithHistoryDto };
 
 export type PreferencesAction = {
   type: 'preferences/setClassOrder';
@@ -265,7 +266,7 @@ export const createSetSettingsAction = (
   payload,
 });
 
-export const createSetSnapshotAction = (snapshot?: unknown): SnapshotAction => ({
+export const createSetSnapshotAction = (snapshot?: StartlistWithHistoryDto): SnapshotAction => ({
   type: 'settings/setSnapshot',
   payload: snapshot,
 });

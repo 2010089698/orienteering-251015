@@ -54,7 +54,3 @@ export interface InvalidateStartTimesCommand {
   startlistId: string;
   reason: string;
 }
-
-export interface GetStartlistQuery {
-  startlistId: string;
-}

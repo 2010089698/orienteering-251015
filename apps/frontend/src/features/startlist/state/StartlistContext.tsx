@@ -6,6 +6,7 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
+import type { StartlistWithHistoryDto } from '@startlist-management/application';
 import type {
   ClassOrderPreferences,
   ClassOrderWarning,
@@ -201,14 +202,14 @@ export const updateStartTimes = (
 
 export const updateSettings = (
   dispatch: Dispatch<StartlistAction>,
-  payload: { startlistId: string; settings: StartlistSettingsDto; snapshot?: unknown },
+  payload: { startlistId: string; settings: StartlistSettingsDto; snapshot?: StartlistWithHistoryDto },
 ): void => {
   dispatch(createSetSettingsAction(payload));
 };
 
 export const updateSnapshot = (
   dispatch: Dispatch<StartlistAction>,
-  snapshot?: unknown,
+  snapshot?: StartlistWithHistoryDto,
 ): void => {
   dispatch(createSetSnapshotAction(snapshot));
 };

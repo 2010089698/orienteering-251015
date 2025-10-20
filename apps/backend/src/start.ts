@@ -6,10 +6,13 @@ import { entryRoutes } from '@entry-management/adapters-http';
 import { createEntryModule } from '@entry-management/infrastructure/config/entryModule';
 import { eventRoutes } from '@event-management/adapters-http';
 import { createEventModule } from '@event-management/infrastructure';
+import { startlistRoutes } from '@startlist-management/adapters-http';
+import { createStartlistModule } from '@startlist-management/infrastructure';
 
 const start = async () => {
   const entryModule = createEntryModule();
   const eventModule = createEventModule();
+  const startlistModule = createStartlistModule();
 
   const server = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
 
@@ -25,6 +28,11 @@ const start = async () => {
     scheduleRaceService: eventModule.scheduleRaceService,
     attachStartlistService: eventModule.attachStartlistService,
     eventQueryService: eventModule.eventQueryService,
+  });
+
+  void server.register(startlistRoutes, {
+    useCases: startlistModule.useCases,
+    queryService: startlistModule.queryService,
   });
 
   const port = Number.parseInt(process.env.PORT ?? '3001', 10);
