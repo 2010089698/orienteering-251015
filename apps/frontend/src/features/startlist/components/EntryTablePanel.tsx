@@ -7,6 +7,8 @@ import {
   setStatus,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEditingEntryId,
+  useSetStartlistEditingEntryId,
 } from '../state/StartlistContext';
 import type { Entry } from '../state/types';
 
@@ -26,6 +28,8 @@ type EntryTablePanelProps = {
 const EntryTablePanel = ({ tabs, activeTab, onTabChange, entries }: EntryTablePanelProps): JSX.Element => {
   const allEntries = useStartlistEntries();
   const dispatch = useStartlistDispatch();
+  const editingEntryId = useStartlistEditingEntryId();
+  const setEditingEntryId = useSetStartlistEditingEntryId();
 
   const tabItems = useMemo(
     () =>
@@ -44,6 +48,13 @@ const EntryTablePanel = ({ tabs, activeTab, onTabChange, entries }: EntryTablePa
     const remaining = Math.max(allEntries.length - 1, 0);
     removeEntry(dispatch, id);
     setStatus(dispatch, 'entries', createStatus(`${remaining} 件のエントリーがあります。`, 'info'));
+    if (editingEntryId === id) {
+      setEditingEntryId(undefined);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    setEditingEntryId(id);
   };
 
   return (
@@ -74,7 +85,12 @@ const EntryTablePanel = ({ tabs, activeTab, onTabChange, entries }: EntryTablePa
           className="entry-table-panel__content"
         >
           <div className="entry-table-panel__scroll">
-            <EntryTable entries={item.id === activeTab ? entries : []} onRemove={handleRemove} emptyMessage={emptyMessage} />
+            <EntryTable
+              entries={item.id === activeTab ? entries : []}
+              onEdit={handleEdit}
+              onRemove={handleRemove}
+              emptyMessage={emptyMessage}
+            />
           </div>
         </div>
       ))}

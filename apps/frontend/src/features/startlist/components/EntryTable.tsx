@@ -3,16 +3,18 @@ import type { Entry } from '../state/types';
 
 type EntryTableProps = {
   entries: Entry[];
+  onEdit?: (id: string) => void;
   onRemove?: (id: string) => void;
   emptyMessage?: string;
 };
 
-const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.Element => {
+const EntryTable = ({ entries, onEdit, onRemove, emptyMessage }: EntryTableProps): JSX.Element => {
   if (entries.length === 0) {
     return <p className="muted">{emptyMessage ?? '該当する参加者がいません。'}</p>;
   }
 
   const hasIofId = entries.some((entry) => entry.iofId && entry.iofId.trim().length > 0);
+  const showActions = Boolean(onEdit || onRemove);
 
   return (
     <div className="table-wrapper">
@@ -24,7 +26,9 @@ const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.E
             <th>クラス</th>
             {hasIofId && <th>IOF ID</th>}
             <th>カード番号</th>
-            <th></th>
+            {showActions && (
+              <th className="entry-table__actions">操作</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -37,13 +41,22 @@ const EntryTable = ({ entries, onRemove, emptyMessage }: EntryTableProps): JSX.E
               </td>
               {hasIofId && <td>{entry.iofId ?? '—'}</td>}
               <td>{entry.cardNo}</td>
-              <td>
-                {onRemove && (
-                  <button type="button" className="secondary" onClick={() => onRemove(entry.id)}>
-                    削除
-                  </button>
-                )}
-              </td>
+              {showActions && (
+                <td className="entry-table__actions">
+                  <div className="entry-table__actions-buttons">
+                    {onEdit && (
+                      <button type="button" className="secondary" onClick={() => onEdit(entry.id)}>
+                        編集
+                      </button>
+                    )}
+                    {onRemove && (
+                      <button type="button" className="secondary" onClick={() => onRemove(entry.id)}>
+                        削除
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

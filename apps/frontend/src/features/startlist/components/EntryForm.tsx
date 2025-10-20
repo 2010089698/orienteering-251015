@@ -1,15 +1,18 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import {
   appendEntry,
   createStatus,
   setStatus,
   updateEntries,
+  updateEntry,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEditingEntryId,
+  useSetStartlistEditingEntryId,
   useStartlistStatuses,
 } from '../state/StartlistContext';
-import { RENTAL_CARD_LABEL, type EntryDraft } from '../state/types';
+import { RENTAL_CARD_LABEL, type Entry, type EntryDraft } from '../state/types';
 import { parseEntriesFromCsvFile } from '../utils/entryCsv';
 
 const emptyEntry: EntryDraft = {
@@ -24,12 +27,36 @@ const EntryForm = (): JSX.Element => {
   const entries = useStartlistEntries();
   const statuses = useStartlistStatuses();
   const dispatch = useStartlistDispatch();
+  const editingEntryId = useStartlistEditingEntryId();
+  const setEditingEntryId = useSetStartlistEditingEntryId();
   const [form, setForm] = useState<EntryDraft>({ ...emptyEntry });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const editingEntry = editingEntryId ? entries.find((entry) => entry.id === editingEntryId) : undefined;
+  const isEditing = Boolean(editingEntryId);
+
+  useEffect(() => {
+    if (editingEntry) {
+      setForm({
+        name: editingEntry.name,
+        club: editingEntry.club ?? '',
+        classId: editingEntry.classId,
+        cardNo: editingEntry.cardNo === RENTAL_CARD_LABEL ? '' : editingEntry.cardNo,
+        iofId: editingEntry.iofId ?? '',
+      });
+    } else if (!editingEntryId) {
+      setForm({ ...emptyEntry });
+    }
+  }, [editingEntry, editingEntryId]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCancel = () => {
+    setEditingEntryId(undefined);
+    setForm({ ...emptyEntry });
+    setStatus(dispatch, 'entries', createStatus('編集をキャンセルしました。', 'info'));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -42,7 +69,8 @@ const EntryForm = (): JSX.Element => {
     const normalizedCard = form.cardNo.trim();
     const cardNo = normalizedCard || RENTAL_CARD_LABEL;
     const duplicate =
-      cardNo !== RENTAL_CARD_LABEL && entries.some((entry) => entry.cardNo === cardNo);
+      cardNo !== RENTAL_CARD_LABEL &&
+      entries.some((entry) => entry.cardNo === cardNo && entry.id !== editingEntryId);
     if (duplicate) {
       setStatus(dispatch, 'entries', createStatus('同じカード番号の参加者が登録されています。', 'error'));
       return;
@@ -58,6 +86,35 @@ const EntryForm = (): JSX.Element => {
     const normalizedIofId = form.iofId?.replace(/\s+/g, '').toUpperCase() ?? '';
     if (normalizedIofId) {
       entry.iofId = normalizedIofId;
+    }
+
+    if (isEditing) {
+      if (!editingEntry) {
+        setStatus(
+          dispatch,
+          'entries',
+          createStatus('編集対象の参加者が見つかりません。', 'error'),
+        );
+        setEditingEntryId(undefined);
+        setForm({ ...emptyEntry });
+        return;
+      }
+
+      const updatedEntry: Entry = {
+        ...editingEntry,
+        ...entry,
+        ...(normalizedIofId ? { iofId: normalizedIofId } : { iofId: undefined }),
+      };
+
+      updateEntry(dispatch, updatedEntry);
+      setStatus(
+        dispatch,
+        'entries',
+        createStatus('参加者情報を更新しました。', 'success'),
+      );
+      setEditingEntryId(undefined);
+      setForm({ ...emptyEntry });
+      return;
     }
 
     appendEntry(dispatch, entry);
@@ -107,6 +164,11 @@ const EntryForm = (): JSX.Element => {
       <header>
         <h2 id="entry-heading">参加者の登録</h2>
         <p className="muted">名前・所属・クラス・カード番号を順に入力してください。</p>
+        {isEditing && (
+          <p className="muted small" aria-live="polite">
+            現在「{editingEntry?.name || '（未入力）'}」を編集中です。
+          </p>
+        )}
       </header>
       <form onSubmit={handleSubmit} className="form-grid">
         <label>
@@ -130,7 +192,12 @@ const EntryForm = (): JSX.Element => {
           <input name="cardNo" value={form.cardNo} onChange={handleChange} placeholder="123456" />
         </label>
         <div className="actions-row">
-          <button type="submit">参加者を追加</button>
+          <button type="submit">{isEditing ? '参加者を更新' : '参加者を追加'}</button>
+          {isEditing && (
+            <button type="button" className="secondary" onClick={handleCancel}>
+              編集をキャンセル
+            </button>
+          )}
         </div>
       </form>
       <div className="file-upload">
