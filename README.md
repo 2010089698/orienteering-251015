@@ -11,6 +11,7 @@
 | `apps/shared-ui-components` | フロントエンド間で共有する UI コンポーネント群。 |
 | `StartlistManagement` | スタートリストドメインの各レイヤ（domain/application/infrastructure/http 等）を収めたパッケージ群。詳細は [StartlistManagement/README.md](./StartlistManagement/README.md) を参照してください。 |
 | `EntryManagement` | エントリー登録ドメインのレイヤ構造（domain/application/infrastructure/adapters-http）を提供します。レイヤ概要は [EntryManagement/README.md](./EntryManagement/README.md) にまとめています。 |
+| `EventManagement` | 大会全体のイベント情報を管理する新しいバウンデッドコンテキスト。Domain/Application/Infrastructure/HTTP アダプタの 4 層構成でユースケースを提供します。詳細は [EventManagement/README.md](./EventManagement/README.md) を参照してください。 |
 
 ## 共通セットアップ
 

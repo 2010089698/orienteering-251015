@@ -1,0 +1,21 @@
+{
+  "extends": "../../configs/tsconfig/base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "outDir": "dist",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@event-management/domain": ["../domain/src/index.ts"],
+      "@event-management/application": ["../application/src/index.ts"],
+      "@event-management/infrastructure": ["../infrastructure/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../infrastructure" },
+    { "path": "../application" },
+    { "path": "../domain" }
+  ]
+}
