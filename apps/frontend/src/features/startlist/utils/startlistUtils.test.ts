@@ -537,6 +537,31 @@ describe('createDefaultClassAssignments', () => {
     expect(rankedOrder).toEqual(['wr-entry-2', 'wr-entry-4', 'wr-entry-1']);
   });
 
+  it('orders entries using japan ranking data in reverse rank order', () => {
+    const entries: Entry[] = [
+      { id: 'jp-entry-1', name: 'Alpha', classId: 'JP', cardNo: '1', iofId: 'JP-1' },
+      { id: 'jp-entry-2', name: 'Bravo', classId: 'JP', cardNo: '2', iofId: 'JP-2' },
+      { id: 'jp-entry-3', name: 'Charlie', classId: 'JP', cardNo: '3', iofId: 'JP-3' },
+      { id: 'jp-entry-4', name: 'Delta', classId: 'JP', cardNo: '4' },
+    ];
+
+    const ranking = new Map<string, number>([
+      ['JP-1', 5],
+      ['JP-2', 1],
+      ['JP-3', 3],
+    ]);
+
+    const { assignments } = createDefaultClassAssignments({
+      entries,
+      playerIntervalMs: 60000,
+      startOrderRules: [{ id: 'rule-jp', classId: 'JP', method: 'japanRanking' }],
+      worldRankingByClass: new Map([['JP', ranking]]),
+    });
+
+    const assignment = assignments.find((item) => item.classId === 'JP');
+    expect(assignment?.playerOrder).toEqual(['jp-entry-4', 'jp-entry-1', 'jp-entry-3', 'jp-entry-2']);
+  });
+
   it('produces deterministic ordering for world ranking ties based on the seed', () => {
     const tiedEntries: Entry[] = [
       { id: 'tie-entry-1', name: 'Alpha', classId: 'WR-TIE', cardNo: '1', iofId: 'IOF-A' },

@@ -394,7 +394,10 @@ export const prepareClassSplits = (
     const worldRanking = worldRankingByClass?.get(baseClassId);
     const hasWorldRanking = worldRanking && worldRanking.size > 0;
     const canUseRanking =
-      rule.method !== 'random' && startOrderMethod === 'worldRanking' && hasWorldRanking && entriesForClass.length > 0;
+      rule.method !== 'random' &&
+      (startOrderMethod === 'worldRanking' || startOrderMethod === 'japanRanking') &&
+      hasWorldRanking &&
+      entriesForClass.length > 0;
 
     let baseOrder = entriesForClass;
 
@@ -419,7 +422,7 @@ export const prepareClassSplits = (
     } else {
       if (rule.method !== 'random') {
         let reason = 'unknown';
-        if (startOrderMethod !== 'worldRanking') {
+        if (startOrderMethod !== 'worldRanking' && startOrderMethod !== 'japanRanking') {
           reason = 'start-order';
         } else if (!hasWorldRanking) {
           reason = 'ranking-data';

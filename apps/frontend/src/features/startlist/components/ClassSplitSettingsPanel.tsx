@@ -136,7 +136,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
         return false;
       }
       const rule = startOrderRuleByClass.get(classId);
-      if (!rule || rule.method !== 'worldRanking') {
+      if (!rule || (rule.method !== 'worldRanking' && rule.method !== 'japanRanking')) {
         return false;
       }
       const ranking = worldRankingByClass.get(classId);

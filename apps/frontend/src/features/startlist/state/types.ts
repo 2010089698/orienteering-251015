@@ -79,13 +79,21 @@ export interface ClassOrderPreferences {
 
 export type WorldRankingMap = Map<string, number>;
 
-export type StartOrderMethod = 'random' | 'worldRanking';
+export interface JapanRankingSettings {
+  categoryId: string;
+  pages: number;
+  pagesRaw?: string;
+  fetchedCount?: number;
+}
+
+export type StartOrderMethod = 'random' | 'worldRanking' | 'japanRanking';
 
 export interface StartOrderRule {
   id: string;
   classId?: string;
   method: StartOrderMethod;
   csvName?: string;
+  japanRanking?: JapanRankingSettings;
 }
 
 export type StartOrderRules = StartOrderRule[];

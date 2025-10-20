@@ -71,13 +71,31 @@ const ClassOrderPanel = ({
       setStatus(dispatch, 'classes', createStatus('先に基本情報を入力してください。', 'error'));
       return;
     }
-    const missingCsvClasses = startOrderRules
+    const missingWorldRankingClasses = startOrderRules
       .filter((rule) => rule.method === 'worldRanking' && rule.classId && !rule.csvName)
       .map((rule) => rule.classId as string);
-    if (missingCsvClasses.length > 0) {
-      const message = `世界ランキング方式のクラス (${missingCsvClasses.join(', ')}) の CSV が読み込まれていません。`;
+    const missingJapanRankingClasses = startOrderRules
+      .filter((rule) => rule.method === 'japanRanking' && rule.classId)
+      .filter((rule) => {
+        const ranking = worldRankingByClass.get(rule.classId as string);
+        return !(ranking && ranking.size > 0);
+      })
+      .map((rule) => rule.classId as string);
+    const missingRankingClasses = Array.from(new Set([...missingWorldRankingClasses, ...missingJapanRankingClasses]));
+    if (missingRankingClasses.length > 0) {
+      const messageParts: string[] = [];
+      if (missingWorldRankingClasses.length > 0) {
+        messageParts.push(`世界ランキング方式 (${missingWorldRankingClasses.join(', ')})`);
+      }
+      if (missingJapanRankingClasses.length > 0) {
+        messageParts.push(`日本ランキング方式 (${missingJapanRankingClasses.join(', ')})`);
+      }
+      const message =
+        messageParts.length > 0
+          ? `${messageParts.join(' / ')} のデータが読み込まれていません。`
+          : `ランキング方式のクラス (${missingRankingClasses.join(', ')}) のデータが読み込まれていません。`;
       setStatus(dispatch, 'startOrder', createStatus(message, 'error'));
-      setStatus(dispatch, 'classes', createStatus('世界ランキングの CSV を読み込んでからクラス順序を生成してください。', 'error'));
+      setStatus(dispatch, 'classes', createStatus('ランキングデータを読み込んでからクラス順序を生成してください。', 'error'));
       return;
     }
     const interval = settings.intervals?.classPlayer?.milliseconds ?? 0;

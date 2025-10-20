@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import StartOrderSettingsPanel from '../StartOrderSettingsPanel';
 import ClassOrderPanel from '../ClassOrderPanel';
 import { renderWithStartlist } from '../../test/test-utils';
@@ -10,6 +10,14 @@ const entries = [
   { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '1' },
   { id: 'entry-2', name: 'B', classId: 'W21', cardNo: '2' },
 ];
+
+
+const createJapanRankingHtml = (rows: Array<{ rank: string; iofId: string }>): string => {
+  const body = rows
+    .map(({ rank, iofId }) => `<tr><td>${rank}</td><td>${iofId}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>順位</th><th>IOF ID</th></tr></thead><tbody>${body}</tbody></table>`;
+};
 
 const baseSettings = {
   eventId: 'event-1',
@@ -34,7 +42,7 @@ describe('StartOrderSettingsPanel', () => {
     );
 
     expect(
-      await screen.findByText('世界ランキング対象クラスを選択していません。'),
+      await screen.findByText('ランキング対象クラスを選択していません。'),
     ).toBeInTheDocument();
 
     const classSelect = screen.getByLabelText('対象クラス');
@@ -85,7 +93,70 @@ describe('StartOrderSettingsPanel', () => {
     expect(screen.getByText('CSV を読み込んでください。')).toBeInTheDocument();
   });
 
-    it('tracks separate CSV uploads for multiple world ranking classes', async () => {
+  
+  it('supports fetching japan ranking data for a class', async () => {
+    const originalFetch = global.fetch;
+    const firstPage = createJapanRankingHtml([
+      { rank: '1', iofId: 'JP-01' },
+      { rank: '2', iofId: 'JP-02' },
+    ]);
+    const secondPage = createJapanRankingHtml([
+      { rank: '2', iofId: 'JP-02' },
+      { rank: '3', iofId: 'JP-03' },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => firstPage } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => secondPage } as Response);
+    (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      renderWithStartlist(
+        <>
+          <StartOrderSettingsPanel />
+          <StartOrderRulesPreview />
+        </>,
+        { initialState: { entries, settings: baseSettings, startlistId: 'SL-1' } },
+      );
+
+      const classSelect = screen.getByLabelText('対象クラス');
+      await userEvent.selectOptions(classSelect, 'M21');
+      const methodSelect = screen.getByLabelText('リスト方式');
+      await userEvent.selectOptions(methodSelect, 'japanRanking');
+
+      const idInput = await screen.findByLabelText('ランキング ID');
+      expect(idInput).toHaveValue('1');
+      await userEvent.type(idInput, '{Backspace}2');
+
+      const pagesInput = screen.getByLabelText('取得ページ数');
+      expect(pagesInput).toHaveValue(1);
+      await userEvent.type(pagesInput, '{Backspace}2');
+
+      const fetchButton = screen.getByRole('button', { name: '日本ランキングを取得' });
+      await userEvent.click(fetchButton);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(
+        await screen.findByText('クラス M21 の日本ランキングを 3 件取得しました。'),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText('取得済み: 3 件 (ID: 2, 2 ページ)'),
+      ).toBeInTheDocument();
+      const rulesPreview = screen.getByTestId('start-order-rules').textContent ?? '';
+      expect(rulesPreview).toContain('"method":"japanRanking"');
+      expect(rulesPreview).toContain('"categoryId":"2"');
+      expect(rulesPreview).toContain('"pages":2');
+      expect(rulesPreview).toContain('"pagesRaw":"2"');
+      expect(rulesPreview).toContain('"fetchedCount":3');
+    } finally {
+      if (originalFetch) {
+        global.fetch = originalFetch;
+      } else {
+        delete (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch;
+      }
+    }
+  });
+
+  it('tracks separate CSV uploads for multiple world ranking classes', async () => {
       renderWithStartlist(
         <>
           <StartOrderSettingsPanel />
@@ -129,6 +200,7 @@ describe('StartOrderSettingsPanel', () => {
   });
 });
 
+
 describe('ClassOrderPanel and start order status', () => {
   it('requires a world ranking file when target classes are selected', async () => {
     renderWithStartlist(<ClassOrderPanel />, {
@@ -144,10 +216,10 @@ describe('ClassOrderPanel and start order status', () => {
     await userEvent.click(generateButton);
 
     expect(
-      await screen.findByText('世界ランキング方式のクラス (M21) の CSV が読み込まれていません。'),
+      await screen.findByText('世界ランキング方式 (M21) のデータが読み込まれていません。'),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('世界ランキングの CSV を読み込んでからクラス順序を生成してください。'),
+      await screen.findByText('ランキングデータを読み込んでからクラス順序を生成してください。'),
     ).toBeInTheDocument();
   });
 
@@ -167,7 +239,29 @@ describe('ClassOrderPanel and start order status', () => {
     await userEvent.click(screen.getByRole('button', { name: 'クラス順序を自動生成' }));
 
     expect(
-      await screen.findByText('世界ランキング方式のクラス (M21, W21) の CSV が読み込まれていません。'),
+      await screen.findByText('世界ランキング方式 (M21, W21) のデータが読み込まれていません。'),
+    ).toBeInTheDocument();
+  });
+
+  it('requires japan ranking data before generating classes', async () => {
+    renderWithStartlist(<ClassOrderPanel />, {
+      initialState: {
+        entries,
+        settings: baseSettings,
+        startlistId: 'SL-1',
+        startOrderRules: [{ id: 'rule-jp', classId: 'M21', method: 'japanRanking' }],
+        worldRankingByClass: new Map(),
+      },
+    });
+
+    const generateButton = screen.getByRole('button', { name: 'クラス順序を自動生成' });
+    await userEvent.click(generateButton);
+
+    expect(
+      await screen.findByText('日本ランキング方式 (M21) のデータが読み込まれていません。'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('ランキングデータを読み込んでからクラス順序を生成してください。'),
     ).toBeInTheDocument();
   });
 });
