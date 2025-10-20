@@ -67,8 +67,18 @@ export const useLaneAssignmentController = () => {
         settings,
         classSplitRules,
         classSplitResult,
+        startOrderRules,
+        worldRankingByClass,
       }),
-    [classSplitResult, classSplitRules, entries, laneAssignments, settings],
+    [
+      classSplitResult,
+      classSplitRules,
+      entries,
+      laneAssignments,
+      settings,
+      startOrderRules,
+      worldRankingByClass,
+    ],
   );
 
   useEffect(() => {

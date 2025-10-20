@@ -124,6 +124,120 @@ describe('prepareClassSplits', () => {
       first.result?.splitIdToEntryIds.get('RAND3'),
     );
   });
+
+  it('splits classes into top and bottom groups using world ranking data', () => {
+    const entries: Entry[] = [
+      { id: 'elite-1', name: 'Runner 1', classId: 'EL', cardNo: '1', iofId: 'iof-1' },
+      { id: 'elite-2', name: 'Runner 2', classId: 'EL', cardNo: '2', iofId: 'iof-2' },
+      { id: 'elite-3', name: 'Runner 3', classId: 'EL', cardNo: '3', iofId: 'iof-3' },
+      { id: 'elite-4', name: 'Runner 4', classId: 'EL', cardNo: '4' },
+      { id: 'elite-5', name: 'Runner 5', classId: 'EL', cardNo: '5', iofId: 'iof-4' },
+    ];
+    const startOrderRules = [{ id: 'rule', classId: 'EL', method: 'worldRanking' as const }];
+    const worldRankingByClass = new Map([
+      [
+        'EL',
+        new Map([
+          ['iof-4', 5],
+          ['iof-1', 10],
+          ['iof-3', 15],
+          ['iof-2', 20],
+        ]),
+      ],
+    ]);
+
+    const { groups, result } = prepareClassSplits(entries, {
+      splitRules: [{ baseClassId: 'EL', partCount: 2, method: 'rankingTopBottom' }],
+      startOrderRules,
+      worldRankingByClass,
+    });
+
+    const topGroup = groups.find((group) => group.classId === 'EL1');
+    const bottomGroup = groups.find((group) => group.classId === 'EL2');
+    expect(topGroup?.entries.map((entry) => entry.id)).toEqual(['elite-5', 'elite-1', 'elite-3']);
+    expect(bottomGroup?.entries.map((entry) => entry.id)).toEqual(['elite-2', 'elite-4']);
+    expect(result?.splitClasses).toEqual([
+      { classId: 'EL1', baseClassId: 'EL', splitIndex: 0, displayName: '上位' },
+      { classId: 'EL2', baseClassId: 'EL', splitIndex: 1, displayName: '下位' },
+    ]);
+  });
+
+  it('balances ranking-based groups greedily when multiple parts requested', () => {
+    const entries: Entry[] = [
+      { id: 'bal-1', name: 'R1', classId: 'BAL', cardNo: '1', iofId: 'iof-1' },
+      { id: 'bal-2', name: 'R2', classId: 'BAL', cardNo: '2', iofId: 'iof-2' },
+      { id: 'bal-3', name: 'R3', classId: 'BAL', cardNo: '3', iofId: 'iof-3' },
+      { id: 'bal-4', name: 'R4', classId: 'BAL', cardNo: '4', iofId: 'iof-4' },
+      { id: 'bal-5', name: 'R5', classId: 'BAL', cardNo: '5', iofId: 'iof-5' },
+      { id: 'bal-6', name: 'R6', classId: 'BAL', cardNo: '6' },
+      { id: 'bal-7', name: 'R7', classId: 'BAL', cardNo: '7' },
+    ];
+    const startOrderRules = [{ id: 'bal-rule', classId: 'BAL', method: 'worldRanking' as const }];
+    const worldRankingByClass = new Map([
+      [
+        'BAL',
+        new Map([
+          ['iof-1', 1],
+          ['iof-2', 2],
+          ['iof-3', 3],
+          ['iof-4', 4],
+          ['iof-5', 5],
+        ]),
+      ],
+    ]);
+
+    const { groups, result } = prepareClassSplits(entries, {
+      splitRules: [{ baseClassId: 'BAL', partCount: 3, method: 'rankingBalanced' }],
+      startOrderRules,
+      worldRankingByClass,
+    });
+
+    const classGroups = groups.filter((group) => group.baseClassId === 'BAL');
+    expect(classGroups).toHaveLength(3);
+    const counts = classGroups.map((group) => group.entries.length);
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+    const groupEntries = classGroups.map((group) => group.entries.map((entry) => entry.id));
+    expect(groupEntries).toEqual([
+      ['bal-1', 'bal-4', 'bal-7'],
+      ['bal-2', 'bal-5'],
+      ['bal-3', 'bal-6'],
+    ]);
+    expect(result?.splitClasses).toEqual([
+      { classId: 'BAL1', baseClassId: 'BAL', splitIndex: 0, displayName: '均等1' },
+      { classId: 'BAL2', baseClassId: 'BAL', splitIndex: 1, displayName: '均等2' },
+      { classId: 'BAL3', baseClassId: 'BAL', splitIndex: 2, displayName: '均等3' },
+    ]);
+  });
+
+  it('falls back to deterministic random split when ranking data unavailable', () => {
+    const entries: Entry[] = [
+      { id: 'fb-1', name: 'F1', classId: 'FB', cardNo: '1' },
+      { id: 'fb-2', name: 'F2', classId: 'FB', cardNo: '2' },
+      { id: 'fb-3', name: 'F3', classId: 'FB', cardNo: '3' },
+      { id: 'fb-4', name: 'F4', classId: 'FB', cardNo: '4' },
+    ];
+
+    const fallback = prepareClassSplits(entries, {
+      splitRules: [{ baseClassId: 'FB', partCount: 2, method: 'rankingTopBottom' }],
+      startOrderRules: [{ id: 'fb-rule', classId: 'FB', method: 'random' }],
+      worldRankingByClass: new Map(),
+    });
+
+    const randomResult = prepareClassSplits(entries, {
+      splitRules: [{ baseClassId: 'FB', partCount: 2, method: 'random' }],
+    });
+
+    expect(fallback.result?.splitIdToEntryIds.get('FB1')).toEqual(
+      randomResult.result?.splitIdToEntryIds.get('FB1'),
+    );
+    expect(fallback.result?.splitIdToEntryIds.get('FB2')).toEqual(
+      randomResult.result?.splitIdToEntryIds.get('FB2'),
+    );
+    expect(fallback.result?.splitClasses).toEqual([
+      { classId: 'FB1', baseClassId: 'FB', splitIndex: 0, displayName: '上位' },
+      { classId: 'FB2', baseClassId: 'FB', splitIndex: 1, displayName: '下位' },
+    ]);
+  });
 });
 
 describe('reorderLaneClass', () => {
@@ -438,11 +552,11 @@ describe('deriveClassOrderWarnings', () => {
   it('aggregates warnings for split classes under the base id', () => {
     const entries: Entry[] = [
       { id: 'split-1', name: 'Alpha', classId: 'SP', cardNo: '1', club: 'Club X' },
-      { id: 'split-2', name: 'Bravo', classId: 'SP', cardNo: '2', club: 'Club Y' },
-      { id: 'split-3', name: 'Charlie', classId: 'SP', cardNo: '3', club: 'Club X' },
+      { id: 'split-2', name: 'Bravo', classId: 'SP', cardNo: '2', club: 'Club X' },
+      { id: 'split-3', name: 'Charlie', classId: 'SP', cardNo: '3', club: 'Club Y' },
       { id: 'split-4', name: 'Delta', classId: 'SP', cardNo: '4', club: 'Club Y' },
     ];
-    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'roundRobin' as const };
+    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'random' as const };
     const preparation = prepareClassSplits(entries, {
       splitRules: [splitRule],
     });

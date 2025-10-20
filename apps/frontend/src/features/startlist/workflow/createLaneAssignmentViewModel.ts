@@ -1,6 +1,12 @@
 import type { LaneAssignmentDto, StartlistSettingsDto } from '@startlist-management/application';
 
-import type { ClassSplitResult, ClassSplitRules, Entry } from '../state/types';
+import type {
+  ClassSplitResult,
+  ClassSplitRules,
+  Entry,
+  StartOrderRules,
+  WorldRankingByClass,
+} from '../state/types';
 import { buildClassSplitMetadata } from '../utils/classSplitMetadata';
 import { prepareClassSplits, type ClassSplitPreparation } from '../utils/startlistUtils';
 
@@ -40,6 +46,8 @@ export interface LaneAssignmentViewModelInput {
   settings?: StartlistSettingsDto;
   classSplitRules: ClassSplitRules;
   classSplitResult?: ClassSplitResult;
+  startOrderRules?: StartOrderRules;
+  worldRankingByClass?: WorldRankingByClass;
 }
 
 export interface LaneAssignmentViewModel {
@@ -133,8 +141,14 @@ export const createLaneAssignmentViewModel = ({
   settings,
   classSplitRules,
   classSplitResult,
+  startOrderRules,
+  worldRankingByClass,
 }: LaneAssignmentViewModelInput): LaneAssignmentViewModel => {
-  const splitPreparation = prepareClassSplits(entries, { splitRules: classSplitRules });
+  const splitPreparation = prepareClassSplits(entries, {
+    splitRules: classSplitRules,
+    startOrderRules,
+    worldRankingByClass,
+  });
 
   const effectiveSplitResult =
     classSplitResult && classSplitResult.signature === splitPreparation.signature
