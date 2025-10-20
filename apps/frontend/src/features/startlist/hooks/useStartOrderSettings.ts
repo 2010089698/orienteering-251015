@@ -183,13 +183,19 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
     const removed: string[] = [];
     setRows((prev) => {
       let changed = false;
-      const next = prev.map((row) => {
+      const next = prev.map<StartOrderRow>((row) => {
         if (row.classId && !availableSet.has(row.classId)) {
           if (row.method === 'worldRanking') {
             removed.push(row.classId);
           }
           changed = true;
-          return { ...row, classId: undefined, method: 'random', csvName: undefined };
+          const sanitized: StartOrderRow = {
+            ...row,
+            classId: undefined,
+            method: 'random',
+            csvName: undefined,
+          };
+          return sanitized;
         }
         return row;
       });
@@ -237,7 +243,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       const value = event.target.value.trim();
       let removedClassId: string | undefined;
       setRows((prev) =>
-        prev.map((row) => {
+        prev.map<StartOrderRow>((row) => {
           if (row.id !== rowId) {
             return row;
           }
@@ -264,7 +270,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       const value = event.target.value as StartOrderRow['method'];
       let removedClassId: string | undefined;
       setRows((prev) =>
-        prev.map((row) => {
+        prev.map<StartOrderRow>((row) => {
           if (row.id !== rowId) {
             return row;
           }
@@ -308,7 +314,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
         const ranking = parseWorldRankingCsv(text);
         updateClassWorldRanking(dispatch, targetRow.classId, ranking);
         setRows((prev) =>
-          prev.map((row) => (row.id === rowId ? { ...row, csvName: file.name } : row)),
+          prev.map<StartOrderRow>((row) => (row.id === rowId ? { ...row, csvName: file.name } : row)),
         );
         if (ranking.size === 0) {
           setStatus(
@@ -332,7 +338,9 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       } catch (error) {
         removeClassWorldRanking(dispatch, targetRow.classId);
         setRows((prev) =>
-          prev.map((row) => (row.id === rowId ? { ...row, csvName: undefined } : row)),
+          prev.map<StartOrderRow>((row) =>
+            row.id === rowId ? { ...row, csvName: undefined } : row,
+          ),
         );
         const message =
           error instanceof Error

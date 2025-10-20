@@ -23,7 +23,7 @@ import {
   setClassSplitRules,
   setClassSplitResult,
 } from './StartlistContext';
-import type { ClassSplitResult, ClassSplitRule } from './types';
+import type { ClassSplitResult, ClassSplitRule, StartlistState } from './types';
 
 describe('StartlistContext', () => {
   it('throws when hooks used outside provider', () => {
@@ -60,7 +60,8 @@ describe('StartlistContext', () => {
       </StartlistProvider>,
     );
 
-    if (!dispatch) {
+    const safeDispatch = dispatch;
+    if (!safeDispatch) {
       throw new Error('dispatch is not available');
     }
 
@@ -74,14 +75,14 @@ describe('StartlistContext', () => {
     expect(initialStatusesCount).toBeGreaterThan(0);
 
     act(() => {
-      setStatus(dispatch, 'entries', createStatus('ok', 'success'));
+      setStatus(safeDispatch, 'entries', createStatus('ok', 'success'));
     });
 
     expect(uniqueEntriesCount()).toBe(initialEntriesCount);
     expect(uniqueStatusesCount()).toBe(initialStatusesCount + 1);
 
     act(() => {
-      appendEntry(dispatch, { name: 'Runner', classId: 'M21', cardNo: '1' });
+      appendEntry(safeDispatch, { name: 'Runner', classId: 'M21', cardNo: '1' });
     });
 
     expect(uniqueEntriesCount()).toBe(initialEntriesCount + 1);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Entry } from '../state/types';
+import type { ClassOrderWarningOccurrence, ClassSplitRule, Entry, StartOrderRules } from '../state/types';
 import {
   calculateStartTimes,
   createDefaultClassAssignments,
@@ -10,6 +10,7 @@ import {
   reorderLaneClass,
   updateClassPlayerOrder,
 } from './startlistUtils';
+import type { ClassSplitOptions, CreateDefaultClassAssignmentsOptions } from './startlistUtils';
 import { seededRandomUnconstrainedClassOrderPolicy } from './classOrderPolicy';
 
 const extractOrders = (assignments: ReturnType<typeof createDefaultClassAssignments>['assignments']) =>
@@ -99,9 +100,9 @@ describe('prepareClassSplits', () => {
       { id: 'rand-6', name: 'Six', classId: 'RAND', cardNo: '6' },
       { id: 'rand-7', name: 'Seven', classId: 'RAND', cardNo: '7' },
     ];
-    const options = {
+    const options: ClassSplitOptions = {
       splitRules: [{ baseClassId: 'RAND', partCount: 3, method: 'random' }],
-    } as const;
+    };
 
     const first = prepareClassSplits(entries, options);
     const reversed = [...entries].reverse();
@@ -133,7 +134,7 @@ describe('prepareClassSplits', () => {
       { id: 'elite-4', name: 'Runner 4', classId: 'EL', cardNo: '4' },
       { id: 'elite-5', name: 'Runner 5', classId: 'EL', cardNo: '5', iofId: 'iof-4' },
     ];
-    const startOrderRules = [{ id: 'rule', classId: 'EL', method: 'worldRanking' as const }];
+    const startOrderRules: StartOrderRules = [{ id: 'rule', classId: 'EL', method: 'worldRanking' }];
     const worldRankingByClass = new Map([
       [
         'EL',
@@ -176,7 +177,9 @@ describe('prepareClassSplits', () => {
       { id: 'bal-6', name: 'R6', classId: 'BAL', cardNo: '6' },
       { id: 'bal-7', name: 'R7', classId: 'BAL', cardNo: '7' },
     ];
-    const startOrderRules = [{ id: 'bal-rule', classId: 'BAL', method: 'worldRanking' as const }];
+    const startOrderRules: StartOrderRules = [
+      { id: 'bal-rule', classId: 'BAL', method: 'worldRanking' },
+    ];
     const worldRankingByClass = new Map([
       [
         'BAL',
@@ -225,9 +228,9 @@ describe('prepareClassSplits', () => {
       { id: 'elite-3', name: 'Runner 3', classId: 'EL', cardNo: '3', iofId: 'iof-3' },
       { id: 'elite-4', name: 'Runner 4', classId: 'EL', cardNo: '4', iofId: 'iof-4' },
     ];
-    const baseOptions = {
-      splitRules: [{ baseClassId: 'EL', partCount: 2, method: 'rankingTopBottom' }] as const,
-      startOrderRules: [{ id: 'rule', classId: 'EL', method: 'worldRanking' as const }],
+    const baseOptions: ClassSplitOptions = {
+      splitRules: [{ baseClassId: 'EL', partCount: 2, method: 'rankingTopBottom' }],
+      startOrderRules: [{ id: 'rule', classId: 'EL', method: 'worldRanking' }],
     };
     const initialRanking = new Map([
       ['iof-1', 5],
@@ -404,13 +407,13 @@ describe('createDefaultClassAssignments', () => {
     const splitLaneAssignments = [
       { laneNumber: 1, classOrder: ['SPLIT'], interval: { milliseconds: 60000 } },
     ];
-    const baseOptions = {
+    const baseOptions: CreateDefaultClassAssignmentsOptions = {
       entries: splitEntries,
       playerIntervalMs: 60000,
       laneAssignments: splitLaneAssignments,
       startlistId: 'SL-SPLIT',
       splitRules: [{ baseClassId: 'SPLIT', partCount: 2, method: 'random' }],
-    } as const;
+    };
 
     const first = createDefaultClassAssignments(baseOptions);
     expect(first.splitResult?.splitClasses.map((meta) => meta.classId)).toEqual(['SPLIT1', 'SPLIT2']);
@@ -464,8 +467,14 @@ describe('createDefaultClassAssignments', () => {
 
     expect(unavoidable.warnings).toHaveLength(1);
     const warning = unavoidable.warnings[0];
+    expect(warning).toBeDefined();
+    if (!warning) {
+      return;
+    }
     expect(warning.classId).toBe('B');
-    const overlapSet = new Set(warning.occurrences.flatMap((occurrence) => occurrence.clubs));
+    const overlapSet = new Set(
+      warning.occurrences.flatMap((occurrence: ClassOrderWarningOccurrence) => occurrence.clubs),
+    );
     expect(overlapSet.size).toBeGreaterThan(0);
     expect(overlapSet.has('Omega')).toBe(true);
     expect(overlapSet.has('Delta/Omega')).toBe(false);
@@ -541,14 +550,14 @@ describe('createDefaultClassAssignments', () => {
       ['IOF-C', 10],
     ]);
 
-    const options = {
+    const options: CreateDefaultClassAssignmentsOptions = {
       entries: tiedEntries,
       playerIntervalMs: 60000,
       startOrderRules: [
         { id: 'rule-wr-tie', classId: 'WR-TIE', method: 'worldRanking', csvName: 'tie.csv' },
       ],
       worldRankingByClass: new Map([['WR-TIE', worldRanking]]),
-    } as const;
+    };
 
     const first = createDefaultClassAssignments({ ...options, seed: 'wr-seed-tie' });
     const second = createDefaultClassAssignments({ ...options, seed: 'wr-seed-tie' });
@@ -608,7 +617,7 @@ describe('deriveClassOrderWarnings', () => {
       { id: 'split-3', name: 'Charlie', classId: 'SP', cardNo: '3', club: 'Club Y' },
       { id: 'split-4', name: 'Delta', classId: 'SP', cardNo: '4', club: 'Club Y' },
     ];
-    const splitRule = { baseClassId: 'SP', partCount: 2, method: 'random' as const };
+    const splitRule: ClassSplitRule = { baseClassId: 'SP', partCount: 2, method: 'random' };
     const preparation = prepareClassSplits(entries, {
       splitRules: [splitRule],
     });

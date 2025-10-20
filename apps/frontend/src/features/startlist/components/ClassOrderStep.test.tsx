@@ -12,7 +12,7 @@ vi.mock('../utils/startlistExport', () => ({
   downloadStartlistCsv: vi.fn(),
 }));
 
-const downloadStartlistCsvMock = downloadStartlistCsv as vi.MockedFunction<typeof downloadStartlistCsv>;
+const downloadStartlistCsvMock = vi.mocked(downloadStartlistCsv);
 
 beforeEach(() => {
   downloadStartlistCsvMock.mockReset();

@@ -18,6 +18,7 @@ import type {
   ClassSplitRule,
   ClassSplitRules,
   StartOrderRule,
+  StatusLevel,
 } from '../state/types';
 
 interface ClassSplitRow {
@@ -182,7 +183,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
     const availableSet = new Set(availableClassIds);
     setRows((prev) => {
       let changed = false;
-      const next = prev.map((row) => {
+      const next = prev.map<ClassSplitRow>((row) => {
         if (row.baseClassId && !availableSet.has(row.baseClassId)) {
           changed = true;
           return { ...row, baseClassId: undefined };
@@ -196,7 +197,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   useEffect(() => {
     setRows((prev) => {
       let changed = false;
-      const next = prev.map((row) => {
+      const next = prev.map<ClassSplitRow>((row) => {
         if (row.method === 'rankingTopBottom' && row.partCount !== 2) {
           changed = true;
           return { ...row, partCount: 2 };
@@ -210,7 +211,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   useEffect(() => {
     setRows((prev) => {
       let changed = false;
-      const next = prev.map((row) => {
+      const next = prev.map<ClassSplitRow>((row) => {
         if (!isRankingMethod(row.method)) {
           return row;
         }
@@ -255,7 +256,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
     if (resetClasses.size > 0) {
       setRows((prev) => {
         let changed = false;
-        const next = prev.map((row) => {
+        const next = prev.map<ClassSplitRow>((row) => {
           if (!row.baseClassId || !resetClasses.has(row.baseClassId)) {
             return row;
           }
@@ -298,7 +299,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
       }
     });
 
-    let level = 'info';
+    let level: StatusLevel = 'info';
     let message: string;
     if (duplicates.size > 0) {
       level = 'error';
@@ -346,7 +347,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   const handleBaseClassChange = (rowId: string, event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value.trim();
     setRows((prev) =>
-      prev.map((row) => {
+      prev.map<ClassSplitRow>((row) => {
         if (row.id !== rowId) {
           return row;
         }
@@ -360,7 +361,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
     const value = event.target.value;
     const parsed = Number.parseInt(value, 10);
     setRows((prev) =>
-      prev.map((row) => {
+      prev.map<ClassSplitRow>((row) => {
         if (row.id !== rowId) {
           return row;
         }
@@ -375,7 +376,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   const handleMethodChange = (rowId: string, event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value as ClassSplitMethod;
     setRows((prev) =>
-      prev.map((row) => {
+      prev.map<ClassSplitRow>((row) => {
         if (row.id !== rowId) {
           return row;
         }

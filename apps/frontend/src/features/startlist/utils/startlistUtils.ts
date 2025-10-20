@@ -5,6 +5,7 @@ import type {
   StartlistSettingsDto,
 } from '@startlist-management/application';
 import type {
+  ClassOrderWarning,
   ClassSplitResult,
   ClassSplitRules,
   Entry,
@@ -15,7 +16,6 @@ import type {
 } from '../state/types';
 import {
   type ClassGroup,
-  type ClassOrderWarning,
   createClassAssignmentsFromOrders,
   calculateClassOrderWarnings,
   seededRandomClassOrderPolicy,

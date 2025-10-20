@@ -85,7 +85,7 @@ const splitEntries = [
   { id: 'entry-15', name: 'F', classId: 'W21', cardNo: '15' },
 ];
 
-const splitRules = [{ baseClassId: 'M21', partCount: 2, method: 'roundRobin' }];
+const splitRules = [{ baseClassId: 'M21', partCount: 2, method: 'random' as const }];
 
 const splitGeneration = generateLaneAssignments(
   splitEntries,

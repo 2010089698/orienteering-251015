@@ -10,7 +10,7 @@ vi.mock('../../utils/startlistExport', () => ({
   downloadStartlistCsv: vi.fn(),
 }));
 
-const downloadStartlistCsvMock = downloadStartlistCsv as vi.MockedFunction<typeof downloadStartlistCsv>;
+const downloadStartlistCsvMock = vi.mocked(downloadStartlistCsv);
 
 describe('StartTimesPanel CSV export status handling', () => {
   const sampleStartTimes: StartTimeDto[] = [
@@ -32,8 +32,8 @@ describe('StartTimesPanel CSV export status handling', () => {
   });
 
   afterEach(() => {
-    delete (URL as Record<string, unknown>).createObjectURL;
-    delete (URL as Record<string, unknown>).revokeObjectURL;
+    Reflect.deleteProperty(URL, 'createObjectURL');
+    Reflect.deleteProperty(URL, 'revokeObjectURL');
     vi.restoreAllMocks();
   });
 

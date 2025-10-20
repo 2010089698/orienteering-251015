@@ -5,6 +5,7 @@
     "outDir": "dist",
     "module": "ESNext",
     "moduleResolution": "Node",
+    "rootDir": "..",
     "jsx": "react-jsx",
     "types": [
       "vite/client",
@@ -17,5 +18,5 @@
       "@orienteering/shared-ui": ["../shared-ui-components/src"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "../shared-ui-components/src/**/*"]
 }

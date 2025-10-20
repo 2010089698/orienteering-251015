@@ -25,9 +25,9 @@ const startTimes: StartTimeDto[] = [
 
 const classAssignments: ClassAssignmentDto[] = [
   {
-    laneNumber: 1,
     classId: 'SP1',
     playerOrder: ['player-1'],
+    interval: { milliseconds: 60000 },
   },
 ];
 
@@ -42,8 +42,8 @@ describe('StartTimesPanel', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    delete (URL as Record<string, unknown>).createObjectURL;
-    delete (URL as Record<string, unknown>).revokeObjectURL;
+    Reflect.deleteProperty(URL, 'createObjectURL');
+    Reflect.deleteProperty(URL, 'revokeObjectURL');
     Object.defineProperty(globalThis, 'Blob', {
       configurable: true,
       writable: true,

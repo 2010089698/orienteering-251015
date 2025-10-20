@@ -20,6 +20,7 @@ import {
   setClassSplitRules,
   setClassSplitResult,
 } from '../state/StartlistContext';
+import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
   StartlistSettingsDto,
   LaneAssignmentDto,
@@ -57,7 +58,7 @@ export interface StartlistTestInitialState {
 }
 
 interface WrapperProps {
-  initialize?: (dispatch: Dispatch<unknown>) => void;
+  initialize?: (dispatch: Dispatch<StartlistAction>) => void;
   initialState?: StartlistTestInitialState;
 }
 
