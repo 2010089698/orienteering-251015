@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Tag } from '@orienteering/shared-ui';
 import type { RaceDto } from '@event-management/application';
 
@@ -8,9 +9,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
 
 interface RaceListProps {
   races: RaceDto[];
+  eventId?: string;
 }
 
-const RaceList = ({ races }: RaceListProps) => {
+const RaceList = ({ races, eventId }: RaceListProps) => {
   if (!races.length) {
     return <div className="race-list__placeholder">レースがまだスケジュールされていません。</div>;
   }
@@ -24,12 +26,16 @@ const RaceList = ({ races }: RaceListProps) => {
           <th scope="col">終了</th>
           <th scope="col">状態</th>
           <th scope="col">スタートリスト</th>
+          <th scope="col">操作</th>
         </tr>
       </thead>
       <tbody>
         {races.map((race) => {
           const start = dateTimeFormatter.format(new Date(race.schedule.start));
           const end = race.schedule.end ? dateTimeFormatter.format(new Date(race.schedule.end)) : '-';
+          const startlistCreationLink = eventId
+            ? `/startlist?eventId=${encodeURIComponent(eventId)}&raceId=${encodeURIComponent(race.id)}`
+            : undefined;
           return (
             <tr key={race.id}>
               <th scope="row">{race.name}</th>
@@ -48,6 +54,13 @@ const RaceList = ({ races }: RaceListProps) => {
                   </a>
                 ) : (
                   '未設定'
+                )}
+              </td>
+              <td>
+                {startlistCreationLink ? (
+                  <Link to={startlistCreationLink}>スタートリストを作成</Link>
+                ) : (
+                  '—'
                 )}
               </td>
             </tr>

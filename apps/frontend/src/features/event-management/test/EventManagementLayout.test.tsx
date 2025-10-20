@@ -186,6 +186,10 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByRole('heading', { name: '春のミドル' })).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.queryByText('レースがまだスケジュールされていません。')).not.toBeInTheDocument();
+    const startlistCreationLinks = await screen.findAllByRole('link', { name: 'スタートリストを作成' });
+    const startlistCreationHrefs = startlistCreationLinks.map((link) => link.getAttribute('href'));
+    expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1');
+    expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
 
     await user.type(screen.getByLabelText('レースID'), 'race-2');
     await user.type(screen.getByLabelText('レース名'), 'Day 2');
