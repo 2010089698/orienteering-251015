@@ -1,4 +1,3 @@
-import { Tag } from '@orienteering/shared-ui';
 import type { EventDto } from '@event-management/application';
 
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
@@ -39,16 +38,13 @@ const EventSummaryCards = ({ event }: EventSummaryCardsProps) => {
         </dl>
       </div>
       <div className="event-summary__card">
-        <h2>設定</h2>
-        <div className="event-summary__tags">
-          <Tag tone={event.allowMultipleRacesPerDay ? 'success' : 'neutral'}>
-            {event.allowMultipleRacesPerDay ? '1日に複数レース可' : '1日に1レース'}
-          </Tag>
-          <Tag tone={event.allowScheduleOverlap ? 'warning' : 'neutral'}>
-            {event.allowScheduleOverlap ? '重複スケジュール可' : '重複スケジュール不可'}
-          </Tag>
-        </div>
-        <p>レース数: {event.races.length}</p>
+        <h2>サマリー</h2>
+        <dl>
+          <div>
+            <dt>レース数</dt>
+            <dd>{event.races.length}</dd>
+          </div>
+        </dl>
       </div>
     </section>
   );

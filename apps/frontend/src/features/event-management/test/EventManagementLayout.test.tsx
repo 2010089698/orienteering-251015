@@ -16,26 +16,25 @@ vi.mock('../api/useEventManagementApi');
 
 const mockedUseEventManagementApi = vi.mocked(useEventManagementApi);
 
-const createEvent = (overrides: Partial<EventDto> = {}): EventDto => ({
-  id: 'event-1',
-  name: '春のミドル',
-  startDate: '2024-04-01T00:00:00.000Z',
-  endDate: '2024-04-02T00:00:00.000Z',
-  venue: '東京',
-  allowMultipleRacesPerDay: false,
-  allowScheduleOverlap: false,
-  races: [
-    {
-      id: 'race-1',
-      name: 'Day 1',
-      schedule: { start: '2024-04-01T01:00:00.000Z', end: undefined },
-      duplicateDay: false,
-      overlapsExisting: false,
-      startlistLink: undefined,
-    },
-  ],
-  ...overrides,
-});
+const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
+  ({
+    id: 'event-1',
+    name: '春のミドル',
+    startDate: '2024-04-01T00:00:00.000Z',
+    endDate: '2024-04-02T00:00:00.000Z',
+    venue: '東京',
+    races: [
+      {
+        id: 'race-1',
+        name: 'Day 1',
+        schedule: { start: '2024-04-01T01:00:00.000Z', end: undefined },
+        duplicateDay: false,
+        overlapsExisting: false,
+        startlistLink: undefined,
+      },
+    ],
+    ...overrides,
+  }) as EventDto;
 
 const renderLayout = (initialEntries: string[]) => {
   return renderWithEventManagementRouter(
@@ -82,10 +81,9 @@ describe('EventManagementLayout', () => {
 
     await user.type(screen.getByLabelText('イベントID'), 'event-3');
     await user.type(screen.getByLabelText('イベント名'), '秋のスプリント');
-    await user.type(screen.getByLabelText('開始日時'), '2024-10-01T09:00');
-    await user.type(screen.getByLabelText('終了日時'), '2024-10-01T15:00');
+    await user.type(screen.getByLabelText('開始日'), '2024-10-01');
+    await user.type(screen.getByLabelText('終了日'), '2024-10-01');
     await user.type(screen.getByLabelText('会場'), '札幌');
-    await user.click(screen.getByLabelText('1日に複数のレースを許可'));
     await user.click(screen.getByRole('button', { name: 'イベントを作成' }));
 
     await waitFor(() => {
@@ -93,7 +91,6 @@ describe('EventManagementLayout', () => {
         expect.objectContaining({
           eventId: 'event-3',
           name: '秋のスプリント',
-          allowMultipleRacesPerDay: true,
         }),
       );
     });
@@ -110,8 +107,8 @@ describe('EventManagementLayout', () => {
 
     await user.type(screen.getByLabelText('イベントID'), 'event-4');
     await user.type(screen.getByLabelText('イベント名'), '冬のスプリント');
-    await user.type(screen.getByLabelText('開始日時'), '2024-12-01T09:00');
-    await user.type(screen.getByLabelText('終了日時'), '2024-12-01T15:00');
+    await user.type(screen.getByLabelText('開始日'), '2024-12-01');
+    await user.type(screen.getByLabelText('終了日'), '2024-12-01');
     await user.type(screen.getByLabelText('会場'), '札幌');
     await user.click(screen.getByRole('button', { name: 'イベントを作成' }));
 
