@@ -13,6 +13,7 @@ const ClassOrderWorkflow = (): JSX.Element => {
     onDragEnd,
     onExportCsv,
     onBack,
+    onFinalize,
     entryMap,
     splitLookup,
   } = useClassOrderController();
@@ -32,6 +33,7 @@ const ClassOrderWorkflow = (): JSX.Element => {
       onMove={onMove}
       onExportCsv={onExportCsv}
       onBack={onBack}
+      onFinalize={onFinalize}
       statuses={statuses}
       loadingStartTimes={loadingStartTimes}
       entryMap={entryMap}

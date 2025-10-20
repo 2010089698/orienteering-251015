@@ -6,13 +6,16 @@ import {
   useStartlistStartTimes,
 } from '../state/StartlistContext';
 import { STARTLIST_BASE_PATH, STARTLIST_STEP_SEQUENCE } from '../routes';
+import { useStartlistStatuses } from '../state/StartlistContext';
 
-const stepLabels = ['入力', 'レーン調整', '順序と時間'];
+const stepLabels = ['入力', 'レーン調整', '順序と時間', 'イベント連携'];
 
 const StartlistWorkflowPage = (): JSX.Element => {
   const laneAssignments = useStartlistLaneAssignments();
   const classAssignments = useStartlistClassAssignments();
   const startTimes = useStartlistStartTimes();
+  const statuses = useStartlistStatuses();
+  const isFinalized = statuses.snapshot.level === 'success';
 
   const steps = STARTLIST_STEP_SEQUENCE.map((step, index) => {
     const label = stepLabels[index];
@@ -28,6 +31,12 @@ const StartlistWorkflowPage = (): JSX.Element => {
           label,
           path: step,
           isEnabled: classAssignments.length > 0 && startTimes.length > 0,
+        };
+      case 'link':
+        return {
+          label,
+          path: step,
+          isEnabled: isFinalized,
         };
       default:
         return {

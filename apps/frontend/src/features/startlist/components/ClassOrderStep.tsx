@@ -69,6 +69,7 @@ export type ClassOrderStepProps = {
   onMove: (classId: string, index: number, direction: number) => void;
   onExportCsv: () => void;
   onBack: () => void;
+  onFinalize: () => void;
   statuses: Pick<Record<'startTimes', StatusMessageState>, 'startTimes'>;
   loadingStartTimes: boolean;
   entryMap: Map<string, Entry>;
@@ -89,6 +90,7 @@ const ClassOrderStep = ({
   onMove,
   onExportCsv,
   onBack,
+  onFinalize,
   statuses,
   loadingStartTimes,
   entryMap,
@@ -278,6 +280,9 @@ const ClassOrderStep = ({
           disabled={loadingStartTimes}
         >
           CSV をエクスポート
+        </button>
+        <button type="button" onClick={onFinalize} disabled={loadingStartTimes}>
+          スタートリストを確定
         </button>
         <button type="button" className="secondary" onClick={onBack}>
           戻る

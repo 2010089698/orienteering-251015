@@ -17,6 +17,7 @@ import StartlistWorkflowPage from '../pages/StartlistWorkflowPage';
 import InputStepPage from '../pages/InputStepPage';
 import LaneAssignmentStepPage from '../pages/LaneAssignmentStepPage';
 import ClassOrderStepPage from '../pages/ClassOrderStepPage';
+import StartlistLinkPage from '../pages/StartlistLinkPage';
 import { STARTLIST_STEP_PATHS } from '../routes';
 
 const LocationProbe = () => {
@@ -55,6 +56,7 @@ const renderWorkflow = (initialEntries: string[], options?: RenderWorkflowOption
             <Route path="input" element={<InputStepPage />} />
             <Route path="lanes" element={<LaneAssignmentStepPage />} />
             <Route path="order" element={<ClassOrderStepPage />} />
+            <Route path="link" element={<StartlistLinkPage />} />
             <Route path="*" element={<Navigate to="input" replace />} />
           </Route>
         </Route>
@@ -115,15 +117,32 @@ describe('Startlist workflow routing', () => {
   });
 
   it('keeps order route when STEP2 statuses indicate success', async () => {
-    renderWorkflow(['/startlist/order'], {
+    let capturedNavigate: NavigateFunction | undefined;
+
+    renderWorkflow(['/startlist/input'], {
       initialState: {
         startlistId: 'SL-1',
         laneAssignments: [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }],
+        classAssignments: [{ classId: 'M21', playerOrder: ['p1'] }],
+        startTimes: [{ playerId: 'p1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 }],
         statuses: {
           classes: createSuccessStatus('done'),
           startTimes: createSuccessStatus('done'),
         },
       },
+      onNavigateReady: (navigate) => {
+        capturedNavigate = navigate;
+      },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(capturedNavigate).toBeDefined();
+    });
+
+    act(() => {
+      capturedNavigate?.('/startlist/order');
     });
 
     expect(await screen.findByRole('heading', { name: 'STEP 3 クラス内順序とスタート時間' })).toBeInTheDocument();
@@ -168,4 +187,93 @@ describe('Startlist workflow routing', () => {
     expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
     expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.input);
   });
+
+  it('redirects link route to order until the snapshot is finalized', async () => {
+    const laneAssignments = [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }];
+    const classAssignments = [{ classId: 'M21', playerOrder: ['p1'] }];
+    const startTimes = [{ playerId: 'p1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 }];
+
+    renderWorkflow(['/startlist/link'], {
+      initialState: {
+        startlistId: 'SL-1',
+        settings: {
+          eventId: 'event-1',
+          startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
+          intervals: {
+            laneClass: { milliseconds: 60000 },
+            classPlayer: { milliseconds: 60000 },
+          },
+          laneCount: 1,
+        },
+        laneAssignments,
+        classAssignments,
+        startTimes,
+      },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 3 クラス内順序とスタート時間' })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.order);
+  });
+
+  it('allows navigating to the link page once the snapshot status is success', async () => {
+    const laneAssignments = [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }];
+    const classAssignments = [{ classId: 'M21', playerOrder: ['p1'] }];
+    const startTimes = [{ playerId: 'p1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 }];
+    let capturedNavigate: NavigateFunction | undefined;
+
+    renderWorkflow(['/startlist/input'], {
+      initialState: {
+        startlistId: 'SL-1',
+        settings: {
+          eventId: 'event-1',
+          startTime: new Date('2024-01-01T09:00:00Z').toISOString(),
+          intervals: {
+            laneClass: { milliseconds: 60000 },
+            classPlayer: { milliseconds: 60000 },
+          },
+          laneCount: 1,
+        },
+        laneAssignments,
+        classAssignments,
+        startTimes,
+        statuses: {
+          classes: createSuccessStatus('classes ready'),
+          startTimes: createSuccessStatus('times ready'),
+          snapshot: createSuccessStatus('finalized'),
+        },
+      },
+      onNavigateReady: (navigate) => {
+        capturedNavigate = navigate;
+      },
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(capturedNavigate).toBeDefined();
+    });
+
+    act(() => {
+      capturedNavigate?.('/startlist/order');
+    });
+
+    expect(await screen.findByRole('heading', { name: 'STEP 3 クラス内順序とスタート時間' })).toBeInTheDocument();
+
+    act(() => {
+      capturedNavigate?.('/startlist/link');
+    });
+
+    expect(await screen.findByRole('heading', { name: 'スタートリストをイベントに連携' })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.link);
+  });
 });
+vi.mock('../../event-management/api/useEventManagementApi', () => ({
+  useEventManagementApi: () => ({
+    listEvents: vi.fn().mockResolvedValue([]),
+    getEvent: vi.fn().mockResolvedValue({ id: 'event-1', name: 'Dummy', races: [] }),
+    createEvent: vi.fn(),
+    scheduleRace: vi.fn(),
+    attachStartlist: vi.fn(),
+  }),
+}));
+
