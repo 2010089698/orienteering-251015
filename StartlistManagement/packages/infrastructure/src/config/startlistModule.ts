@@ -3,6 +3,7 @@ import {
   StartlistSnapshot,
   SystemClock,
   StartlistRepository,
+  StartlistVersionRepository,
 } from '@startlist-management/domain';
 import {
   ApplicationEventPublisher,
@@ -31,6 +32,7 @@ import { DomainEventBus } from '../messaging/DomainEventBus.js';
 import { InMemoryStartlistReadRepository } from '../persistence/InMemoryStartlistReadRepository.js';
 import { InMemoryStartlistRepository } from '../persistence/InMemoryStartlistRepository.js';
 import { SimpleTransactionManager } from '../transaction/SimpleTransactionManager.js';
+import { InMemoryStartlistVersionRepository } from '../persistence/InMemoryStartlistVersionRepository.js';
 
 export interface StartlistUseCases {
   enterStartlistSettings: EnterStartlistSettingsUseCase;
@@ -45,6 +47,7 @@ export interface StartlistUseCases {
 
 export interface StartlistModule {
   repository: StartlistRepository;
+  versionRepository: StartlistVersionRepository;
   readRepository: StartlistReadRepository;
   transactionManager: TransactionManager;
   eventPublisher: ApplicationEventPublisher;
@@ -55,6 +58,7 @@ export interface StartlistModule {
 export const createStartlistModule = (): StartlistModule => {
   const store = new Map<string, StartlistSnapshot>();
   const repository = new InMemoryStartlistRepository({ store });
+  const versionRepository = new InMemoryStartlistVersionRepository();
   const readRepository = new InMemoryStartlistReadRepository(store);
   const transactionManager = new SimpleTransactionManager();
   const eventPublisher = new DomainEventBus();
@@ -62,30 +66,50 @@ export const createStartlistModule = (): StartlistModule => {
 
   const enterStartlistSettings = new EnterStartlistSettingsService(
     repository,
+    versionRepository,
     transactionManager,
     eventPublisher,
     factory,
   );
-  const assignLaneOrder = new AssignLaneOrderService(repository, transactionManager, eventPublisher);
-  const assignPlayerOrder = new AssignPlayerOrderService(
+  const assignLaneOrder = new AssignLaneOrderService(
     repository,
+    versionRepository,
     transactionManager,
     eventPublisher,
   );
-  const assignStartTimes = new AssignStartTimesService(repository, transactionManager, eventPublisher);
-  const finalizeStartlist = new FinalizeStartlistService(repository, transactionManager, eventPublisher);
+  const assignPlayerOrder = new AssignPlayerOrderService(
+    repository,
+    versionRepository,
+    transactionManager,
+    eventPublisher,
+  );
+  const assignStartTimes = new AssignStartTimesService(
+    repository,
+    versionRepository,
+    transactionManager,
+    eventPublisher,
+  );
+  const finalizeStartlist = new FinalizeStartlistService(
+    repository,
+    versionRepository,
+    transactionManager,
+    eventPublisher,
+  );
   const manuallyReassignLaneOrder = new ManuallyReassignLaneOrderService(
     repository,
+    versionRepository,
     transactionManager,
     eventPublisher,
   );
   const manuallyFinalizeClassStartOrder = new ManuallyFinalizeClassStartOrderService(
     repository,
+    versionRepository,
     transactionManager,
     eventPublisher,
   );
   const invalidateStartTimes = new InvalidateStartTimesService(
     repository,
+    versionRepository,
     transactionManager,
     eventPublisher,
   );
@@ -94,6 +118,7 @@ export const createStartlistModule = (): StartlistModule => {
 
   return {
     repository,
+    versionRepository,
     readRepository,
     transactionManager,
     eventPublisher,

@@ -27,6 +27,7 @@ import { StartTimesAssignedEvent } from './events/StartTimesAssignedEvent.js';
 import { StartTimesInvalidatedEvent } from './events/StartTimesInvalidatedEvent.js';
 import { StartlistFinalizedEvent } from './events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from './events/StartlistSettingsEnteredEvent.js';
+import { StartlistVersionGeneratedEvent } from './events/StartlistVersionGeneratedEvent.js';
 
 export class Startlist {
   private settings?: StartlistSettings;
@@ -174,9 +175,10 @@ export class Startlist {
       'Startlist can only be finalized after assigning start times.',
     );
     this.status = StartlistStatus.FINALIZED;
-    this.record(
-      new StartlistFinalizedEvent(this.id.toString(), this.toSnapshot(), this.clock.now()),
-    );
+    const occurredAt = this.clock.now();
+    const snapshot = this.toSnapshot();
+    this.record(new StartlistFinalizedEvent(this.id.toString(), snapshot, occurredAt));
+    this.record(new StartlistVersionGeneratedEvent(this.id.toString(), snapshot, occurredAt));
   }
 
   manuallyReassignLaneOrder(assignments: LaneAssignment[], reason = 'Lane order manually reassigned'): void {

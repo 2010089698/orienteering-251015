@@ -26,6 +26,7 @@ import { StartTimesAssignedEvent } from '../events/StartTimesAssignedEvent.js';
 import { StartTimesInvalidatedEvent } from '../events/StartTimesInvalidatedEvent.js';
 import { StartlistFinalizedEvent } from '../events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from '../events/StartlistSettingsEnteredEvent.js';
+import { StartlistVersionGeneratedEvent } from '../events/StartlistVersionGeneratedEvent.js';
 
 const fixedDate = new Date('2024-01-01T10:00:00Z');
 
@@ -308,12 +309,16 @@ describe('Startlist lifecycle scenarios', () => {
       }),
     );
     events = startlist.pullDomainEvents();
-    assert.strictEqual(events.length, 1);
-    const finalizedEvent = events[0];
+    assert.strictEqual(events.length, 2);
+    const [finalizedEvent, versionEvent] = events;
     assert(finalizedEvent instanceof StartlistFinalizedEvent);
     assert.strictEqual(finalizedEvent.startlistId, startlistId.toString());
     assert.deepStrictEqual(finalizedEvent.finalStartlist, finalizedSnapshot);
     assert.strictEqual(finalizedEvent.occurredAt.toISOString(), fixedDate.toISOString());
+    assert(versionEvent instanceof StartlistVersionGeneratedEvent);
+    assert.strictEqual(versionEvent.startlistId, startlistId.toString());
+    assert.deepStrictEqual(versionEvent.snapshot, finalizedSnapshot);
+    assert.strictEqual(versionEvent.confirmedAt.toISOString(), fixedDate.toISOString());
   });
 
   test('manual lane reassignment and class order finalization invalidate start times', () => {
@@ -838,13 +843,12 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(startlist.getStatus(), StartlistStatus.FINALIZED);
 
     events = startlist.pullDomainEvents();
-    assert.strictEqual(events.length, 1);
-    const finalizedEvent = events[0];
+    assert.strictEqual(events.length, 2);
+    const [finalizedEvent, versionEvent] = events;
     assert(finalizedEvent instanceof StartlistFinalizedEvent);
-    assert.deepStrictEqual(
-      finalizedEvent.finalStartlist,
-      startlist.toSnapshot(),
-    );
+    assert.deepStrictEqual(finalizedEvent.finalStartlist, startlist.toSnapshot());
+    assert(versionEvent instanceof StartlistVersionGeneratedEvent);
+    assert.deepStrictEqual(versionEvent.snapshot, startlist.toSnapshot());
   });
 
   test('finalizeStartlist requires assigned start times', () => {
@@ -945,11 +949,13 @@ describe('Startlist failure scenarios', () => {
     assert.strictEqual(startlist.getStatus(), StartlistStatus.FINALIZED);
 
     events = startlist.pullDomainEvents();
-    assert.strictEqual(events.length, 2);
+    assert.strictEqual(events.length, 3);
     const reassignedEvent = events[0];
     assert(reassignedEvent instanceof StartTimesAssignedEvent);
     const finalizedEvent = events[1];
     assert(finalizedEvent instanceof StartlistFinalizedEvent);
+    const versionEvent = events[2];
+    assert(versionEvent instanceof StartlistVersionGeneratedEvent);
   });
 
   test('manuallyReassignLaneOrder propagates reason and reopens finalized startlist', () => {

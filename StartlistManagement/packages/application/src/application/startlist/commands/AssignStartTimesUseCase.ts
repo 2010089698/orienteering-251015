@@ -1,4 +1,8 @@
-import { StartlistRepository, StartlistSnapshot } from '@startlist-management/domain';
+import {
+  StartlistRepository,
+  StartlistSnapshot,
+  StartlistVersionRepository,
+} from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { toStartTimes } from '../dto/StartlistMappers.js';
@@ -12,10 +16,11 @@ export interface AssignStartTimesUseCase {
 export class AssignStartTimesService extends StartlistCommandBase implements AssignStartTimesUseCase {
   constructor(
     repository: StartlistRepository,
+    versionRepository: StartlistVersionRepository,
     transactionManager: TransactionManager,
     eventPublisher: ApplicationEventPublisher,
   ) {
-    super(repository, transactionManager, eventPublisher);
+    super(repository, versionRepository, transactionManager, eventPublisher);
   }
 
   async execute(command: AssignStartTimesCommand): Promise<StartlistSnapshot> {

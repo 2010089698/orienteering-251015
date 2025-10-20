@@ -1,4 +1,8 @@
-import { StartlistRepository, StartlistSnapshot } from '@startlist-management/domain';
+import {
+  StartlistRepository,
+  StartlistSnapshot,
+  StartlistVersionRepository,
+} from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { toClassAssignments } from '../dto/StartlistMappers.js';
@@ -15,10 +19,11 @@ export class AssignPlayerOrderService
 {
   constructor(
     repository: StartlistRepository,
+    versionRepository: StartlistVersionRepository,
     transactionManager: TransactionManager,
     eventPublisher: ApplicationEventPublisher,
   ) {
-    super(repository, transactionManager, eventPublisher);
+    super(repository, versionRepository, transactionManager, eventPublisher);
   }
 
   async execute(command: AssignPlayerOrderCommand): Promise<StartlistSnapshot> {
