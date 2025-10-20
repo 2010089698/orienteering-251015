@@ -48,11 +48,11 @@
 
 1. StartlistManagement のバックエンド API を起動します。
    ```bash
-   npm run dev:backend --workspace startlist-management
+   npm run dev:startlist-backend
    ```
 2. 別ターミナルでフロントエンドを起動します。
    ```bash
-   npm run dev --workspace @orienteering/startlist-frontend
+   npm run dev:frontend
    ```
 3. ブラウザで `http://localhost:5173` を開き、サイドバーから「スタートリスト」を選択してウィザードを操作します。
 
