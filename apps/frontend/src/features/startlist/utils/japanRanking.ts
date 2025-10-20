@@ -1,8 +1,12 @@
+import { resolveApiEndpoint } from '../../../config/api';
 import type { WorldRankingMap } from '../state/types';
 
 type JapanRankingHeader = 'rank' | 'iofId';
 
-const JAPAN_RANKING_BASE_URL = 'https://japan-o-entry.com/ranking/ranking/ranking_index';
+const EXTERNAL_JAPAN_RANKING_BASE_URL =
+  'https://japan-o-entry.com/ranking/ranking/ranking_index';
+
+const sanitizeBaseUrl = (value: string): string => value.replace(/\/$/, '');
 
 const toHalfWidth = (value: string): string =>
   value.replace(/[！-～]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
@@ -145,18 +149,45 @@ export const fetchJapanRanking = async ({
   }
   const sanitizedCategoryId = (categoryId ?? '1').trim() || '1';
   const maxPages = Math.max(1, pages || 1);
+  const candidateBases = Array.from(
+    new Set(
+      [resolveApiEndpoint('japanRanking'), EXTERNAL_JAPAN_RANKING_BASE_URL].map((base) =>
+        sanitizeBaseUrl(base),
+      ),
+    ),
+  );
+  const encodedCategoryId = encodeURIComponent(sanitizedCategoryId);
 
   const ranking = new Map<string, number>();
   let highestObservedRank = 0;
   let lastAssignedRank = 0;
 
   for (let page = 1; page <= maxPages; page += 1) {
-    const url = `${JAPAN_RANKING_BASE_URL}/${encodeURIComponent(sanitizedCategoryId)}/${page}`;
-    const response = await fetchFn(url, { signal });
-    if (!response.ok) {
-      throw new Error(`日本ランキングの取得に失敗しました (HTTP ${response.status}).`);
+    let html: string | undefined;
+    let lastError: Error | undefined;
+
+    for (const base of candidateBases) {
+      const url = `${base}/${encodedCategoryId}/${page}`;
+      try {
+        const response = await fetchFn(url, { signal });
+        if (!response.ok) {
+          lastError = new Error(`日本ランキングの取得に失敗しました (HTTP ${response.status}).`);
+          continue;
+        }
+        html = await response.text();
+        break;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw error;
+        }
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
     }
-    const html = await response.text();
+
+    if (!html) {
+      throw lastError ?? new Error('日本ランキングの取得に失敗しました。');
+    }
+
     const entries = parseJapanRankingHtml(html);
     if (entries.length === 0) {
       break;

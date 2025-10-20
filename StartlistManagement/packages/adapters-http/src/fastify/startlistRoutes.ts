@@ -50,6 +50,7 @@ type AssignStartTimesBody = Static<typeof AssignStartTimesBodySchema>;
 type ManualLaneOrderBody = Static<typeof ManualLaneOrderBodySchema>;
 type ManualClassOrderBody = Static<typeof ManualClassOrderBodySchema>;
 type InvalidateStartTimesBody = Static<typeof InvalidateStartTimesBodySchema>;
+type JapanRankingParams = { categoryId: string; page: string };
 
 type ErrorPayload = {
   statusCode: number;
@@ -161,6 +162,33 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
       };
       const snapshot = await useCases.assignPlayerOrder.execute(command);
       return toStartlistHttpResponse(snapshot);
+    },
+  );
+
+  fastify.get<{ Params: JapanRankingParams }>(
+    '/api/japan-ranking/:categoryId/:page',
+    async (request, reply) => {
+      const fetchImpl = globalThis.fetch;
+      if (typeof fetchImpl !== 'function') {
+        request.log.error('Fetch API is not available in this environment.');
+        reply.status(503).send('Failed to reach upstream Japan ranking service.');
+        return;
+      }
+
+      const upstreamUrl = `https://japan-o-entry.com/ranking/ranking/ranking_index/${encodeURIComponent(
+        request.params.categoryId,
+      )}/${encodeURIComponent(request.params.page)}`;
+
+      try {
+        const response = await fetchImpl(upstreamUrl);
+        const body = await response.text();
+        const contentType = response.headers.get('content-type') ?? 'text/html; charset=utf-8';
+
+        reply.header('content-type', contentType).status(response.status).send(body);
+      } catch (error) {
+        request.log.error({ err: error }, 'Failed to fetch Japan ranking data from upstream.');
+        reply.status(502).send('Failed to fetch Japan ranking data from upstream.');
+      }
     },
   );
 
