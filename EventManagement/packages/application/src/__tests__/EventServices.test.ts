@@ -77,6 +77,8 @@ describe('Event application services', () => {
         id: 'event-99',
         name: 'Night Orienteering',
         venue: 'Mountain Arena',
+        allowMultipleRacesPerDay: true,
+        allowScheduleOverlap: true,
         races: [],
       });
     });

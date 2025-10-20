@@ -23,6 +23,8 @@ const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
     startDate: '2024-04-01T00:00:00.000Z',
     endDate: '2024-04-02T00:00:00.000Z',
     venue: '東京',
+    allowMultipleRacesPerDay: true,
+    allowScheduleOverlap: true,
     races: [
       {
         id: 'race-1',

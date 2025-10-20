@@ -55,12 +55,17 @@ describe('eventRoutes', () => {
       payload: CREATE_EVENT_PAYLOAD,
     });
     expect(createResponse.statusCode).toBe(201);
+    const createdBody = createResponse.json();
+    expect(createdBody.event.allowMultipleRacesPerDay).toBe(true);
+    expect(createdBody.event.allowScheduleOverlap).toBe(true);
 
     const listResponse = await server.inject({ method: 'GET', url: '/api/events' });
     expect(listResponse.statusCode).toBe(200);
     const listBody = listResponse.json();
     expect(listBody.events).toHaveLength(1);
     expect(listBody.events[0]?.id).toBe(EVENT_ID);
+    expect(listBody.events[0]?.allowMultipleRacesPerDay).toBe(true);
+    expect(listBody.events[0]?.allowScheduleOverlap).toBe(true);
   });
 
   it('returns 400 for invalid create payloads', async () => {
@@ -90,6 +95,8 @@ describe('eventRoutes', () => {
     const body = response.json();
     expect(body.event.races).toHaveLength(1);
     expect(body.event.races[0]?.id).toBe(RACE_ID);
+    expect(body.event.allowMultipleRacesPerDay).toBe(true);
+    expect(body.event.allowScheduleOverlap).toBe(true);
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
   });
 
@@ -109,6 +116,8 @@ describe('eventRoutes', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.event.races[0]?.startlistLink).toBe('https://example.com/startlist');
+    expect(body.event.allowMultipleRacesPerDay).toBe(true);
+    expect(body.event.allowScheduleOverlap).toBe(true);
   });
 
   it('returns 404 when scheduling a race for an unknown event', async () => {
