@@ -47,6 +47,10 @@
   VITE_EVENT_MANAGEMENT_API_BASE_URL=http://localhost:3002
   ```
 - 各値はバックエンドの起動ポートに合わせて更新してください。Fastify 開発サーバーのデフォルトは StartlistManagement が `3000`、EventManagement が `3002` です。
+- `.env` に値を設定しない場合でも、開発中は Vite のプロキシ設定によって以下のデフォルトポートへ転送されます。必要に応じて環境変数で上書きしてください。
+  - `/api/startlists`・`/api/japan-ranking` → `http://localhost:3000`
+  - `/api/entries` → `http://localhost:3001`
+  - `/api/events` → `http://localhost:3002`
 
 ### 開発サーバーの起動
 
