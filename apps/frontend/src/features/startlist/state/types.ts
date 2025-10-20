@@ -4,6 +4,7 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
+import type { StartlistWithHistoryDto } from '@startlist-management/application';
 
 export type ClassSplitMethod = 'random' | 'rankingTopBottom' | 'rankingBalanced';
 
@@ -110,7 +111,7 @@ export interface StartlistState {
   classOrderWarnings: ClassOrderWarning[];
   classOrderPreferences: ClassOrderPreferences;
   startTimes: StartTimeDto[];
-  snapshot?: unknown;
+  snapshot?: StartlistWithHistoryDto;
   statuses: Record<StatusKey, StatusMessageState>;
   loading: Partial<Record<StatusKey, boolean>>;
   startOrderRules: StartOrderRules;

@@ -26,6 +26,7 @@ import type {
   LaneAssignmentDto,
   ClassAssignmentDto,
   StartTimeDto,
+  StartlistWithHistoryDto,
 } from '@startlist-management/application';
 import type {
   ClassOrderPreferences,
@@ -48,7 +49,7 @@ export interface StartlistTestInitialState {
   classOrderWarnings?: ClassOrderWarning[];
   classOrderPreferences?: ClassOrderPreferences;
   startTimes?: StartTimeDto[];
-  snapshot?: unknown;
+  snapshot?: StartlistWithHistoryDto;
   statuses?: Partial<Record<StatusKey, StatusMessageState>>;
   loading?: Partial<Record<StatusKey, boolean>>;
   startOrderRules?: StartOrderRules;

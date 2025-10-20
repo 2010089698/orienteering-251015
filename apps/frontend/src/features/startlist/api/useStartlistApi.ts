@@ -7,11 +7,15 @@ import type {
   EnterStartlistSettingsCommand,
   FinalizeStartlistCommand,
   GetStartlistQuery,
+  GetStartlistVersionsQuery,
+  GetStartlistVersionsResult,
+  GetStartlistDiffQuery,
   InvalidateStartTimesCommand,
   ManuallyFinalizeClassStartOrderCommand,
   ManuallyReassignLaneOrderCommand,
+  StartlistDiffDto,
+  StartlistWithHistoryDto,
 } from '@startlist-management/application';
-import type { StartlistSnapshot } from '@startlist-management/domain';
 
 const ensureOk = async (response: Response): Promise<unknown> => {
   if (!response.ok) {
@@ -62,26 +66,46 @@ export const useStartlistApi = () => {
   }, [withBasePath]);
 
   const enterSettings = useCallback(
-    async (command: EnterStartlistSettingsCommand): Promise<StartlistSnapshot> => {
+    async (command: EnterStartlistSettingsCommand): Promise<StartlistWithHistoryDto> => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/settings`,
         command.settings,
-      )) as StartlistSnapshot;
+      )) as StartlistWithHistoryDto;
       return response;
     },
     [post],
   );
 
   const fetchSnapshot = useCallback(
-    async (query: GetStartlistQuery): Promise<StartlistSnapshot> => {
-      const snapshot = (await get(`/${encodeURIComponent(query.startlistId)}`)) as StartlistSnapshot;
+    async (query: GetStartlistQuery): Promise<StartlistWithHistoryDto> => {
+      const searchParams = new URLSearchParams();
+      if (query.includeVersions) {
+        searchParams.set('includeVersions', 'true');
+      }
+      if (query.versionLimit) {
+        searchParams.set('versionLimit', String(query.versionLimit));
+      }
+      if (query.includeDiff) {
+        searchParams.set('includeDiff', 'true');
+      }
+      if (query.diffFromVersion) {
+        searchParams.set('diffFromVersion', String(query.diffFromVersion));
+      }
+      if (query.diffToVersion) {
+        searchParams.set('diffToVersion', String(query.diffToVersion));
+      }
+      const queryString = searchParams.toString();
+      const path = `/${encodeURIComponent(query.startlistId)}${queryString ? `?${queryString}` : ''}`;
+      const snapshot = (await get(path)) as StartlistWithHistoryDto;
       return snapshot;
     },
     [get],
   );
 
   const assignLaneOrder = useCallback(
-    async (command: AssignLaneOrderCommand | ManuallyReassignLaneOrderCommand): Promise<StartlistSnapshot | undefined> => {
+    async (
+      command: AssignLaneOrderCommand | ManuallyReassignLaneOrderCommand,
+    ): Promise<StartlistWithHistoryDto | undefined> => {
       const payload: Record<string, unknown> = { assignments: command.assignments };
       if ('reason' in command && command.reason) {
         payload.reason = command.reason;
@@ -89,7 +113,7 @@ export const useStartlistApi = () => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/lane-order`,
         payload,
-      )) as StartlistSnapshot | undefined;
+      )) as StartlistWithHistoryDto | undefined;
       return response;
     },
     [post],
@@ -98,7 +122,7 @@ export const useStartlistApi = () => {
   const assignPlayerOrder = useCallback(
     async (
       command: AssignPlayerOrderCommand | ManuallyFinalizeClassStartOrderCommand,
-    ): Promise<StartlistSnapshot | undefined> => {
+    ): Promise<StartlistWithHistoryDto | undefined> => {
       const payload: Record<string, unknown> = { assignments: command.assignments };
       if ('reason' in command && command.reason) {
         payload.reason = command.reason;
@@ -106,43 +130,79 @@ export const useStartlistApi = () => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/player-order`,
         payload,
-      )) as StartlistSnapshot | undefined;
+      )) as StartlistWithHistoryDto | undefined;
       return response;
     },
     [post],
   );
 
   const assignStartTimes = useCallback(
-    async (command: AssignStartTimesCommand): Promise<StartlistSnapshot | undefined> => {
+    async (command: AssignStartTimesCommand): Promise<StartlistWithHistoryDto | undefined> => {
       const response = (await post(`/${encodeURIComponent(command.startlistId)}/start-times`, {
         startTimes: command.startTimes,
-      })) as StartlistSnapshot | undefined;
+      })) as StartlistWithHistoryDto | undefined;
       return response;
     },
     [post],
   );
 
   const finalize = useCallback(
-    async (command: FinalizeStartlistCommand): Promise<StartlistSnapshot | undefined> => {
+    async (command: FinalizeStartlistCommand): Promise<StartlistWithHistoryDto | undefined> => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/finalize`,
-      )) as StartlistSnapshot | undefined;
+      )) as StartlistWithHistoryDto | undefined;
       return response;
     },
     [post],
   );
 
   const invalidateStartTimes = useCallback(
-    async (command: InvalidateStartTimesCommand): Promise<StartlistSnapshot | undefined> => {
+    async (command: InvalidateStartTimesCommand): Promise<StartlistWithHistoryDto | undefined> => {
       const response = (await post(
         `/${encodeURIComponent(command.startlistId)}/start-times/invalidate`,
         {
           reason: command.reason,
         },
-      )) as StartlistSnapshot | undefined;
+      )) as StartlistWithHistoryDto | undefined;
       return response;
     },
     [post],
+  );
+
+  const fetchVersions = useCallback(
+    async (query: GetStartlistVersionsQuery): Promise<GetStartlistVersionsResult> => {
+      const searchParams = new URLSearchParams();
+      if (query.limit) {
+        searchParams.set('limit', String(query.limit));
+      }
+      if (query.offset) {
+        searchParams.set('offset', String(query.offset));
+      }
+      const path = `/${encodeURIComponent(query.startlistId)}/versions${
+        searchParams.size ? `?${searchParams.toString()}` : ''
+      }`;
+      const response = (await get(path)) as GetStartlistVersionsResult;
+      return response;
+    },
+    [get],
+  );
+
+  const fetchDiff = useCallback(
+    async (query: GetStartlistDiffQuery): Promise<StartlistDiffDto> => {
+      const searchParams = new URLSearchParams();
+      if (query.fromVersion) {
+        searchParams.set('fromVersion', String(query.fromVersion));
+      }
+      if (query.toVersion) {
+        searchParams.set('toVersion', String(query.toVersion));
+      }
+      const path = `/${encodeURIComponent(query.startlistId)}/diff${
+        searchParams.size ? `?${searchParams.toString()}` : ''
+      }`;
+      const response = (await get(path)) as StartlistDiffDto;
+      return response;
+    },
+    [get],
   );
 
   return {
@@ -153,5 +213,7 @@ export const useStartlistApi = () => {
     assignStartTimes,
     finalize,
     invalidateStartTimes,
+    fetchVersions,
+    fetchDiff,
   };
 };

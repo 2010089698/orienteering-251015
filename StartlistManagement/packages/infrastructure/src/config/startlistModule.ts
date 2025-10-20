@@ -114,7 +114,7 @@ export const createStartlistModule = (): StartlistModule => {
     eventPublisher,
   );
 
-  const queryService = new StartlistQueryServiceImpl(readRepository);
+  const queryService = new StartlistQueryServiceImpl(readRepository, versionRepository);
 
   return {
     repository,

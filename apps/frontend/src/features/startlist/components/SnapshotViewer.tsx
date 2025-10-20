@@ -1,8 +1,9 @@
 import { StatusMessage } from '@orienteering/shared-ui';
+import type { StartlistWithHistoryDto } from '@startlist-management/application';
 import type { StatusMessageState } from '../state/types';
 
 interface SnapshotViewerProps {
-  snapshot?: unknown;
+  snapshot?: StartlistWithHistoryDto;
   status: StatusMessageState;
   onRefreshHint?: boolean;
 }

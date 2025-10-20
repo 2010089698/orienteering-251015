@@ -20,6 +20,13 @@ export class StartlistNotFoundError extends StartlistApplicationError {
   }
 }
 
+export class StartlistVersionNotFoundError extends StartlistApplicationError {
+  constructor(startlistId: string, version: number) {
+    super(`Startlist ${startlistId} does not have version ${version}.`);
+    this.name = 'StartlistVersionNotFoundError';
+  }
+}
+
 export class InvalidCommandError extends StartlistApplicationError {
   constructor(message: string, cause?: unknown) {
     super(message, cause);

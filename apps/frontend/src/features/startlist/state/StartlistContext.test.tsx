@@ -142,7 +142,13 @@ describe('StartlistContext', () => {
       updateStartTimes(result.current.dispatch, [
         { playerId: entryId, laneNumber: 1, startTime: settings.startTime },
       ], splitResult);
-      updateSnapshot(result.current.dispatch, { foo: 'bar' });
+      updateSnapshot(result.current.dispatch, {
+        id: 'SL-1',
+        status: 'SETTINGS_ENTERED',
+        laneAssignments: [],
+        classAssignments: [],
+        startTimes: [],
+      });
       setStartOrderRules(result.current.dispatch, [
         { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
       ]);
@@ -161,7 +167,7 @@ describe('StartlistContext', () => {
       { baseClassId: 'M21', partCount: 2, method: 'random' },
     ]);
     expect(result.current.state.classSplitResult?.signature).toBe('sig-1');
-    expect(result.current.state.snapshot).toEqual({ foo: 'bar' });
+    expect(result.current.state.snapshot?.id).toBe('SL-1');
     expect(result.current.state.startOrderRules).toEqual([
       { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
     ]);

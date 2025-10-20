@@ -11,3 +11,5 @@ export * from './dto/StartlistMappers.js';
 export * from './errors.js';
 export * from './queries/StartlistReadRepository.js';
 export * from './queries/StartlistQueryService.js';
+export * from './queries/StartlistDiff.js';
+export * from './queries/StartlistQueryTypes.js';
