@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import {
   createStatus,
+  setStartOrderRules,
   setClassSplitRules,
   setStatus,
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistStartOrderRules,
   useStartlistStatuses,
+  useStartlistWorldRankingByClass,
 } from '../state/StartlistContext';
-import type { ClassSplitMethod, ClassSplitRule, ClassSplitRules } from '../state/types';
+import type {
+  ClassSplitMethod,
+  ClassSplitRule,
+  ClassSplitRules,
+  StartOrderRule,
+} from '../state/types';
 
 interface ClassSplitRow {
   id: string;
@@ -21,8 +29,8 @@ interface ClassSplitRow {
 
 const methodOptions: Array<{ value: ClassSplitMethod; label: string }> = [
   { value: 'random', label: 'ランダムに分割' },
-  { value: 'rankingTopBottom', label: 'ランキングで上位・下位に分割' },
-  { value: 'rankingBalanced', label: 'ランキングで均等に分割' },
+  { value: 'rankingTopBottom', label: 'ランキング上位/下位で分割' },
+  { value: 'rankingBalanced', label: 'ランキング均等分割' },
 ];
 
 const methodLabelMap = new Map(methodOptions.map((option) => [option.value, option.label]));
@@ -54,6 +62,8 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   const entries = useStartlistEntries();
   const statuses = useStartlistStatuses();
   const classSplitRules = useStartlistClassSplitRules();
+  const startOrderRules = useStartlistStartOrderRules();
+  const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
 
   const availableClassIds = useMemo(
@@ -109,6 +119,36 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
     rowsRef.current = rows;
   }, [rows]);
 
+  const startOrderRuleByClass = useMemo(() => {
+    const map = new Map<string, StartOrderRule>();
+    startOrderRules.forEach((rule) => {
+      if (rule.classId) {
+        map.set(rule.classId, rule);
+      }
+    });
+    return map;
+  }, [startOrderRules]);
+
+  const isRankingAvailable = useCallback(
+    (classId?: string): boolean => {
+      if (!classId) {
+        return false;
+      }
+      const rule = startOrderRuleByClass.get(classId);
+      if (!rule || rule.method !== 'worldRanking') {
+        return false;
+      }
+      const ranking = worldRankingByClass.get(classId);
+      return Boolean(ranking && ranking.size > 0);
+    },
+    [startOrderRuleByClass, worldRankingByClass],
+  );
+
+  const isRankingMethod = useCallback(
+    (method: ClassSplitMethod): boolean => method === 'rankingTopBottom' || method === 'rankingBalanced',
+    [],
+  );
+
   useEffect(() => {
     const stateSignature = serializeRules(classSplitRules);
     const localSignature = serializeRules(sanitizeRows(rowsRef.current));
@@ -154,9 +194,93 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   }, [availableClassIds]);
 
   useEffect(() => {
+    setRows((prev) => {
+      let changed = false;
+      const next = prev.map((row) => {
+        if (row.method === 'rankingTopBottom' && row.partCount !== 2) {
+          changed = true;
+          return { ...row, partCount: 2 };
+        }
+        return row;
+      });
+      return changed ? next : prev;
+    });
+  }, [rows]);
+
+  useEffect(() => {
+    setRows((prev) => {
+      let changed = false;
+      const next = prev.map((row) => {
+        if (!isRankingMethod(row.method)) {
+          return row;
+        }
+        const available = isRankingAvailable(row.baseClassId);
+        if (available) {
+          return row;
+        }
+        changed = true;
+        return { ...row, method: 'random' };
+      });
+      return changed ? next : prev;
+    });
+  }, [isRankingAvailable, isRankingMethod]);
+
+  const previousStartOrderRulesRef = useRef(startOrderRules);
+
+  useEffect(() => {
+    const previousByClass = new Map<string, StartOrderRule>();
+    previousStartOrderRulesRef.current.forEach((rule) => {
+      if (rule.classId) {
+        previousByClass.set(rule.classId, rule);
+      }
+    });
+
+    const resetClasses = new Set<string>();
+    let shouldUpdateRules = false;
+    const updatedRules = startOrderRules.map((rule) => {
+      if (!rule.classId) {
+        return rule;
+      }
+      const previous = previousByClass.get(rule.classId);
+      if (previous?.method === 'worldRanking' && rule.method === 'random') {
+        resetClasses.add(rule.classId);
+        if (rule.csvName !== undefined) {
+          shouldUpdateRules = true;
+          return { ...rule, csvName: undefined };
+        }
+      }
+      return rule;
+    });
+
+    if (resetClasses.size > 0) {
+      setRows((prev) => {
+        let changed = false;
+        const next = prev.map((row) => {
+          if (!row.baseClassId || !resetClasses.has(row.baseClassId)) {
+            return row;
+          }
+          if (row.method === 'random') {
+            return row;
+          }
+          changed = true;
+          return { ...row, method: 'random' };
+        });
+        return changed ? next : prev;
+      });
+    }
+
+    if (shouldUpdateRules) {
+      setStartOrderRules(dispatch, updatedRules);
+    }
+
+    previousStartOrderRulesRef.current = startOrderRules;
+  }, [dispatch, startOrderRules]);
+
+  useEffect(() => {
     const duplicates = new Set<string>();
     const seen = new Set<string>();
     const invalidCounts = new Set<string>();
+    const rankingIssues = new Set<string>();
 
     rows.forEach((row) => {
       if (!row.baseClassId) {
@@ -168,6 +292,9 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
       seen.add(row.baseClassId);
       if (!row.partCount || !Number.isFinite(row.partCount) || row.partCount < 2) {
         invalidCounts.add(row.baseClassId);
+      }
+      if (isRankingMethod(row.method) && !isRankingAvailable(row.baseClassId)) {
+        rankingIssues.add(row.baseClassId);
       }
     });
 
@@ -181,6 +308,10 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
       level = 'error';
       const invalidList = Array.from(invalidCounts).sort((a, b) => a.localeCompare(b, 'ja'));
       message = `分割数は2以上の整数を入力してください: ${invalidList.join(', ')}`;
+    } else if (rankingIssues.size > 0) {
+      level = 'error';
+      const issueList = Array.from(rankingIssues).sort((a, b) => a.localeCompare(b, 'ja'));
+      message = `ランキング方式のクラスで前提条件を満たしていません。スタート順設定が世界ランキング方式で、ランキング CSV が読み込まれていることを確認してください: ${issueList.join(', ')}`;
     } else {
       const sanitized = sanitizeRows(rows);
       if (sanitized.length === 0) {
@@ -199,7 +330,7 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
     if (statuses.classSplit.level !== level || statuses.classSplit.text !== message) {
       setStatus(dispatch, 'classSplit', createStatus(message, level));
     }
-  }, [dispatch, rows, statuses.classSplit.level, statuses.classSplit.text]);
+  }, [dispatch, rows, statuses.classSplit.level, statuses.classSplit.text, isRankingAvailable, isRankingMethod]);
 
   const handleAddRow = () => {
     setRows((prev) => [...prev, createRow()]);
@@ -247,6 +378,9 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
       prev.map((row) => {
         if (row.id !== rowId) {
           return row;
+        }
+        if (isRankingMethod(value) && !isRankingAvailable(row.baseClassId)) {
+          return { ...row, method: 'random', partCount: row.partCount ?? 2 };
         }
         const next: ClassSplitRow = { ...row, method: value };
         if (value === 'rankingTopBottom') {
@@ -307,16 +441,21 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
                   value={row.partCount ?? ''}
                   onChange={(event) => handlePartCountChange(row.id, event)}
                   placeholder="2"
+                  disabled={row.method === 'rankingTopBottom'}
                 />
               </label>
               <label className="class-split-settings__cell" role="cell">
                 <span className="visually-hidden">分割方法</span>
                 <select value={row.method} onChange={(event) => handleMethodChange(row.id, event)}>
-                  {methodOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {methodOptions.map((option) => {
+                    const disabled =
+                      isRankingMethod(option.value) && !isRankingAvailable(row.baseClassId);
+                    return (
+                      <option key={option.value} value={option.value} disabled={disabled}>
+                        {option.label}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
               <div
