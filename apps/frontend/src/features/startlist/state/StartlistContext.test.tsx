@@ -6,6 +6,8 @@ import {
   useStartlistState,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEditingEntryId,
+  useSetStartlistEditingEntryId,
   useStartlistStatuses,
   createStatus,
   setStatus,
@@ -13,6 +15,7 @@ import {
   updateSettings,
   appendEntry,
   removeEntry,
+  updateEntry,
   updateLaneAssignments,
   updateClassAssignments,
   updateStartTimes,
@@ -30,6 +33,8 @@ describe('StartlistContext', () => {
     expect(() => renderHook(() => useStartlistState())).toThrowError();
     expect(() => renderHook(() => useStartlistDispatch())).toThrowError();
     expect(() => renderHook(() => useStartlistEntries())).toThrowError();
+    expect(() => renderHook(() => useStartlistEditingEntryId())).toThrowError();
+    expect(() => renderHook(() => useSetStartlistEditingEntryId())).toThrowError();
   });
 
   it('avoids re-rendering unrelated subscribers when slices change', () => {
@@ -122,6 +127,11 @@ describe('StartlistContext', () => {
     const entryId = result.current.state.entries[0]?.id ?? '';
 
     act(() => {
+      const entry = result.current.state.entries[0];
+      if (!entry) {
+        throw new Error('entry is not available');
+      }
+      updateEntry(result.current.dispatch, { ...entry, cardNo: '42' });
       setStatus(result.current.dispatch, 'entries', createStatus('ok', 'success'));
       setLoading(result.current.dispatch, 'entries', true);
       setClassSplitRules(result.current.dispatch, [
@@ -158,6 +168,7 @@ describe('StartlistContext', () => {
     expect(result.current.state.startlistId).toBe('SL-1');
     expect(result.current.state.entries).toHaveLength(1);
     expect(result.current.state.entries[0]?.iofId).toBe('IOF001');
+    expect(result.current.state.entries[0]?.cardNo).toBe('42');
     expect(result.current.state.statuses.entries.text).toBe('ok');
     expect(result.current.state.loading.entries).toBe(true);
     expect(result.current.state.laneAssignments).toHaveLength(1);
@@ -180,6 +191,48 @@ describe('StartlistContext', () => {
 
     expect(result.current.state.entries).toHaveLength(0);
     expect(result.current.state.loading.entries).toBe(false);
+  });
+
+  it('manages editing entry id through dedicated hooks', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => <StartlistProvider>{children}</StartlistProvider>;
+    const { result } = renderHook(
+      () => ({
+        entries: useStartlistEntries(),
+        dispatch: useStartlistDispatch(),
+        editingEntryId: useStartlistEditingEntryId(),
+        setEditingEntryId: useSetStartlistEditingEntryId(),
+      }),
+      { wrapper },
+    );
+
+    act(() => {
+      appendEntry(result.current.dispatch, { name: 'Runner', classId: 'M21', cardNo: '1' });
+    });
+
+    const entryId = result.current.entries[0]?.id ?? '';
+    expect(entryId).not.toBe('');
+
+    act(() => {
+      result.current.setEditingEntryId(entryId);
+    });
+
+    expect(result.current.editingEntryId).toBe(entryId);
+
+    act(() => {
+      const entry = result.current.entries[0];
+      if (!entry) {
+        throw new Error('entry is not available');
+      }
+      updateEntry(result.current.dispatch, { ...entry, name: 'Updated Runner' });
+    });
+
+    expect(result.current.entries[0]?.name).toBe('Updated Runner');
+
+    act(() => {
+      result.current.setEditingEntryId(undefined);
+    });
+
+    expect(result.current.editingEntryId).toBeUndefined();
   });
 
   it('assigns unique ids when merging entries containing レンタル card numbers', () => {

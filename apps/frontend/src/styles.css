@@ -927,6 +927,22 @@ th {
   font-size: 0.95rem;
 }
 
+.entry-table__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.entry-table__actions-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.entry-table__actions-buttons button {
+  white-space: nowrap;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -1047,6 +1063,15 @@ pre.snapshot {
 
   .card .step-actions--sticky button,
   .card .step-actions--sticky .button {
+    width: 100%;
+  }
+
+  .entry-table__actions-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .entry-table__actions-buttons button {
     width: 100%;
   }
 }

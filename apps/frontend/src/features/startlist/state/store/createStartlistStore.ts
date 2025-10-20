@@ -10,6 +10,7 @@ import type {
   ClassOrderWarning,
   ClassSplitResult,
   ClassSplitRules,
+  Entry,
   StartOrderRules,
   StartlistState,
   StatusKey,
@@ -108,6 +109,7 @@ export const startlistReducer = (
   switch (action.type) {
     case 'entries/add':
     case 'entries/remove':
+    case 'entries/update':
     case 'entries/set': {
       const entries = entriesReducer(state.entries, action);
       return { ...state, entries };
@@ -256,6 +258,7 @@ export const createSetLoadingAction = (
 export const createEntriesActions = {
   add: (entry: EntryInput): EntriesAction => ({ type: 'entries/add', payload: entry }),
   remove: (id: string): EntriesAction => ({ type: 'entries/remove', payload: { id } }),
+  update: (entry: Entry): EntriesAction => ({ type: 'entries/update', payload: entry }),
   set: (entries: EntryInput[]): EntriesAction => ({ type: 'entries/set', payload: entries }),
 };
 

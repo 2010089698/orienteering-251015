@@ -36,6 +36,7 @@ export const initialEntriesState: Entry[] = [];
 export type EntriesAction =
   | { type: 'entries/add'; payload: EntryInput }
   | { type: 'entries/remove'; payload: { id: string } }
+  | { type: 'entries/update'; payload: Entry }
   | { type: 'entries/set'; payload: EntryInput[] };
 
 export const entriesReducer = (state: Entry[], action: EntriesAction): Entry[] => {
@@ -44,6 +45,10 @@ export const entriesReducer = (state: Entry[], action: EntriesAction): Entry[] =
       return [...state, ensureEntryId(action.payload)];
     case 'entries/remove':
       return state.filter((entry) => entry.id !== action.payload.id);
+    case 'entries/update':
+      return state.map((entry) =>
+        entry.id === action.payload.id ? ensureEntryId(action.payload) : entry,
+      );
     case 'entries/set':
       return ensureEntryIds(action.payload);
     default:

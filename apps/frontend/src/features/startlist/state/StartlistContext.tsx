@@ -1,4 +1,4 @@
-import { useReducer, type Dispatch, type PropsWithChildren } from 'react';
+import { useMemo, useReducer, useState, type Dispatch, type PropsWithChildren } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import type {
   ClassAssignmentDto,
@@ -50,13 +50,20 @@ type EntryInput = Entry | EntryDraft;
 type StartlistContextValue = {
   state: StartlistState;
   dispatch: Dispatch<StartlistAction>;
+  editingEntryId?: string;
+  setEditingEntryId: (entryId?: string) => void;
 };
 
 const StartlistContext = createContext<StartlistContextValue | undefined>(undefined);
 
 export const StartlistProvider = ({ children }: PropsWithChildren) => {
   const [state, dispatch] = useReducer(startlistReducer, undefined, createInitialStartlistState);
-  const contextValue: StartlistContextValue = { state, dispatch };
+  const [editingEntryId, setEditingEntryId] = useState<string | undefined>();
+
+  const contextValue = useMemo<StartlistContextValue>(
+    () => ({ state, dispatch, editingEntryId, setEditingEntryId }),
+    [state, dispatch, editingEntryId, setEditingEntryId],
+  );
 
   return <StartlistContext.Provider value={contextValue}>{children}</StartlistContext.Provider>;
 };
@@ -88,6 +95,18 @@ export const useStartlistSettings = (): StartlistState['settings'] =>
 
 export const useStartlistEntries = (): StartlistState['entries'] =>
   useStartlistStateSelector((state) => state.entries);
+
+export const useStartlistEditingEntryId = (): string | undefined =>
+  useStartlistContextSelector(
+    ({ editingEntryId }) => editingEntryId,
+    'StartlistProvider の外部で editingEntryId を参照することはできません。',
+  );
+
+export const useSetStartlistEditingEntryId = (): ((entryId?: string) => void) =>
+  useStartlistContextSelector(
+    ({ setEditingEntryId }) => setEditingEntryId,
+    'StartlistProvider の外部で setEditingEntryId を呼び出すことはできません。',
+  );
 
 export const useStartlistLaneAssignments = (): StartlistState['laneAssignments'] =>
   useStartlistStateSelector((state) => state.laneAssignments);
@@ -163,6 +182,10 @@ export const updateEntries = (
   entries: EntryInput[],
 ): void => {
   dispatch(createEntriesActions.set(entries));
+};
+
+export const updateEntry = (dispatch: Dispatch<StartlistAction>, entry: Entry): void => {
+  dispatch(createEntriesActions.update(entry));
 };
 
 export const updateLaneAssignments = (

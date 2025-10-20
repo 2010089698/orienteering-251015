@@ -32,6 +32,27 @@ describe('entriesSlice', () => {
     expect(next).toHaveLength(0);
   });
 
+  it('replaces entries when update action is dispatched', () => {
+    const withEntry = reduce({
+      type: 'entries/add',
+      payload: { id: 'entry-1', name: 'Runner', classId: 'M21', cardNo: '1' },
+    });
+
+    const entry = withEntry[0];
+    if (!entry) {
+      throw new Error('entry is not available');
+    }
+
+    const updated = entriesReducer(withEntry, {
+      type: 'entries/update',
+      payload: { ...entry, name: 'Updated Runner', cardNo: '2' },
+    });
+
+    expect(updated).toHaveLength(1);
+    expect(updated[0]?.name).toBe('Updated Runner');
+    expect(updated[0]?.cardNo).toBe('2');
+  });
+
   it('ensures ids when replacing entries', () => {
     const next = reduce({
       type: 'entries/set',

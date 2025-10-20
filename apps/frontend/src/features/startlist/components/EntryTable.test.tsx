@@ -46,4 +46,20 @@ describe('EntryTable', () => {
 
     expect(handleRemove).toHaveBeenCalledWith('entry-2');
   });
+
+  it('invokes onEdit when edit is pressed', async () => {
+    const handleEdit = vi.fn();
+    renderWithStartlist(
+      <EntryTable
+        entries={[
+          { id: 'entry-1', name: 'A', classId: 'M21', cardNo: '123', iofId: 'ABC123' },
+        ]}
+        onEdit={handleEdit}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '編集' }));
+
+    expect(handleEdit).toHaveBeenCalledWith('entry-1');
+  });
 });

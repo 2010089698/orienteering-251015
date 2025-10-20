@@ -19,6 +19,7 @@ import {
   updateClassWorldRanking,
   setClassSplitRules,
   setClassSplitResult,
+  useSetStartlistEditingEntryId,
 } from '../state/StartlistContext';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
@@ -56,6 +57,7 @@ export interface StartlistTestInitialState {
   worldRankingEntriesByClass?: Record<string, [string, number][]>;
   classSplitRules?: ClassSplitRule[];
   classSplitResult?: ClassSplitResult;
+  editingEntryId?: string;
 }
 
 interface WrapperProps {
@@ -65,6 +67,7 @@ interface WrapperProps {
 
 const Initializer = ({ children, initialize, initialState }: PropsWithChildren<WrapperProps>) => {
   const dispatch = useStartlistDispatch();
+  const setEditingEntryId = useSetStartlistEditingEntryId();
 
   useEffect(() => {
     if (initialState?.settings && initialState.startlistId) {
@@ -125,6 +128,12 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
       }
     }
   }, [dispatch, initialState]);
+
+  useEffect(() => {
+    if (initialState?.editingEntryId !== undefined) {
+      setEditingEntryId(initialState.editingEntryId);
+    }
+  }, [initialState, setEditingEntryId]);
 
   useEffect(() => {
     initialize?.(dispatch);
