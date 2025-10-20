@@ -254,10 +254,10 @@ describe('LaneAssignmentStep', () => {
     await userEvent.click(screen.getByRole('button', { name: '割り当て確定（順番と時間を作成）' }));
 
     expect(
-      await screen.findByText('世界ランキングの CSV を読み込んでからクラス内順序を作成してください。'),
+      await screen.findByText('ランキングデータを読み込んでからクラス内順序を作成してください。'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('start-order-status')).toHaveTextContent(
-      '世界ランキング方式のクラス (M21) の CSV が読み込まれていません。',
+      '世界ランキング方式 (M21) のデータが読み込まれていません。',
     );
   });
 

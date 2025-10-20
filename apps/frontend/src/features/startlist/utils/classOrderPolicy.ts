@@ -3,6 +3,7 @@ import type {
   ClassOrderWarning,
   ClassOrderWarningOccurrence,
   Entry,
+  StartOrderMethod,
   StartOrderRules,
   WorldRankingByClass,
   WorldRankingMap,
@@ -375,7 +376,12 @@ const createEntrySignature = (entries: Entry[]): string => {
 
 const createStartOrderRuleSignature = (rules: StartOrderRules = []): string => {
   return rules
-    .map((rule) => `${rule.id}:${rule.classId ?? ''}:${rule.method}:${rule.csvName ?? ''}`)
+    .map((rule) => {
+      const japanRankingPart = rule.japanRanking
+        ? `${rule.japanRanking.categoryId ?? ''}:${rule.japanRanking.pages ?? ''}:${rule.japanRanking.fetchedCount ?? ''}`
+        : '';
+      return `${rule.id}:${rule.classId ?? ''}:${rule.method}:${rule.csvName ?? ''}:${japanRankingPart}`;
+    })
     .sort((a, b) => a.localeCompare(b, 'ja'))
     .join('|');
 };
@@ -455,7 +461,7 @@ const createSeededRandomClassOrderPolicy = (options: { avoidConsecutiveClubs: bo
 
       const method =
         methodMap.get(group.classId) ?? (group.baseClassId !== group.classId ? methodMap.get(group.baseClassId) : undefined) ?? 'random';
-      if (method === 'worldRanking') {
+      if (method === 'worldRanking' || method === 'japanRanking') {
         const rankingOrder = createWorldRankingOrder(
           group,
           random,

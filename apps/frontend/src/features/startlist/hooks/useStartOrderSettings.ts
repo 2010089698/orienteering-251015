@@ -15,6 +15,7 @@ import {
 } from '../state/StartlistContext';
 import type { StartOrderRule, StatusMessageState } from '../state/types';
 import { parseWorldRankingCsv } from '../utils/worldRankingCsv';
+import { fetchJapanRanking } from '../utils/japanRanking';
 
 type StartOrderRow = StartOrderRule;
 
@@ -30,7 +31,32 @@ export interface UseStartOrderSettingsReturn {
   handleWorldRankingUpload: (
     rowId: string,
   ) => (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleJapanRankingCategoryChange: (rowId: string, event: ChangeEvent<HTMLInputElement>) => void;
+  handleJapanRankingPagesChange: (rowId: string, event: ChangeEvent<HTMLInputElement>) => void;
+  handleJapanRankingFetch: (rowId: string) => Promise<void>;
 }
+
+const createDefaultJapanRankingSettings = (): NonNullable<StartOrderRow['japanRanking']> => ({
+  categoryId: '1',
+  pages: 1,
+  pagesRaw: '1',
+});
+
+const normalizeJapanRankingSettings = (
+  settings?: StartOrderRow['japanRanking'],
+): StartOrderRow['japanRanking'] | undefined => {
+  if (!settings) {
+    return undefined;
+  }
+  const pages = settings.pages ?? 1;
+  const pagesRaw =
+    settings.pagesRaw ?? (settings.pages !== undefined ? String(settings.pages) : '1');
+  return {
+    ...settings,
+    pages,
+    pagesRaw,
+  };
+};
 
 const readFileAsText = async (file: File): Promise<string> => {
   if (typeof file.text === 'function') {
@@ -55,6 +81,10 @@ const readFileAsText = async (file: File): Promise<string> => {
 type ComparableRow = Pick<StartOrderRow, 'method'> & {
   classId: string | null;
   csvName: string | null;
+  japanRankingCategoryId: string | null;
+  japanRankingPages: number | null;
+  japanRankingPagesRaw: string | null;
+  japanRankingFetchedCount: number | null;
 };
 
 const toComparableRows = (rows: StartOrderRow[]): ComparableRow[] =>
@@ -62,6 +92,10 @@ const toComparableRows = (rows: StartOrderRow[]): ComparableRow[] =>
     method: row.method,
     classId: row.classId ?? null,
     csvName: row.csvName ?? null,
+    japanRankingCategoryId: row.japanRanking?.categoryId ?? null,
+    japanRankingPages: row.japanRanking?.pages ?? null,
+    japanRankingPagesRaw: row.japanRanking?.pagesRaw ?? null,
+    japanRankingFetchedCount: row.japanRanking?.fetchedCount ?? null,
   }));
 
 const areComparableRowsEqual = (a: ComparableRow[], b: ComparableRow[]): boolean => {
@@ -73,13 +107,21 @@ const areComparableRowsEqual = (a: ComparableRow[], b: ComparableRow[]): boolean
     if (!other) {
       return false;
     }
-    return row.method === other.method && row.classId === other.classId && row.csvName === other.csvName;
+    return (
+      row.method === other.method &&
+      row.classId === other.classId &&
+      row.csvName === other.csvName &&
+      row.japanRankingCategoryId === other.japanRankingCategoryId &&
+      row.japanRankingPages === other.japanRankingPages &&
+      row.japanRankingPagesRaw === other.japanRankingPagesRaw &&
+      row.japanRankingFetchedCount === other.japanRankingFetchedCount
+    );
   });
 };
 
 const deriveTargets = (rows: StartOrderRow[]): string[] => {
   const targets = rows.reduce<Set<string>>((acc, row) => {
-    if (row.method === 'worldRanking' && row.classId) {
+    if ((row.method === 'worldRanking' || row.method === 'japanRanking') && row.classId) {
       acc.add(row.classId);
     }
     return acc;
@@ -105,11 +147,17 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
   const rowIdRef = useRef(0);
 
   const createRow = useCallback(
-    (classId?: string, method: StartOrderRow['method'] = 'random', csvName?: string): StartOrderRow => ({
+    (
+      classId?: string,
+      method: StartOrderRow['method'] = 'random',
+      csvName?: string,
+      japanRanking?: StartOrderRow['japanRanking'],
+    ): StartOrderRow => ({
       id: `start-order-row-${rowIdRef.current++}`,
       classId,
       method,
       csvName,
+      japanRanking: normalizeJapanRankingSettings(japanRanking),
     }),
     [],
   );
@@ -131,7 +179,10 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
 
   const [rows, setRows] = useState<StartOrderRow[]>(() => {
     if (startOrderRules.length > 0) {
-      const initial = startOrderRules.map((rule) => ({ ...rule }));
+      const initial = startOrderRules.map((rule) => ({
+        ...rule,
+        japanRanking: normalizeJapanRankingSettings(rule.japanRanking),
+      }));
       updateRowIdCounter(initial);
       return initial;
     }
@@ -166,7 +217,10 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       setRows((prev) => (prev.length === 0 ? [createRow()] : prev));
       return;
     }
-    const next = startOrderRules.map((rule) => ({ ...rule }));
+    const next = startOrderRules.map((rule) => ({
+      ...rule,
+      japanRanking: normalizeJapanRankingSettings(rule.japanRanking),
+    }));
     updateRowIdCounter(next);
     setRows(next);
   }, [comparableStartOrderRules, createRow, startOrderRules, updateRowIdCounter]);
@@ -185,7 +239,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       let changed = false;
       const next = prev.map<StartOrderRow>((row) => {
         if (row.classId && !availableSet.has(row.classId)) {
-          if (row.method === 'worldRanking') {
+          if (row.method === 'worldRanking' || row.method === 'japanRanking') {
             removed.push(row.classId);
           }
           changed = true;
@@ -194,6 +248,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
             classId: undefined,
             method: 'random',
             csvName: undefined,
+            japanRanking: undefined,
           };
           return sanitized;
         }
@@ -211,8 +266,8 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
     }
     const message =
       targets.length === 0
-        ? '世界ランキング対象クラスを選択していません。'
-        : `世界ランキング対象クラス: ${targets.join(', ')}`;
+        ? 'ランキング対象クラスを選択していません。'
+        : `ランキング対象クラス: ${targets.join(', ')}`;
     setStatus(dispatch, 'startOrder', createStatus(message, 'info'));
   }, [dispatch, statuses.startOrder.level]);
 
@@ -225,7 +280,7 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
       let removedClassId: string | undefined;
       setRows((prev) => {
         const target = prev.find((row) => row.id === rowId);
-        if (target?.method === 'worldRanking' && target.classId) {
+        if (target?.classId && (target.method === 'worldRanking' || target.method === 'japanRanking')) {
           removedClassId = target.classId;
         }
         const next = prev.filter((row) => row.id !== rowId);
@@ -248,13 +303,28 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
             return row;
           }
           const nextClassId = value.length > 0 ? value : undefined;
-          if (row.method === 'worldRanking' && row.classId && row.classId !== nextClassId) {
+          if (
+            (row.method === 'worldRanking' || row.method === 'japanRanking') &&
+            row.classId &&
+            row.classId !== nextClassId
+          ) {
             removedClassId = row.classId;
           }
+          const nextJapanRanking =
+            row.method === 'japanRanking'
+              ? nextClassId === row.classId
+                ? row.japanRanking
+                : {
+                    ...(normalizeJapanRankingSettings(row.japanRanking) ??
+                      createDefaultJapanRankingSettings()),
+                    fetchedCount: undefined,
+                  }
+              : undefined;
           return {
             ...row,
             classId: nextClassId,
             csvName: nextClassId === row.classId ? row.csvName : undefined,
+            japanRanking: nextJapanRanking,
           };
         }),
       );
@@ -275,16 +345,171 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
             return row;
           }
           if (value === 'random') {
+            if ((row.method === 'worldRanking' || row.method === 'japanRanking') && row.classId) {
+              removedClassId = row.classId;
+            }
+            return { ...row, method: value, csvName: undefined, japanRanking: undefined };
+          }
+          if (value === 'worldRanking') {
+            if (row.method === 'japanRanking' && row.classId) {
+              removedClassId = row.classId;
+            }
+            return { ...row, method: value, japanRanking: undefined };
+          }
+          if (value === 'japanRanking') {
             if (row.method === 'worldRanking' && row.classId) {
               removedClassId = row.classId;
             }
-            return { ...row, method: value, csvName: undefined };
+            const settings = normalizeJapanRankingSettings(row.japanRanking) ??
+              createDefaultJapanRankingSettings();
+            return {
+              ...row,
+              method: value,
+              csvName: undefined,
+              japanRanking: { ...settings, fetchedCount: undefined },
+            };
           }
-          return { ...row, method: value };
+          return row;
         }),
       );
       if (removedClassId) {
         removeClassWorldRanking(dispatch, removedClassId);
+      }
+    },
+    [dispatch],
+  );
+
+  const handleJapanRankingCategoryChange = useCallback(
+    (rowId: string, event: ChangeEvent<HTMLInputElement>) => {
+      const rawValue = event.target.value ?? '';
+      const normalized = rawValue.replace(/[^0-9]/g, '');
+      setRows((prev) =>
+        prev.map<StartOrderRow>((row) => {
+          if (row.id !== rowId || row.method !== 'japanRanking') {
+            return row;
+          }
+          const settings = row.japanRanking ?? createDefaultJapanRankingSettings();
+          if (settings.categoryId === normalized && settings.fetchedCount === undefined) {
+            return row;
+          }
+          return {
+            ...row,
+            japanRanking: { ...settings, categoryId: normalized, fetchedCount: undefined },
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const handleJapanRankingPagesChange = useCallback(
+    (rowId: string, event: ChangeEvent<HTMLInputElement>) => {
+      const rawValue = event.target.value ?? '';
+      const parsed = Number.parseInt(rawValue, 10);
+      const pages = Number.isNaN(parsed) ? 1 : Math.max(1, parsed);
+      setRows((prev) =>
+        prev.map<StartOrderRow>((row) => {
+          if (row.id !== rowId || row.method !== 'japanRanking') {
+            return row;
+          }
+          const settings = row.japanRanking ?? createDefaultJapanRankingSettings();
+          if (
+            settings.pages === pages &&
+            settings.pagesRaw === rawValue &&
+            settings.fetchedCount === undefined
+          ) {
+            return row;
+          }
+          return {
+            ...row,
+            japanRanking: { ...settings, pages, pagesRaw: rawValue, fetchedCount: undefined },
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const handleJapanRankingFetch = useCallback(
+    async (rowId: string) => {
+      const targetRow = rowsRef.current.find((row) => row.id === rowId);
+      if (!targetRow) {
+        return;
+      }
+      if (targetRow.method !== 'japanRanking') {
+        return;
+      }
+      if (!targetRow.classId) {
+        setStatus(dispatch, 'startOrder', createStatus('先にクラスを選択してください。', 'error'));
+        return;
+      }
+      const settings = targetRow.japanRanking ?? createDefaultJapanRankingSettings();
+      const categoryId = settings.categoryId.trim() || '1';
+      const pages = Math.max(1, settings.pages || 1);
+
+      try {
+        setLoading(dispatch, 'startOrder', true);
+        const ranking = await fetchJapanRanking({ categoryId, pages });
+        updateClassWorldRanking(dispatch, targetRow.classId, ranking);
+        setRows((prev) =>
+          prev.map<StartOrderRow>((row) => {
+            if (row.id !== rowId) {
+              return row;
+            }
+            const currentSettings = row.japanRanking ?? createDefaultJapanRankingSettings();
+            return {
+              ...row,
+              csvName: undefined,
+              japanRanking: {
+                ...currentSettings,
+                categoryId,
+                pages,
+                pagesRaw: String(pages),
+                fetchedCount: ranking.size,
+              },
+            };
+          }),
+        );
+        if (ranking.size === 0) {
+          setStatus(
+            dispatch,
+            'startOrder',
+            createStatus(
+              `クラス ${targetRow.classId} の日本ランキングに順位データが見つかりませんでした。`,
+              'info',
+            ),
+          );
+        } else {
+          setStatus(
+            dispatch,
+            'startOrder',
+            createStatus(
+              `クラス ${targetRow.classId} の日本ランキングを ${ranking.size} 件取得しました。`,
+              'success',
+            ),
+          );
+        }
+      } catch (error) {
+        removeClassWorldRanking(dispatch, targetRow.classId);
+        setRows((prev) =>
+          prev.map<StartOrderRow>((row) => {
+            if (row.id !== rowId) {
+              return row;
+            }
+            const currentSettings = row.japanRanking ?? createDefaultJapanRankingSettings();
+            return {
+              ...row,
+              japanRanking: { ...currentSettings, fetchedCount: undefined },
+            };
+          }),
+        );
+        const message =
+          error instanceof Error
+            ? error.message
+            : '日本ランキングの取得に失敗しました。';
+        setStatus(dispatch, 'startOrder', createStatus(message, 'error'));
+      } finally {
+        setLoading(dispatch, 'startOrder', false);
       }
     },
     [dispatch],
@@ -365,6 +590,9 @@ export const useStartOrderSettings = (): UseStartOrderSettingsReturn => {
     handleClassChange,
     handleMethodChange,
     handleWorldRankingUpload,
+    handleJapanRankingCategoryChange,
+    handleJapanRankingPagesChange,
+    handleJapanRankingFetch,
   };
 };
 

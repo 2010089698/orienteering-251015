@@ -101,13 +101,13 @@ describe('ClassOrderStep', () => {
         entries,
         startTimes,
         statuses: {
-          startOrder: createStatus('世界ランキング方式のクラス (M21) の CSV が読み込まれていません。', 'error'),
+          startOrder: createStatus('世界ランキング方式 (M21) のデータが読み込まれていません。', 'error'),
         },
       },
     });
 
     expect(
-      screen.queryByText('世界ランキング方式のクラス (M21) の CSV が読み込まれていません。'),
+      screen.queryByText('世界ランキング方式 (M21) のデータが読み込まれていません。'),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'クラス順序を自動生成' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'API に送信' })).not.toBeInTheDocument();

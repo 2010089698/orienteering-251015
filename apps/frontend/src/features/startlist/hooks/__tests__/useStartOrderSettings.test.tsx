@@ -1,7 +1,9 @@
+
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PropsWithChildren, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
+import { fetchJapanRanking } from '../../utils/japanRanking';
 import useStartOrderSettings from '../useStartOrderSettings';
 import {
   StartlistProvider,
@@ -11,6 +13,10 @@ import {
   useStartlistStartOrderRules,
 } from '../../state/StartlistContext';
 import type { StartOrderRules } from '../../state/types';
+
+vi.mock('../../utils/japanRanking', () => ({
+  fetchJapanRanking: vi.fn(async () => new Map()),
+}));
 
 const entries = [
   { id: 'entry-1', name: 'Runner A', classId: 'M21', cardNo: '1' },
@@ -123,5 +129,44 @@ describe('useStartOrderSettings', () => {
     });
 
     expect(result.current.hook.rows).toHaveLength(1);
+  });
+
+  it('fetches japan ranking data and stores the results', async () => {
+    const fetchMock = vi.mocked(fetchJapanRanking);
+    fetchMock.mockResolvedValueOnce(new Map([['JP-01', 1]]));
+
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(
+      () => ({
+        hook: useStartOrderSettings(),
+        rules: useStartlistStartOrderRules(),
+      }),
+      { wrapper },
+    );
+
+    const rowId = result.current.hook.rows[0].id;
+
+    act(() => {
+      result.current.hook.handleClassChange(rowId, {
+        target: { value: 'M21' },
+      } as unknown as ChangeEvent<HTMLSelectElement>);
+      result.current.hook.handleMethodChange(rowId, {
+        target: { value: 'japanRanking' },
+      } as unknown as ChangeEvent<HTMLSelectElement>);
+    });
+
+    await waitFor(() => {
+      expect(result.current.rules[0]).toMatchObject({ classId: 'M21', method: 'japanRanking' });
+    });
+
+    await act(async () => {
+      await result.current.hook.handleJapanRankingFetch(rowId);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith({ categoryId: '1', pages: 1 });
+    await waitFor(() => {
+      expect(result.current.hook.rows[0]?.japanRanking?.fetchedCount).toBe(1);
+    });
   });
 });
