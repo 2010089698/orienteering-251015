@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@event-management/domain": "file:../domain"
+    "@event-management/domain": "file:../domain",
+    "@sinclair/typebox": "^0.32.15"
   }
 }
