@@ -35,8 +35,6 @@ export function mapToEventProps(command: CreateEventCommand): EventProps {
     name: command.name,
     dateRange: EventDateRange.from(start, end),
     venue: command.venue,
-    allowMultipleRacesPerDay: command.allowMultipleRacesPerDay,
-    allowScheduleOverlap: command.allowScheduleOverlap,
   };
 }
 

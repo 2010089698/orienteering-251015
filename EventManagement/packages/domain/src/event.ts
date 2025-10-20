@@ -13,8 +13,6 @@ export interface EventProps {
   name: string;
   dateRange: EventDateRange;
   venue: string;
-  allowMultipleRacesPerDay?: boolean;
-  allowScheduleOverlap?: boolean;
 }
 
 interface ScheduleRaceInput {
@@ -32,9 +30,9 @@ export class Event {
 
   private readonly venue: string;
 
-  private allowMultipleRacesPerDay: boolean;
+  private readonly allowMultipleRacesPerDay: true = true;
 
-  private allowScheduleOverlap: boolean;
+  private readonly allowScheduleOverlap: true = true;
 
   private readonly races: Race[] = [];
 
@@ -56,8 +54,6 @@ export class Event {
     this.name = name;
     this.dateRange = props.dateRange;
     this.venue = venue;
-    this.allowMultipleRacesPerDay = Boolean(props.allowMultipleRacesPerDay);
-    this.allowScheduleOverlap = Boolean(props.allowScheduleOverlap);
   }
 
   public static create(props: EventProps): Event {
@@ -82,20 +78,12 @@ export class Event {
     return this.venue;
   }
 
-  public allowsMultipleRacesPerDay(): boolean {
+  public allowsMultipleRacesPerDay(): true {
     return this.allowMultipleRacesPerDay;
   }
 
-  public allowsScheduleOverlap(): boolean {
+  public allowsScheduleOverlap(): true {
     return this.allowScheduleOverlap;
-  }
-
-  public configureMultipleRacesPerDay(allow: boolean): void {
-    this.allowMultipleRacesPerDay = allow;
-  }
-
-  public configureScheduleOverlap(allow: boolean): void {
-    this.allowScheduleOverlap = allow;
   }
 
   public scheduleRace(

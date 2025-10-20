@@ -55,9 +55,8 @@ describe('Event aggregate', () => {
     expect((raceScheduledEvent as RaceScheduled)?.raceId.toString()).toBe('race-1');
   });
 
-  it('flags duplicate day races when allowed', () => {
+  it('allows multiple races per day by default', () => {
     const event = createEvent();
-    event.configureMultipleRacesPerDay(true);
     const schedulingService = new RaceSchedulingService();
 
     event.scheduleRace(
@@ -79,6 +78,38 @@ describe('Event aggregate', () => {
     );
 
     expect(duplicate.hasDuplicateDay()).toBe(true);
+  });
+
+  it('allows overlapping race schedules by default', () => {
+    const event = createEvent();
+    const schedulingService = new RaceSchedulingService();
+
+    event.scheduleRace(
+      {
+        id: RaceId.from('race-1'),
+        name: 'Morning Sprint',
+        schedule: RaceSchedule.from(new Date('2024-04-03T08:00:00Z'), new Date('2024-04-03T10:00:00Z'))
+      },
+      schedulingService
+    );
+
+    const overlapping = event.scheduleRace(
+      {
+        id: RaceId.from('race-2'),
+        name: 'Overlap Sprint',
+        schedule: RaceSchedule.from(new Date('2024-04-03T09:00:00Z'), new Date('2024-04-03T11:00:00Z'))
+      },
+      schedulingService
+    );
+
+    expect(overlapping.hasScheduleOverlap()).toBe(true);
+  });
+
+  it('exposes scheduling flags as always true', () => {
+    const event = createEvent();
+
+    expect(event.allowsMultipleRacesPerDay()).toBe(true);
+    expect(event.allowsScheduleOverlap()).toBe(true);
   });
 
   it('attaches a startlist to a race and validates publication preconditions', () => {
