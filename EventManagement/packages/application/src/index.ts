@@ -7,3 +7,4 @@ export * from './application/event/dto/EventDtos.js';
 export * from './application/event/dto/EventSchemas.js';
 
 export * from './application/event/services/index.js';
+export * from './application/event/ports/StartlistSyncPort.js';
