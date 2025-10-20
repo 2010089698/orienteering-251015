@@ -21,6 +21,8 @@ interface ClassSplitRow {
 
 const methodOptions: Array<{ value: ClassSplitMethod; label: string }> = [
   { value: 'random', label: 'ランダムに分割' },
+  { value: 'rankingTopBottom', label: 'ランキングで上位・下位に分割' },
+  { value: 'rankingBalanced', label: 'ランキングで均等に分割' },
 ];
 
 const methodLabelMap = new Map(methodOptions.map((option) => [option.value, option.label]));
@@ -28,11 +30,16 @@ const methodLabelMap = new Map(methodOptions.map((option) => [option.value, opti
 const sanitizeRows = (rows: ClassSplitRow[]): ClassSplitRules =>
   rows
     .filter((row) => row.baseClassId && row.partCount && row.partCount > 1)
-    .map<ClassSplitRule>((row) => ({
-      baseClassId: row.baseClassId!,
-      partCount: Math.max(2, Math.floor(row.partCount!)),
-      method: row.method,
-    }));
+    .map<ClassSplitRule>((row) => {
+      const method = row.method;
+      const normalizedCount =
+        method === 'rankingTopBottom' ? 2 : Math.max(2, Math.floor(row.partCount!));
+      return {
+        baseClassId: row.baseClassId!,
+        partCount: normalizedCount,
+        method,
+      };
+    });
 
 const serializeRules = (rules: ClassSplitRules): string =>
   JSON.stringify(
@@ -237,7 +244,18 @@ const ClassSplitSettingsPanel = (): JSX.Element => {
   const handleMethodChange = (rowId: string, event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value as ClassSplitMethod;
     setRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, method: value } : row)),
+      prev.map((row) => {
+        if (row.id !== rowId) {
+          return row;
+        }
+        const next: ClassSplitRow = { ...row, method: value };
+        if (value === 'rankingTopBottom') {
+          next.partCount = 2;
+        } else if (!next.partCount || next.partCount < 2) {
+          next.partCount = 2;
+        }
+        return next;
+      }),
     );
   };
 

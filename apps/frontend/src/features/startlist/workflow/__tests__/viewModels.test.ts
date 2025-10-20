@@ -53,6 +53,8 @@ describe('createLaneAssignmentViewModel', () => {
       settings,
       classSplitRules: [],
       classSplitResult: undefined,
+      startOrderRules: [],
+      worldRankingByClass: new Map(),
     });
     expect(viewModel.laneSummaries).toHaveLength(2);
     expect(viewModel.laneSummaries[0].classSummaries[0].timeRangeLabel).toMatch(/\d{2}:\d{2}/);
