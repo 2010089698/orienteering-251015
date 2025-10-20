@@ -13,8 +13,6 @@ const refreshTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
 
 const defaultFilters: EventFilterState = {
   query: '',
-  onlyAllowMultiplePerDay: false,
-  onlyAllowOverlap: false,
 };
 
 const EventListPage = () => {
@@ -40,18 +38,12 @@ const EventListPage = () => {
 
   const filteredEvents = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
-    return events.filter((event) => {
-      if (filters.onlyAllowMultiplePerDay && !event.allowMultipleRacesPerDay) {
-        return false;
-      }
-      if (filters.onlyAllowOverlap && !event.allowScheduleOverlap) {
-        return false;
-      }
-      if (!query) {
-        return true;
-      }
-      return [event.name, event.venue, event.id].some((value) => value.toLowerCase().includes(query));
-    });
+    if (!query) {
+      return events;
+    }
+    return events.filter((event) =>
+      [event.name, event.venue, event.id].some((value) => value.toLowerCase().includes(query)),
+    );
   }, [events, filters]);
 
   return (
