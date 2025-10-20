@@ -2,6 +2,7 @@ import {
   StartlistFactory,
   StartlistRepository,
   StartlistSnapshot,
+  StartlistVersionRepository,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -19,11 +20,12 @@ export class EnterStartlistSettingsService
 {
   constructor(
     repository: StartlistRepository,
+    versionRepository: StartlistVersionRepository,
     transactionManager: TransactionManager,
     eventPublisher: ApplicationEventPublisher,
     factory: StartlistFactory,
   ) {
-    super(repository, transactionManager, eventPublisher, factory);
+    super(repository, versionRepository, transactionManager, eventPublisher, factory);
   }
 
   async execute(command: EnterStartlistSettingsCommand): Promise<StartlistSnapshot> {

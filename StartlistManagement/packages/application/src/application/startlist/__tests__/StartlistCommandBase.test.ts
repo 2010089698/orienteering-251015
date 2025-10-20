@@ -8,6 +8,8 @@ import {
   StartlistRepository,
   StartlistSnapshot,
   StartlistStatus,
+  StartlistVersionGeneratedEvent,
+  StartlistVersionRepository,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -26,11 +28,12 @@ const snapshot: StartlistSnapshot = {
 class TestCommand extends StartlistCommandBase {
   constructor(
     repository: StartlistRepository,
+    versionRepository: StartlistVersionRepository,
     transaction: TransactionManager,
     publisher: ApplicationEventPublisher,
     factory?: StartlistFactory,
   ) {
-    super(repository, transaction, publisher, factory);
+    super(repository, versionRepository, transaction, publisher, factory);
   }
 
   async run(
@@ -56,6 +59,14 @@ describe('StartlistCommandBase', () => {
       findById: vi.fn().mockResolvedValue(startlist),
       save: vi.fn().mockResolvedValue(void 0),
     };
+    const versionRepository: StartlistVersionRepository = {
+      saveVersion: vi.fn().mockResolvedValue({
+        version: 1,
+        snapshot,
+        confirmedAt: new Date(),
+      }),
+      findVersions: vi.fn().mockResolvedValue([]),
+    };
     const transaction: TransactionManager = {
       execute: vi.fn(async (work) => work()),
     };
@@ -73,13 +84,15 @@ describe('StartlistCommandBase', () => {
       startlistWithSpies.pullDomainEvents = vi.fn().mockReturnValue(events);
     }
 
-    return { repository, transaction, publisher, startlist: startlistWithSpies, factory };
+    return { repository, versionRepository, transaction, publisher, startlist: startlistWithSpies, factory };
   };
 
   it('loads existing startlist and publishes events', async () => {
     const existingStartlist = {} as Startlist;
-    const { repository, transaction, publisher, startlist } = createMocks({ startlist: existingStartlist });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher, startlist } = createMocks({
+      startlist: existingStartlist,
+    });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
     const mutate = vi.fn();
 
     const result = await command.run('startlist-1', mutate);
@@ -104,13 +117,21 @@ describe('StartlistCommandBase', () => {
       findById: vi.fn().mockResolvedValue(undefined),
       save: vi.fn().mockResolvedValue(void 0),
     };
+    const versionRepository: StartlistVersionRepository = {
+      saveVersion: vi.fn().mockResolvedValue({
+        version: 1,
+        snapshot,
+        confirmedAt: new Date(),
+      }),
+      findVersions: vi.fn().mockResolvedValue([]),
+    };
     const transaction: TransactionManager = {
       execute: vi.fn(async (work) => work()),
     };
     const publisher: ApplicationEventPublisher = {
       publish: vi.fn().mockResolvedValue(void 0),
     };
-    const command = new TestCommand(repository, transaction, publisher, factory);
+    const command = new TestCommand(repository, versionRepository, transaction, publisher, factory);
     const mutate = vi.fn();
 
     const result = await command.run('startlist-1', mutate, { allowCreate: true });
@@ -124,15 +145,15 @@ describe('StartlistCommandBase', () => {
   });
 
   it('throws when startlist not found and creation not allowed', async () => {
-    const { repository, transaction, publisher } = createMocks({ startlist: undefined });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher } = createMocks({ startlist: undefined });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
 
     await expect(command.run('missing', vi.fn())).rejects.toBeInstanceOf(StartlistNotFoundError);
   });
 
   it('throws when allowCreate is true but factory is missing', async () => {
-    const { repository, transaction, publisher } = createMocks({ startlist: undefined });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher } = createMocks({ startlist: undefined });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
 
     await expect(command.run('missing', vi.fn(), { allowCreate: true })).rejects.toBeInstanceOf(
       InvalidCommandError,
@@ -141,17 +162,21 @@ describe('StartlistCommandBase', () => {
 
   it('wraps repository save errors into PersistenceError', async () => {
     const existingStartlist = {} as Startlist;
-    const { repository, transaction, publisher } = createMocks({ startlist: existingStartlist });
+    const { repository, versionRepository, transaction, publisher } = createMocks({
+      startlist: existingStartlist,
+    });
     repository.save = vi.fn().mockRejectedValue(new Error('boom'));
-    const command = new TestCommand(repository, transaction, publisher);
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
 
     await expect(command.run('startlist-1', vi.fn())).rejects.toBeInstanceOf(PersistenceError);
   });
 
   it('maps domain errors from mutate to InvalidCommandError', async () => {
     const existingStartlist = {} as Startlist;
-    const { repository, transaction, publisher } = createMocks({ startlist: existingStartlist });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher } = createMocks({
+      startlist: existingStartlist,
+    });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
     const mutate = vi.fn(() => {
       throw new DomainError('invalid');
     });
@@ -161,8 +186,10 @@ describe('StartlistCommandBase', () => {
 
   it('re-throws existing application errors without remapping', async () => {
     const existingStartlist = {} as Startlist;
-    const { repository, transaction, publisher } = createMocks({ startlist: existingStartlist });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher } = createMocks({
+      startlist: existingStartlist,
+    });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
     const appError = new InvalidCommandError('app-error');
     const mutate = vi.fn(() => {
       throw appError;
@@ -171,10 +198,33 @@ describe('StartlistCommandBase', () => {
     await expect(command.run('startlist-1', mutate)).rejects.toBe(appError);
   });
 
+  it('persists startlist versions when version events are emitted', async () => {
+    const existingStartlist = {} as Startlist;
+    const confirmedAt = new Date('2024-03-03T00:00:00Z');
+    const versionEvent = new StartlistVersionGeneratedEvent('startlist-1', snapshot, confirmedAt);
+    const { repository, versionRepository, transaction, publisher } = createMocks({
+      startlist: existingStartlist,
+      events: [versionEvent],
+    });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
+
+    await command.run('startlist-1', vi.fn());
+
+    expect(versionRepository.saveVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshot,
+        confirmedAt,
+      }),
+    );
+  });
+
   it('does not publish when no events are recorded', async () => {
     const existingStartlist = {} as Startlist;
-    const { repository, transaction, publisher, startlist } = createMocks({ startlist: existingStartlist, events: [] });
-    const command = new TestCommand(repository, transaction, publisher);
+    const { repository, versionRepository, transaction, publisher, startlist } = createMocks({
+      startlist: existingStartlist,
+      events: [],
+    });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher);
 
     await command.run('startlist-1', vi.fn());
 

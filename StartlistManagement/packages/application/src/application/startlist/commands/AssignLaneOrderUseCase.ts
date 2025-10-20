@@ -1,4 +1,8 @@
-import { StartlistRepository, StartlistSnapshot } from '@startlist-management/domain';
+import {
+  StartlistRepository,
+  StartlistSnapshot,
+  StartlistVersionRepository,
+} from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
 import { toLaneAssignments } from '../dto/StartlistMappers.js';
@@ -12,10 +16,11 @@ export interface AssignLaneOrderUseCase {
 export class AssignLaneOrderService extends StartlistCommandBase implements AssignLaneOrderUseCase {
   constructor(
     repository: StartlistRepository,
+    versionRepository: StartlistVersionRepository,
     transactionManager: TransactionManager,
     eventPublisher: ApplicationEventPublisher,
   ) {
-    super(repository, transactionManager, eventPublisher);
+    super(repository, versionRepository, transactionManager, eventPublisher);
   }
 
   async execute(command: AssignLaneOrderCommand): Promise<StartlistSnapshot> {

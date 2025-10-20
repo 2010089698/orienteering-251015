@@ -5,6 +5,9 @@ import {
   StartlistRepository,
   StartlistSettingsNotEnteredError,
   StartlistStatus,
+  StartlistVersionGeneratedEvent,
+  StartlistVersionRepository,
+  StartlistSnapshot,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -45,6 +48,14 @@ const createBaseDeps = (startlist: Partial<Startlist> = {}) => {
     findById: vi.fn().mockResolvedValue(startlistStub),
     save: vi.fn().mockResolvedValue(void 0),
   };
+  const versionRepository: StartlistVersionRepository = {
+    saveVersion: vi.fn().mockResolvedValue({
+      version: 1,
+      snapshot: startlistStub.toSnapshot?.() as StartlistSnapshot,
+      confirmedAt: new Date(),
+    }),
+    findVersions: vi.fn().mockResolvedValue([]),
+  };
   const transactionManager: TransactionManager = {
     execute: vi.fn(async (work) => work()),
   };
@@ -52,7 +63,7 @@ const createBaseDeps = (startlist: Partial<Startlist> = {}) => {
     publish: vi.fn().mockResolvedValue(void 0),
   };
 
-  return { repository, transactionManager, publisher, startlist: startlistStub };
+  return { repository, versionRepository, transactionManager, publisher, startlist: startlistStub };
 };
 
 describe('Startlist application use cases', () => {
@@ -78,6 +89,14 @@ describe('Startlist application use cases', () => {
       findById: vi.fn().mockResolvedValue(undefined),
       save: vi.fn().mockResolvedValue(void 0),
     };
+    const versionRepository: StartlistVersionRepository = {
+      saveVersion: vi.fn().mockResolvedValue({
+        version: 1,
+        snapshot: createdStartlist.toSnapshot(),
+        confirmedAt: new Date(),
+      }),
+      findVersions: vi.fn().mockResolvedValue([]),
+    };
     const transactionManager: TransactionManager = {
       execute: vi.fn(async (work) => work()),
     };
@@ -85,7 +104,13 @@ describe('Startlist application use cases', () => {
       publish: vi.fn().mockResolvedValue(void 0),
     };
 
-    const service = new EnterStartlistSettingsService(repository, transactionManager, publisher, factory);
+    const service = new EnterStartlistSettingsService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+      factory,
+    );
 
     await service.execute({
       startlistId: 'startlist-1',
@@ -107,8 +132,13 @@ describe('Startlist application use cases', () => {
   });
 
   it('AssignLaneOrderService validates settings presence', async () => {
-    const { repository, transactionManager, publisher } = createBaseDeps();
-    const service = new AssignLaneOrderService(repository, transactionManager, publisher);
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps();
+    const service = new AssignLaneOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await expect(
       service.execute({
@@ -125,12 +155,17 @@ describe('Startlist application use cases', () => {
       laneClassInterval: Duration.fromMilliseconds(60000),
       classPlayerInterval: Duration.fromMilliseconds(45000),
     };
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       getSettings: vi.fn(() => settings),
       getSettingsOrThrow: vi.fn(() => settings),
       assignLaneOrderAndIntervals: assignLaneOrder,
     });
-    const service = new AssignLaneOrderService(repository, transactionManager, publisher);
+    const service = new AssignLaneOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({
       startlistId: 'startlist-1',
@@ -145,8 +180,13 @@ describe('Startlist application use cases', () => {
   });
 
   it('ManuallyReassignLaneOrderService validates settings presence', async () => {
-    const { repository, transactionManager, publisher } = createBaseDeps();
-    const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps();
+    const service = new ManuallyReassignLaneOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await expect(
       service.execute({
@@ -164,12 +204,17 @@ describe('Startlist application use cases', () => {
       laneClassInterval: Duration.fromMilliseconds(60000),
       classPlayerInterval: Duration.fromMilliseconds(45000),
     };
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       getSettings: vi.fn(() => settings),
       getSettingsOrThrow: vi.fn(() => settings),
       manuallyReassignLaneOrder: manual,
     });
-    const service = new ManuallyReassignLaneOrderService(repository, transactionManager, publisher);
+    const service = new ManuallyReassignLaneOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({
       startlistId: 'startlist-1',
@@ -187,10 +232,15 @@ describe('Startlist application use cases', () => {
 
   it('AssignPlayerOrderService maps class assignments', async () => {
     const assignPlayer = vi.fn();
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       assignPlayerOrderAndIntervals: assignPlayer,
     });
-    const service = new AssignPlayerOrderService(repository, transactionManager, publisher);
+    const service = new AssignPlayerOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({
       startlistId: 'startlist-1',
@@ -206,10 +256,15 @@ describe('Startlist application use cases', () => {
 
   it('ManuallyFinalizeClassStartOrderService maps assignments and reason', async () => {
     const manualFinalize = vi.fn();
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       manuallyFinalizeClassStartOrder: manualFinalize,
     });
-    const service = new ManuallyFinalizeClassStartOrderService(repository, transactionManager, publisher);
+    const service = new ManuallyFinalizeClassStartOrderService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({
       startlistId: 'startlist-1',
@@ -227,10 +282,15 @@ describe('Startlist application use cases', () => {
 
   it('AssignStartTimesService maps start times DTO', async () => {
     const assignStartTimes = vi.fn();
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       assignStartTimes,
     });
-    const service = new AssignStartTimesService(repository, transactionManager, publisher);
+    const service = new AssignStartTimesService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     const startTime = new Date().toISOString();
     await service.execute({
@@ -245,22 +305,71 @@ describe('Startlist application use cases', () => {
 
   it('FinalizeStartlistService invokes finalize on startlist', async () => {
     const finalize = vi.fn();
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       finalizeStartlist: finalize,
     });
-    const service = new FinalizeStartlistService(repository, transactionManager, publisher);
+    const service = new FinalizeStartlistService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({ startlistId: 'startlist-1' });
 
     expect(finalize).toHaveBeenCalled();
   });
 
+  it('persists a new version when startlist emits version generated event', async () => {
+    const confirmedAt = new Date('2024-02-02T00:00:00Z');
+    const snapshot: StartlistSnapshot = {
+      id: 'startlist-1',
+      settings: undefined,
+      laneAssignments: [],
+      classAssignments: [],
+      startTimes: [],
+      status: StartlistStatus.FINALIZED,
+    };
+
+    const versionEvent = new StartlistVersionGeneratedEvent(
+      'startlist-1',
+      snapshot,
+      confirmedAt,
+    );
+
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
+      finalizeStartlist: vi.fn(),
+      toSnapshot: vi.fn(() => snapshot),
+      pullDomainEvents: vi.fn(() => [versionEvent]),
+    });
+
+    const service = new FinalizeStartlistService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
+
+    await service.execute({ startlistId: 'startlist-1' });
+
+    const saveMock = versionRepository.saveVersion as unknown as ReturnType<typeof vi.fn>;
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    const callArgs = saveMock.mock.calls[0][0];
+    expect(callArgs.snapshot).toEqual(snapshot);
+    expect(callArgs.confirmedAt).toEqual(confirmedAt);
+  });
+
   it('InvalidateStartTimesService passes reason', async () => {
     const invalidate = vi.fn();
-    const { repository, transactionManager, publisher } = createBaseDeps({
+    const { repository, versionRepository, transactionManager, publisher } = createBaseDeps({
       invalidateStartTimes: invalidate,
     });
-    const service = new InvalidateStartTimesService(repository, transactionManager, publisher);
+    const service = new InvalidateStartTimesService(
+      repository,
+      versionRepository,
+      transactionManager,
+      publisher,
+    );
 
     await service.execute({ startlistId: 'startlist-1', reason: 'manual' });
 

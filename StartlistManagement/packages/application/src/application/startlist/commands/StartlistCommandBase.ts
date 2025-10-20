@@ -5,6 +5,8 @@ import {
   StartlistId,
   StartlistRepository,
   StartlistSnapshot,
+  StartlistVersionGeneratedEvent,
+  StartlistVersionRepository,
 } from '@startlist-management/domain';
 import { ApplicationEventPublisher } from '../../shared/event-publisher.js';
 import { TransactionManager } from '../../shared/transaction.js';
@@ -19,6 +21,7 @@ import {
 export abstract class StartlistCommandBase {
   protected constructor(
     private readonly repository: StartlistRepository,
+    private readonly versionRepository: StartlistVersionRepository,
     private readonly transactionManager: TransactionManager,
     private readonly eventPublisher: ApplicationEventPublisher,
     private readonly factory?: StartlistFactory,
@@ -55,11 +58,38 @@ export abstract class StartlistCommandBase {
         };
       });
 
+      await this.persistVersions(startlistId, events);
       await this.publish(events);
       return snapshot;
     } catch (error) {
       const appError = error instanceof StartlistApplicationError ? error : mapToApplicationError(error);
       throw appError;
+    }
+  }
+
+  private async persistVersions(startlistId: StartlistId, events: DomainEvent[]): Promise<void> {
+    const versionEvents = events.filter(
+      (event): event is StartlistVersionGeneratedEvent => event.type === 'StartlistVersionGeneratedEvent',
+    );
+
+    if (versionEvents.length === 0) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        versionEvents.map((event) =>
+          Promise.resolve(
+            this.versionRepository.saveVersion({
+              startlistId,
+              snapshot: event.snapshot,
+              confirmedAt: event.confirmedAt,
+            }),
+          ),
+        ),
+      );
+    } catch (error) {
+      throw new PersistenceError('Failed to persist startlist version.', error);
     }
   }
 
