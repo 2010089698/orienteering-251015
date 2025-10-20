@@ -146,12 +146,14 @@ describe('prepareClassSplits', () => {
       ],
     ]);
 
-    const { groups, result } = prepareClassSplits(entries, {
+    const { groups, result, signature } = prepareClassSplits(entries, {
       splitRules: [{ baseClassId: 'EL', partCount: 2, method: 'rankingTopBottom' }],
       startOrderRules,
       worldRankingByClass,
     });
 
+    expect(signature).not.toBe('no-split');
+    expect(result?.signature).toBe(signature);
     const topGroup = groups.find((group) => group.classId === 'EL1');
     const bottomGroup = groups.find((group) => group.classId === 'EL2');
     expect(topGroup?.entries.map((entry) => entry.id)).toEqual(['elite-5', 'elite-1', 'elite-3']);
@@ -160,6 +162,8 @@ describe('prepareClassSplits', () => {
       { classId: 'EL1', baseClassId: 'EL', splitIndex: 0, displayName: '上位' },
       { classId: 'EL2', baseClassId: 'EL', splitIndex: 1, displayName: '下位' },
     ]);
+    expect(result?.splitIdToEntryIds.get('EL1')).toEqual(['elite-5', 'elite-1', 'elite-3']);
+    expect(result?.splitIdToEntryIds.get('EL2')).toEqual(['elite-2', 'elite-4']);
   });
 
   it('balances ranking-based groups greedily when multiple parts requested', () => {
@@ -186,12 +190,14 @@ describe('prepareClassSplits', () => {
       ],
     ]);
 
-    const { groups, result } = prepareClassSplits(entries, {
+    const { groups, result, signature } = prepareClassSplits(entries, {
       splitRules: [{ baseClassId: 'BAL', partCount: 3, method: 'rankingBalanced' }],
       startOrderRules,
       worldRankingByClass,
     });
 
+    expect(signature).not.toBe('no-split');
+    expect(result?.signature).toBe(signature);
     const classGroups = groups.filter((group) => group.baseClassId === 'BAL');
     expect(classGroups).toHaveLength(3);
     const counts = classGroups.map((group) => group.entries.length);
@@ -207,6 +213,52 @@ describe('prepareClassSplits', () => {
       { classId: 'BAL2', baseClassId: 'BAL', splitIndex: 1, displayName: '均等2' },
       { classId: 'BAL3', baseClassId: 'BAL', splitIndex: 2, displayName: '均等3' },
     ]);
+    expect(result?.splitIdToEntryIds.get('BAL1')).toEqual(['bal-1', 'bal-4', 'bal-7']);
+    expect(result?.splitIdToEntryIds.get('BAL2')).toEqual(['bal-2', 'bal-5']);
+    expect(result?.splitIdToEntryIds.get('BAL3')).toEqual(['bal-3', 'bal-6']);
+  });
+
+  it('updates ranking split signature when world ranking data changes', () => {
+    const entries: Entry[] = [
+      { id: 'elite-1', name: 'Runner 1', classId: 'EL', cardNo: '1', iofId: 'iof-1' },
+      { id: 'elite-2', name: 'Runner 2', classId: 'EL', cardNo: '2', iofId: 'iof-2' },
+      { id: 'elite-3', name: 'Runner 3', classId: 'EL', cardNo: '3', iofId: 'iof-3' },
+      { id: 'elite-4', name: 'Runner 4', classId: 'EL', cardNo: '4', iofId: 'iof-4' },
+    ];
+    const baseOptions = {
+      splitRules: [{ baseClassId: 'EL', partCount: 2, method: 'rankingTopBottom' }] as const,
+      startOrderRules: [{ id: 'rule', classId: 'EL', method: 'worldRanking' as const }],
+    };
+    const initialRanking = new Map([
+      ['iof-1', 5],
+      ['iof-2', 10],
+      ['iof-3', 15],
+      ['iof-4', 20],
+    ]);
+    const updatedRanking = new Map([
+      ['iof-1', 50],
+      ['iof-2', 1],
+      ['iof-3', 25],
+      ['iof-4', 30],
+    ]);
+
+    const first = prepareClassSplits(entries, {
+      ...baseOptions,
+      worldRankingByClass: new Map([['EL', initialRanking]]),
+    });
+    const second = prepareClassSplits(entries, {
+      ...baseOptions,
+      worldRankingByClass: new Map([['EL', updatedRanking]]),
+    });
+
+    expect(first.signature).not.toBe('no-split');
+    expect(second.signature).not.toBe('no-split');
+    expect(second.signature).not.toBe(first.signature);
+    expect(second.result?.signature).toBe(second.signature);
+    const firstTop = first.groups.find((group) => group.classId === 'EL1');
+    const secondTop = second.groups.find((group) => group.classId === 'EL1');
+    expect(firstTop?.entries.map((entry) => entry.id)).toEqual(['elite-1', 'elite-2']);
+    expect(secondTop?.entries.map((entry) => entry.id)).toEqual(['elite-2', 'elite-3']);
   });
 
   it('falls back to deterministic random split when ranking data unavailable', () => {

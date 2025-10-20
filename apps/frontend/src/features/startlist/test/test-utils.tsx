@@ -37,7 +37,7 @@ import type {
   StatusMessageState,
 } from '../state/types';
 
-interface InitialStateOverrides {
+export interface StartlistTestInitialState {
   startlistId?: string;
   settings?: StartlistSettingsDto;
   entries?: Entry[];
@@ -58,7 +58,7 @@ interface InitialStateOverrides {
 
 interface WrapperProps {
   initialize?: (dispatch: Dispatch<unknown>) => void;
-  initialState?: InitialStateOverrides;
+  initialState?: StartlistTestInitialState;
 }
 
 const Initializer = ({ children, initialize, initialState }: PropsWithChildren<WrapperProps>) => {
@@ -168,4 +168,27 @@ export const renderWithStartlistRouter = (
   { routerProps, ...options }: RenderWithRouterOptions = {},
 ) => {
   return renderWithStartlist(<MemoryRouter {...routerProps}>{ui}</MemoryRouter>, options);
+};
+
+interface WorldRankingInitialStateOptions {
+  csvName?: string;
+  entries?: [string, number][];
+  ruleId?: string;
+}
+
+export const createWorldRankingInitialState = (
+  classId: string,
+  { csvName = 'world-ranking.csv', entries, ruleId }: WorldRankingInitialStateOptions = {},
+): StartlistTestInitialState => {
+  const initial: StartlistTestInitialState = {
+    startOrderRules: [
+      { id: ruleId ?? `world-ranking-${classId}`, classId, method: 'worldRanking', csvName },
+    ],
+  };
+  if (entries) {
+    initial.worldRankingEntriesByClass = {
+      [classId]: entries,
+    };
+  }
+  return initial;
 };
