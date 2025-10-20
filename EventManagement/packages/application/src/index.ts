@@ -1,39 +1,9 @@
-import { type EventDefinition, validateEventDefinition } from '@event-management/domain';
+export * from './application/shared/errors.js';
+export * from './application/shared/event-publisher.js';
+export * from './application/shared/transaction.js';
+export * from './application/shared/validation.js';
 
-export interface EventRepository {
-  save(event: EventDefinition): Promise<void>;
-  findById(id: string): Promise<EventDefinition | undefined>;
-  findAll(): Promise<readonly EventDefinition[]>;
-}
+export * from './application/event/dto/EventDtos.js';
+export * from './application/event/dto/EventSchemas.js';
 
-export class RegisterEventUseCase {
-  constructor(private readonly repository: EventRepository) {}
-
-  async execute(input: EventDefinition): Promise<EventDefinition> {
-    const validated = validateEventDefinition(input);
-    await this.repository.save(validated);
-    return validated;
-  }
-}
-
-export class GetEventQuery {
-  constructor(private readonly repository: EventRepository) {}
-
-  async execute(id: string): Promise<EventDefinition | undefined> {
-    return this.repository.findById(id);
-  }
-}
-
-export class ListEventsQuery {
-  constructor(private readonly repository: EventRepository) {}
-
-  async execute(): Promise<readonly EventDefinition[]> {
-    return this.repository.findAll();
-  }
-}
-
-export interface EventModule {
-  registerEventUseCase: RegisterEventUseCase;
-  getEventQuery: GetEventQuery;
-  listEventsQuery: ListEventsQuery;
-}
+export * from './application/event/services/index.js';
