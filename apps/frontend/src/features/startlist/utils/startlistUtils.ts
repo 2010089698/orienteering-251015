@@ -689,6 +689,8 @@ export interface StartTimeCalculationInput {
   entries: Entry[];
   splitRules?: ClassSplitRules;
   splitResult?: ClassSplitResult;
+  startOrderRules?: StartOrderRules;
+  worldRankingByClass?: WorldRankingByClass;
 }
 
 export const calculateStartTimes = ({
@@ -698,6 +700,8 @@ export const calculateStartTimes = ({
   entries,
   splitRules,
   splitResult,
+  startOrderRules,
+  worldRankingByClass,
 }: StartTimeCalculationInput): StartTimeDto[] => {
   if (!settings?.startTime) {
     return [];
@@ -710,7 +714,12 @@ export const calculateStartTimes = ({
   }
 
   const classMap = new Map(classAssignments.map((assignment) => [assignment.classId, assignment]));
-  const preparation = prepareClassSplits(entries, { splitRules, previousSplitResult: splitResult });
+  const preparation = prepareClassSplits(entries, {
+    splitRules,
+    previousSplitResult: splitResult,
+    startOrderRules,
+    worldRankingByClass,
+  });
   const groupedEntries = groupEntriesByClass(entries);
   const seenPlayers = new Set<string>();
   const results: StartTimeDto[] = [];

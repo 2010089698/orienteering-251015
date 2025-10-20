@@ -244,6 +244,8 @@ export const useLaneAssignmentController = () => {
       entries,
       splitRules: classSplitRules,
       splitResult: metadataForStartTimes,
+      startOrderRules,
+      worldRankingByClass,
     });
     updateStartTimes(dispatch, startTimes, metadataForStartTimes);
     if (startTimes.length === 0) {

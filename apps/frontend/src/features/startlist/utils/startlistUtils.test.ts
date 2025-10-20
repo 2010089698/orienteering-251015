@@ -592,6 +592,8 @@ describe('calculateStartTimes', () => {
         laneAssignments: [],
         classAssignments: [],
         entries,
+        startOrderRules: [],
+        worldRankingByClass: new Map(),
       }),
     ).toEqual([]);
   });
@@ -615,7 +617,14 @@ describe('calculateStartTimes', () => {
       laneCount: 2,
     };
 
-    const result = calculateStartTimes({ settings, laneAssignments, classAssignments, entries });
+    const result = calculateStartTimes({
+      settings,
+      laneAssignments,
+      classAssignments,
+      entries,
+      startOrderRules: [],
+      worldRankingByClass: new Map(),
+    });
 
     expect(result).toHaveLength(3);
     const [first, second, third] = result;
@@ -664,6 +673,8 @@ describe('calculateStartTimes', () => {
       entries: splitEntries,
       splitRules: [{ baseClassId: 'SP', partCount: 2, method: 'random' }],
       splitResult: splitResult,
+      startOrderRules: [],
+      worldRankingByClass: new Map(),
     });
 
     expect(result.map((item) => item.playerId)).toEqual(['split-1', 'split-3', 'split-2', 'split-4']);
