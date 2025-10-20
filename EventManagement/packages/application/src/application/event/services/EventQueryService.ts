@@ -1,11 +1,15 @@
-import { EventId } from '@event-management/domain';
+import { Event, EventId } from '@event-management/domain';
 
 import { mapEventToDto } from '../dto/EventMappers.js';
 import { type EventDto } from '../dto/EventDtos.js';
-import { type EventRepository } from './EventServiceBase.js';
+
+export interface EventQueryRepository {
+  findById(id: EventId): Promise<Event | undefined>;
+  findAll(): Promise<readonly Event[]>;
+}
 
 export class EventQueryService {
-  constructor(private readonly repository: EventRepository) {}
+  constructor(private readonly repository: EventQueryRepository) {}
 
   async getById(eventId: string): Promise<EventDto | undefined> {
     const id = EventId.from(eventId);
@@ -14,9 +18,6 @@ export class EventQueryService {
   }
 
   async listAll(): Promise<EventDto[]> {
-    if (!this.repository.findAll) {
-      throw new Error('EventRepository#findAll is not implemented.');
-    }
     const events = await this.repository.findAll();
     return events.map(mapEventToDto);
   }
