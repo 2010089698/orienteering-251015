@@ -135,6 +135,8 @@ describe('StartOrderSettingsPanel', () => {
       const fetchButton = screen.getByRole('button', { name: '日本ランキングを取得' });
       await userEvent.click(fetchButton);
       expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/japan-ranking/2/1');
+      expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/japan-ranking/2/2');
       expect(
         await screen.findByText('クラス M21 の日本ランキングを 3 件取得しました。'),
       ).toBeInTheDocument();
@@ -148,6 +150,52 @@ describe('StartOrderSettingsPanel', () => {
       expect(rulesPreview).toContain('"pagesRaw":"2"');
       expect(rulesPreview).toContain('"fetchedCount":3');
     } finally {
+      if (originalFetch) {
+        global.fetch = originalFetch;
+      } else {
+        delete (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch;
+      }
+    }
+  });
+
+  it('uses the configured proxy endpoint for japan ranking requests when provided', async () => {
+    const originalFetch = global.fetch;
+    const proxyBaseUrl = 'https://proxy.example.local/api/japan-ranking';
+    const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
+    const previousEnvValue = env.VITE_JAPAN_RANKING_API_BASE_URL;
+    env.VITE_JAPAN_RANKING_API_BASE_URL = proxyBaseUrl;
+
+    const html = createJapanRankingHtml([{ rank: '1', iofId: 'JP-01' }]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, text: async () => html } as Response);
+    (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      renderWithStartlist(
+        <StartOrderSettingsPanel />,
+        { initialState: { entries, settings: baseSettings, startlistId: 'SL-1' } },
+      );
+
+      const classSelect = screen.getByLabelText('対象クラス');
+      await userEvent.selectOptions(classSelect, 'M21');
+      const methodSelect = screen.getByLabelText('リスト方式');
+      await userEvent.selectOptions(methodSelect, 'japanRanking');
+
+      const idInput = await screen.findByLabelText('ランキング ID');
+      expect(idInput).toHaveValue('1');
+      await userEvent.type(idInput, '{Backspace}2');
+
+      const fetchButton = screen.getByRole('button', { name: '日本ランキングを取得' });
+      await userEvent.click(fetchButton);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0]?.[0]).toBe('https://proxy.example.local/api/japan-ranking/2/1');
+      expect(
+        await screen.findByText('クラス M21 の日本ランキングを 1 件取得しました。'),
+      ).toBeInTheDocument();
+    } finally {
+      env.VITE_JAPAN_RANKING_API_BASE_URL = previousEnvValue;
       if (originalFetch) {
         global.fetch = originalFetch;
       } else {

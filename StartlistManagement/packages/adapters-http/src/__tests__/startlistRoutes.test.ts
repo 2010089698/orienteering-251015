@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Startlist, StartlistId, SystemClock } from '@startlist-management/domain';
 import { createStartlistModule } from '@startlist-management/infrastructure';
 import { createServer, StartlistServer } from '../server.js';
@@ -179,6 +179,63 @@ describe('startlistRoutes', () => {
     expect(response.statusCode).toBe(400);
     const body = response.json();
     expect(body.message).toContain('Startlist can only be finalized after assigning start times.');
+  });
+
+  it('proxies japan ranking requests to the upstream service', async () => {
+    const originalFetch = global.fetch;
+    const html = '<html><body>ranking</body></html>';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/html; charset=UTF-8' }),
+      text: async () => html,
+    } as Response);
+
+    (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/japan-ranking/123/2',
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://japan-o-entry.com/ranking/ranking/ranking_index/123/2',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toContain('text/html');
+      expect(response.body).toBe(html);
+    } finally {
+      if (originalFetch) {
+        global.fetch = originalFetch;
+      } else {
+        delete (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch;
+      }
+    }
+  });
+
+  it('returns 502 when the upstream service cannot be reached', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network error'));
+
+    (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/japan-ranking/999/1',
+      });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toContain('Failed to fetch Japan ranking data from upstream.');
+    } finally {
+      if (originalFetch) {
+        global.fetch = originalFetch;
+      } else {
+        delete (globalThis as typeof globalThis & { fetch?: typeof fetch }).fetch;
+      }
+    }
   });
 
   it('returns 400 when assigning lane order before entering settings', async () => {

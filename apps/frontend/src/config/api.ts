@@ -1,6 +1,7 @@
 const DEFAULT_ENDPOINTS = {
   startlist: '/api/startlists',
   entryManagement: '/api/entries',
+  japanRanking: '/api/japan-ranking',
 } as const;
 
 export type ApiEndpointKey = keyof typeof DEFAULT_ENDPOINTS;
