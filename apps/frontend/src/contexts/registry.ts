@@ -1,6 +1,7 @@
 import type { BusinessCapabilityModule, NavigationItem } from './types';
 import { startlistModule } from '../features/startlist';
 import { entryManagementModule } from '../features/entry-management';
+import { eventManagementModule } from '../features/event-management';
 
 const registry = new Map<string, BusinessCapabilityModule>();
 
@@ -31,4 +32,4 @@ export const getNavigationItems = (): NavigationItem[] => {
   }));
 };
 
-[startlistModule, entryManagementModule].forEach(registerBusinessCapability);
+[startlistModule, eventManagementModule, entryManagementModule].forEach(registerBusinessCapability);

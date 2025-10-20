@@ -53,6 +53,11 @@ const ensureErrorMessage = (error: unknown): string => {
 };
 
 export const EventManagementProvider = ({ children }: PropsWithChildren) => {
+  const existingContext = useContext(EventManagementContext);
+  if (existingContext) {
+    return <>{children}</>;
+  }
+
   const {
     listEvents,
     getEvent,
