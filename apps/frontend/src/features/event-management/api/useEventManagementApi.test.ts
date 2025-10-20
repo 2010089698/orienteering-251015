@@ -34,8 +34,6 @@ describe('useEventManagementApi', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-02',
         venue: 'Tokyo',
-        allowMultipleRacesPerDay: false,
-        allowScheduleOverlap: false,
         races: [],
       },
     ];
@@ -55,8 +53,6 @@ describe('useEventManagementApi', () => {
       startDate: '2024-03-01',
       endDate: '2024-03-02',
       venue: 'Osaka',
-      allowMultipleRacesPerDay: false,
-      allowScheduleOverlap: false,
       races: [],
     };
     fetchMock.mockResolvedValue(createJsonResponse({ event }));
@@ -75,8 +71,6 @@ describe('useEventManagementApi', () => {
       startDate: '2024-04-01T09:00:00.000Z',
       endDate: '2024-04-01T17:00:00.000Z',
       venue: 'Nagoya',
-      allowMultipleRacesPerDay: true,
-      allowScheduleOverlap: false,
     };
     const event = { ...command, id: command.eventId, races: [] };
     fetchMock.mockResolvedValue(createJsonResponse({ event }));
@@ -113,8 +107,6 @@ describe('useEventManagementApi', () => {
           startlistLink: undefined,
         },
       ],
-      allowMultipleRacesPerDay: true,
-      allowScheduleOverlap: true,
     };
     fetchMock.mockResolvedValue(createJsonResponse({ event }));
 
@@ -147,8 +139,6 @@ describe('useEventManagementApi', () => {
       endDate: '2024-06-01',
       venue: 'Sapporo',
       races: [],
-      allowMultipleRacesPerDay: false,
-      allowScheduleOverlap: false,
     };
     fetchMock.mockResolvedValue(createJsonResponse({ event }));
 

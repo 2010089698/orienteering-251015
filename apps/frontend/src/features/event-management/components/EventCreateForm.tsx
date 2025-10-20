@@ -14,8 +14,6 @@ const initialState: CreateEventCommand = {
   startDate: '',
   endDate: '',
   venue: '',
-  allowMultipleRacesPerDay: false,
-  allowScheduleOverlap: false,
 };
 
 const createInitialForm = (): CreateEventCommand => ({ ...initialState });
@@ -47,7 +45,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
     return start.getTime() <= end.getTime();
   }, [form]);
 
-  const updateField = useCallback((name: keyof CreateEventCommand, value: string | boolean) => {
+  const updateField = useCallback((name: 'eventId' | 'name' | 'startDate' | 'endDate' | 'venue', value: string) => {
     setForm((current) => ({
       ...current,
       [name]: value,
@@ -98,18 +96,18 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
             <input type="text" value={form.name} onChange={(event) => updateField('name', event.target.value)} required />
           </label>
           <label className="event-create__field">
-            <span>開始日時</span>
+            <span>開始日</span>
             <input
-              type="datetime-local"
+              type="date"
               value={form.startDate}
               onChange={(event) => updateField('startDate', event.target.value)}
               required
             />
           </label>
           <label className="event-create__field">
-            <span>終了日時</span>
+            <span>終了日</span>
             <input
-              type="datetime-local"
+              type="date"
               value={form.endDate}
               onChange={(event) => updateField('endDate', event.target.value)}
               required
@@ -118,24 +116,6 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
           <label className="event-create__field event-create__field--wide">
             <span>会場</span>
             <input type="text" value={form.venue} onChange={(event) => updateField('venue', event.target.value)} required />
-          </label>
-        </div>
-        <div className="event-create__options">
-          <label>
-            <input
-              type="checkbox"
-              checked={Boolean(form.allowMultipleRacesPerDay)}
-              onChange={(event) => updateField('allowMultipleRacesPerDay', event.target.checked)}
-            />
-            1日に複数のレースを許可
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={Boolean(form.allowScheduleOverlap)}
-              onChange={(event) => updateField('allowScheduleOverlap', event.target.checked)}
-            />
-            レーススケジュールの重複を許可
           </label>
         </div>
         <div className="event-create__actions">

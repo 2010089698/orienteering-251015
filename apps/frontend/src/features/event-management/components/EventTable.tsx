@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Tag } from '@orienteering/shared-ui';
 import type { EventDto } from '@event-management/application';
 
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
@@ -28,7 +27,6 @@ const EventTable = ({ events, isLoading }: EventTableProps) => {
           <th scope="col">開催期間</th>
           <th scope="col">会場</th>
           <th scope="col">レース数</th>
-          <th scope="col">設定</th>
         </tr>
       </thead>
       <tbody>
@@ -49,10 +47,6 @@ const EventTable = ({ events, isLoading }: EventTableProps) => {
               </td>
               <td>{event.venue}</td>
               <td>{event.races.length}</td>
-              <td className="event-table__tags">
-                {event.allowMultipleRacesPerDay ? <Tag tone="success">複数レース/日</Tag> : <Tag tone="neutral">1レース/日</Tag>}
-                {event.allowScheduleOverlap ? <Tag tone="warning">重複許可</Tag> : <Tag tone="neutral">重複不可</Tag>}
-              </td>
             </tr>
           );
         })}
