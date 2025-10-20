@@ -4,6 +4,8 @@
   "workspaces": [
     "apps/*",
     "StartlistManagement/packages/*",
-    "EntryManagement/packages/*"
+    "EntryManagement/packages/*",
+    "EventManagement",
+    "EventManagement/packages/*"
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "extends": "../../configs/tsconfig/base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@event-management/domain": ["../domain/src/index.ts"],
+      "@event-management/application": ["../application/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../application" },
+    { "path": "../domain" }
+  ]
+}

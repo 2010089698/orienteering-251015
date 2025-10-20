@@ -1,0 +1,12 @@
+{
+  "name": "@event-management/application",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@event-management/domain": "file:../domain"
+  }
+}
