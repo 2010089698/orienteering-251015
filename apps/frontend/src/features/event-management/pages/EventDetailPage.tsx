@@ -113,6 +113,9 @@ const EventDetailPage = () => {
             <Link to="/events">一覧に戻る</Link>
           </p>
         </div>
+        <Link to={`/startlist?eventId=${encodeURIComponent(event.id)}`} className="event-detail__startlist-link">
+          スタートリストを作成
+        </Link>
       </header>
       {error ? <StatusMessage tone="critical" message={error} /> : null}
       <EventSummaryCards event={event} />
@@ -121,7 +124,7 @@ const EventDetailPage = () => {
           <h2 id="race-list-heading">レース一覧</h2>
           {isLoading ? <span className="event-detail__loading">更新中…</span> : null}
         </div>
-        <RaceList races={event.races} />
+        <RaceList races={event.races} eventId={event.id} />
       </section>
       <div className="event-detail__forms">
         <ScheduleRaceForm
