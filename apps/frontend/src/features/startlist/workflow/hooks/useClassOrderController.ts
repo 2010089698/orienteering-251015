@@ -6,6 +6,7 @@ import {
   setLoading,
   setStatus,
   updateClassAssignments,
+  updateSnapshot,
   updateStartTimes,
   useStartlistClassAssignments,
   useStartlistClassOrderPreferences,
@@ -18,6 +19,7 @@ import {
   useStartlistLoading,
   useStartlistSettings,
   useStartlistStartTimes,
+  useStartlistStartlistId,
   useStartlistStatuses,
 } from '../../state/StartlistContext';
 import { STARTLIST_STEP_PATHS } from '../../routes';
@@ -29,6 +31,7 @@ import {
 import { downloadStartlistCsv } from '../../utils/startlistExport';
 import { createClassOrderViewModel, parsePlayerItemId } from '../createClassOrderViewModel';
 import { sanitizeActiveTab } from '../utils';
+import { useStartlistApi } from '../../api/useStartlistApi';
 
 export const useClassOrderController = () => {
   const navigate = useNavigate();
@@ -44,6 +47,8 @@ export const useClassOrderController = () => {
   const classSplitRules = useStartlistClassSplitRules();
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
+  const startlistId = useStartlistStartlistId();
+  const api = useStartlistApi();
 
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -194,6 +199,26 @@ export const useClassOrderController = () => {
     navigate(STARTLIST_STEP_PATHS.lanes);
   }, [navigate]);
 
+  const handleFinalize = useCallback(async () => {
+    if (!startlistId) {
+      setStatus(dispatch, 'startTimes', createStatus('スタートリスト ID を設定してください。', 'error'));
+      return;
+    }
+    try {
+      setLoading(dispatch, 'startTimes', true);
+      const snapshot = await api.finalize({ startlistId });
+      updateSnapshot(dispatch, snapshot);
+      setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
+      setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
+      navigate(STARTLIST_STEP_PATHS.link);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '確定処理に失敗しました。';
+      setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
+    } finally {
+      setLoading(dispatch, 'startTimes', false);
+    }
+  }, [api, dispatch, navigate, startlistId]);
+
   return {
     viewModel,
     activeTab,
@@ -207,6 +232,7 @@ export const useClassOrderController = () => {
     onDragEnd: handleDragEnd,
     onExportCsv: handleExportCsv,
     onBack: handleBack,
+    onFinalize: handleFinalize,
     entryMap: viewModel.entryMap,
     splitLookup: viewModel.splitLookup,
   };

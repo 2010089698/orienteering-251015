@@ -5,6 +5,7 @@ import type { BusinessCapabilityModule, CapabilityProvider } from './contexts/ty
 import InputStepPage from './features/startlist/pages/InputStepPage';
 import LaneAssignmentStepPage from './features/startlist/pages/LaneAssignmentStepPage';
 import ClassOrderStepPage from './features/startlist/pages/ClassOrderStepPage';
+import StartlistLinkPage from './features/startlist/pages/StartlistLinkPage';
 import './styles.css';
 
 const capabilityModules = getBusinessCapabilities();
@@ -55,6 +56,7 @@ const App = (): JSX.Element => {
                     <Route path="input" element={<InputStepPage />} />
                     <Route path="lanes" element={<LaneAssignmentStepPage />} />
                     <Route path="order" element={<ClassOrderStepPage />} />
+                    <Route path="link" element={<StartlistLinkPage />} />
                     <Route path="*" element={<Navigate to="input" replace />} />
                   </Route>
                 );

@@ -137,9 +137,7 @@ const StartTimesPanel = (): JSX.Element => {
       const snapshot = await api.finalize({ startlistId });
       updateSnapshot(dispatch, snapshot);
       setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
-      if (snapshot) {
-        setStatus(dispatch, 'snapshot', createStatus('スナップショットを更新しました。', 'info'));
-      }
+      setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
     } catch (error) {
       const message = error instanceof Error ? error.message : '確定処理に失敗しました。';
       setStatus(dispatch, 'startTimes', createStatus(message, 'error'));

@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   mockDeriveClassOrderWarnings: vi.fn(),
   mockDownloadStartlistCsv: vi.fn(),
   mockDispatch: vi.fn(),
+  mockFinalize: vi.fn(),
+  mockUpdateSnapshot: vi.fn(),
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -49,6 +51,7 @@ vi.mock('../../state/StartlistContext', () => ({
   updateLaneAssignments: mocks.mockUpdateLaneAssignments,
   updateClassAssignments: mocks.mockUpdateClassAssignments,
   updateStartTimes: mocks.mockUpdateStartTimes,
+  updateSnapshot: mocks.mockUpdateSnapshot,
   setLoading: mocks.mockSetLoading,
 }));
 
@@ -95,6 +98,12 @@ vi.mock('../../utils/startlistExport', () => ({
   downloadStartlistCsv: (...args: any[]) => mocks.mockDownloadStartlistCsv(...args),
 }));
 
+vi.mock('../../api/useStartlistApi', () => ({
+  useStartlistApi: () => ({
+    finalize: mocks.mockFinalize,
+  }),
+}));
+
 let mockEntries: any[] = [];
 let mockLaneAssignments: any[] = [];
 let mockSettings: any = undefined;
@@ -132,6 +141,7 @@ const resetState = () => {
     lanes: { text: '', level: 'info' },
     classes: { text: '', level: 'info' },
     startTimes: { text: '', level: 'info' },
+    snapshot: { text: '', level: 'info' },
   };
   mockClassAssignments = [];
   mockClassOrderSeed = 'seed-1';
@@ -174,6 +184,9 @@ const resetState = () => {
   mocks.mockSetLoading.mockReset();
   mocks.mockDispatch.mockReset();
   mocks.mockNavigate.mockReset();
+  mocks.mockFinalize.mockReset();
+  mocks.mockFinalize.mockResolvedValue(undefined);
+  mocks.mockUpdateSnapshot.mockReset();
 };
 
 beforeEach(() => {
@@ -312,5 +325,31 @@ describe('useClassOrderController', () => {
 
     expect(mocks.mockDownloadStartlistCsv).toHaveBeenCalled();
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', true);
+  });
+
+  it('finalizes the startlist and navigates to the link page', async () => {
+    mocks.mockFinalize.mockResolvedValue({});
+
+    const { result } = renderHook(() => useClassOrderController());
+
+    await act(async () => {
+      await result.current.onFinalize();
+    });
+
+    expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', true);
+    expect(mocks.mockFinalize).toHaveBeenCalledWith({ startlistId: mockStartlistId });
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, {});
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'startTimes',
+      expect.objectContaining({ level: 'success', text: 'スタートリストを確定しました。' }),
+    );
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'snapshot',
+      expect.objectContaining({ level: 'success' }),
+    );
+    expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/link');
+    expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', false);
   });
 });

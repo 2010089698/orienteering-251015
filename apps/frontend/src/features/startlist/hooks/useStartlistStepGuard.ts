@@ -11,6 +11,7 @@ import { STARTLIST_STEP_PATHS, type StartlistStepKey } from '../routes';
 const redirectTargets: Record<Exclude<StartlistStepKey, 'input'>, string> = {
   lanes: STARTLIST_STEP_PATHS.input,
   order: STARTLIST_STEP_PATHS.lanes,
+  link: STARTLIST_STEP_PATHS.order,
 };
 
 export const useStartlistStepGuard = (step: StartlistStepKey): void => {
@@ -23,6 +24,7 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
   const laneStatusLevel = statuses.lanes.level;
   const classStatusLevel = statuses.classes.level;
   const startTimesStatusLevel = statuses.startTimes.level;
+  const snapshotStatusLevel = statuses.snapshot.level;
   const [isGuardInitialized, setIsGuardInitialized] = useState(false);
 
   useEffect(() => {
@@ -47,6 +49,14 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
       if (!canProceed && location.pathname !== redirectTargets.order) {
         navigate(redirectTargets.order, { replace: true });
       }
+      return;
+    }
+    if (step === 'link') {
+      const isFinalized = snapshotStatusLevel === 'success';
+      if (!isFinalized && location.pathname !== redirectTargets.link) {
+        navigate(redirectTargets.link, { replace: true });
+      }
+      return;
     }
   }, [
     classAssignments.length,
@@ -56,6 +66,7 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
     isGuardInitialized,
     location.pathname,
     navigate,
+    snapshotStatusLevel,
     startTimesStatusLevel,
     startTimes.length,
     step,
