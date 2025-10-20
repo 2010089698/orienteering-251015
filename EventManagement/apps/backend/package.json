@@ -1,0 +1,17 @@
+{
+  "name": "@event-management/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/start.ts",
+  "scripts": {
+    "start": "tsx src/start.ts"
+  },
+  "dependencies": {
+    "@event-management/adapters-http": "file:../../packages/adapters-http",
+    "@event-management/infrastructure": "file:../../packages/infrastructure"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}
