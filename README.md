@@ -59,6 +59,12 @@ Monorepo のルートで実行すると、すべてのワークスペースの�
 
 EventManagement UI を利用しない場合は `VITE_EVENT_MANAGEMENT_API_BASE_URL` を設定する必要はありませんが、イベント作成やレーススケジュールの操作を行う際はバックエンドを起動し、フロントエンドの `.env` に上記 URL を設定してください。
 
+開発時に `npm run dev:frontend` を起動すると、Vite のプロキシ機能によって以下のエンドポイントがローカルサービスへ転送されます。`.env` で各 `VITE_*_API_BASE_URL` を設定すると、プロキシではなく指定したベース URL が利用されます。
+
+- `/api/startlists`・`/api/japan-ranking` → `http://localhost:3000`
+- `/api/entries` → `http://localhost:3001`
+- `/api/events` → `http://localhost:3002`
+
 ### テスト
 
 - StartlistManagement のテスト

@@ -10,8 +10,20 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
+      '/api/startlists': {
         target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/api/japan-ranking': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/api/entries': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api/events': {
+        target: 'http://localhost:3002',
         changeOrigin: true,
       },
     },
