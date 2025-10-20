@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "dev:backend": "npm run start --workspace @event-management/backend"
   },
   "devDependencies": {
     "@types/node": "^24.7.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

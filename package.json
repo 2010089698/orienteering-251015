@@ -4,13 +4,15 @@
   "scripts": {
     "dev:frontend": "npm run dev --workspace @orienteering/startlist-frontend",
     "dev:startlist-backend": "npm run dev:backend --workspace startlist-management",
-    "dev:entry-backend": "npm run start --workspace @entry-management/backend"
+    "dev:entry-backend": "npm run start --workspace @entry-management/backend",
+    "dev:event-backend": "npm run start --workspace @event-management/backend"
   },
   "workspaces": [
     "apps/*",
     "StartlistManagement/packages/*",
     "EntryManagement/packages/*",
     "EventManagement",
-    "EventManagement/packages/*"
+    "EventManagement/packages/*",
+    "EventManagement/apps/*"
   ]
 }

@@ -40,9 +40,13 @@
 
 - StartlistManagement のバックエンド API に接続するため、`apps/frontend/.env`（または `.env.local`）へ `VITE_STARTLIST_API_BASE_URL` を設定します。
   ```dotenv
-  VITE_STARTLIST_API_BASE_URL=http://localhost:3001
+  VITE_STARTLIST_API_BASE_URL=http://localhost:3000
   ```
-- 値はバックエンドの起動ポートに合わせて更新してください。Fastify 開発サーバーのデフォルトは `3001` です。
+- EventManagement の機能を利用する場合は、同じファイルへ `VITE_EVENT_MANAGEMENT_API_BASE_URL` も追加し、`npm run dev:event-backend` で起動した EventManagement API のベース URL を指定してください。
+  ```dotenv
+  VITE_EVENT_MANAGEMENT_API_BASE_URL=http://localhost:3002
+  ```
+- 各値はバックエンドの起動ポートに合わせて更新してください。Fastify 開発サーバーのデフォルトは StartlistManagement が `3000`、EventManagement が `3002` です。
 
 ### 開発サーバーの起動
 
