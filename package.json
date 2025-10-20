@@ -1,6 +1,11 @@
 {
   "name": "orienteering-monorepo",
   "private": true,
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace @orienteering/startlist-frontend",
+    "dev:startlist-backend": "npm run dev:backend --workspace startlist-management",
+    "dev:entry-backend": "npm run start --workspace @entry-management/backend"
+  },
   "workspaces": [
     "apps/*",
     "StartlistManagement/packages/*",

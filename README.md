@@ -32,16 +32,16 @@ Monorepo のルートで実行すると、すべてのワークスペースの�
 
 - StartlistManagement のバックエンド API（Fastify）
   ```bash
-  npm run dev:backend --workspace startlist-management
+  npm run dev:startlist-backend
   ```
 - StartlistManagement のフロントエンド（Vite）
   ```bash
-  npm run dev --workspace @orienteering/startlist-frontend
+  npm run dev:frontend
   ```
   UI の利用手順や `VITE_STARTLIST_API_BASE_URL` の設定方法は [apps/frontend/README.md](./apps/frontend/README.md) を参照してください。
 - EntryManagement のバックエンド API
   ```bash
-  npm run start --workspace @entry-management/backend
+  npm run dev:entry-backend
   ```
 
 ### テスト
