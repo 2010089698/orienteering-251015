@@ -205,7 +205,17 @@ describe('useInputStepController', () => {
       result.current.onComplete();
     });
 
-    expect(mocks.mockGenerateLaneAssignments).toHaveBeenCalled();
+    expect(mocks.mockGenerateLaneAssignments).toHaveBeenCalledWith(
+      expect.any(Array),
+      2,
+      60000,
+      expect.objectContaining({
+        splitRules: mockClassSplitRules,
+        previousSplitResult: mockClassSplitResult,
+        startOrderRules: mockStartOrderRules,
+        worldRankingByClass: mockWorldRankingByClass,
+      }),
+    );
     expect(mocks.mockUpdateLaneAssignments).toHaveBeenCalled();
     expect(mocks.mockSetStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
@@ -247,6 +257,12 @@ describe('useLaneAssignmentController', () => {
 
     expect(mocks.mockCreateDefaultClassAssignments).toHaveBeenCalled();
     expect(mocks.mockUpdateClassAssignments).toHaveBeenCalled();
+    expect(mocks.mockCalculateStartTimes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startOrderRules: mockStartOrderRules,
+        worldRankingByClass: mockWorldRankingByClass,
+      }),
+    );
     expect(mocks.mockUpdateStartTimes).toHaveBeenCalled();
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/order');
   });

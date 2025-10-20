@@ -16,7 +16,9 @@ import {
   useStartlistSettings,
   useStartlistStartTimes,
   useStartlistStartlistId,
+  useStartlistStartOrderRules,
   useStartlistStatuses,
+  useStartlistWorldRankingByClass,
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
@@ -48,6 +50,8 @@ const StartTimesPanel = (): JSX.Element => {
   const loading = useStartlistLoading();
   const classSplitRules = useStartlistClassSplitRules();
   const classSplitResult = useStartlistClassSplitResult();
+  const startOrderRules = useStartlistStartOrderRules();
+  const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
 
@@ -65,6 +69,8 @@ const StartTimesPanel = (): JSX.Element => {
       entries,
       splitRules: classSplitRules,
       splitResult: classSplitResult,
+      startOrderRules,
+      worldRankingByClass,
     });
     updateStartTimes(dispatch, computed, classSplitResult);
     if (computed.length === 0) {
