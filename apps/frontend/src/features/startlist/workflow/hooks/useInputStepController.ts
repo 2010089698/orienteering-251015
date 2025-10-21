@@ -4,15 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import { createInputStepViewModel } from '../createInputStepViewModel';
 import type { SettingsFormProps } from '../../components/SettingsForm';
 import {
+  createDefaultStartlistId,
   createStatus,
   setStatus,
   updateLaneAssignments,
+  updateSnapshot,
   useStartlistClassSplitResult,
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
-  useStartlistStatuses,
   useStartlistStartOrderRules,
+  useStartlistStartlistId,
+  useStartlistStatuses,
   useStartlistWorldRankingByClass,
 } from '../../state/StartlistContext';
 import { STARTLIST_STEP_PATHS } from '../../routes';
@@ -20,6 +23,7 @@ import { generateLaneAssignments } from '../../utils/startlistUtils';
 import { useSettingsForm } from '../../hooks/useSettingsForm';
 import { sanitizeActiveTab } from '../utils';
 import type { Entry } from '../../state/types';
+import { useStartlistApi } from '../../api/useStartlistApi';
 
 export const useInputStepController = () => {
   const entries = useStartlistEntries();
@@ -30,6 +34,8 @@ export const useInputStepController = () => {
   const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
   const navigate = useNavigate();
+  const api = useStartlistApi();
+  const startlistId = useStartlistStartlistId();
 
   const [activeTab, setActiveTab] = useState<string>('all');
 
@@ -55,11 +61,24 @@ export const useInputStepController = () => {
     settingsForm.submit();
   }, [settingsForm]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     const { settings: nextSettings } = settingsForm.submit();
     if (!nextSettings) {
       return;
     }
+
+    const ensuredId = startlistId?.trim() || createDefaultStartlistId();
+    try {
+      const snapshot = await api.enterSettings({ startlistId: ensuredId, settings: nextSettings });
+      if (snapshot) {
+        updateSnapshot(dispatch, snapshot);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '設定の保存に失敗しました。';
+      setStatus(dispatch, 'settings', createStatus(message, 'error'));
+      return;
+    }
+
     if (!entries.length) {
       setStatus(dispatch, 'lanes', createStatus('参加者を1人以上登録してください。', 'error'));
       return;
@@ -94,12 +113,14 @@ export const useInputStepController = () => {
     setStatus(dispatch, 'lanes', createStatus('自動でレーン割り当てを作成しました。', 'success'));
     navigate(STARTLIST_STEP_PATHS.lanes);
   }, [
+    api,
     classSplitResult,
     classSplitRules,
     dispatch,
     entries,
     navigate,
     settingsForm,
+    startlistId,
     startOrderRules,
     worldRankingByClass,
   ]);
