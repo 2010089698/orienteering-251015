@@ -66,13 +66,12 @@ describe('useEventManagementApi', () => {
   it('posts new event commands to the base endpoint and returns the created entity', async () => {
     const { result } = renderHook(() => useEventManagementApi());
     const command = {
-      eventId: 'EV-2',
       name: 'Spring Open',
       startDate: '2024-04-01T09:00:00.000Z',
       endDate: '2024-04-01T17:00:00.000Z',
       venue: 'Nagoya',
     };
-    const event = { ...command, id: command.eventId, races: [] };
+    const event = { ...command, id: 'EV-2', races: [] };
     fetchMock.mockResolvedValue(createJsonResponse({ event }));
 
     const response = await result.current.createEvent(command);

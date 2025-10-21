@@ -57,8 +57,9 @@ describe('Event application services', () => {
     it('persists and publishes a newly created event', async () => {
       const dependencies = createDependencies();
       const service = new CreateEventService(dependencies);
+      const generatedId = EventId.from('event-99');
+      const generateSpy = vi.spyOn(EventId, 'generate').mockReturnValue(generatedId);
       const input = {
-        eventId: 'event-99',
         name: 'Night Orienteering',
         startDate: '2024-06-01T09:00:00.000Z',
         endDate: '2024-06-02T17:00:00.000Z',
@@ -67,6 +68,7 @@ describe('Event application services', () => {
 
       const result = await service.execute(input);
 
+      expect(generateSpy).toHaveBeenCalledTimes(1);
       expect(dependencies.transactionManager.execute).toHaveBeenCalledTimes(1);
       expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
       const publishMock = dependencies.eventPublisher.publish as ReturnType<typeof vi.fn>;
@@ -81,6 +83,7 @@ describe('Event application services', () => {
         allowScheduleOverlap: true,
         races: [],
       });
+      generateSpy.mockRestore();
     });
 
     it('wraps persistence errors into PersistenceError', async () => {
@@ -88,16 +91,19 @@ describe('Event application services', () => {
       const saveMock = dependencies.repository.save as ReturnType<typeof vi.fn>;
       saveMock.mockRejectedValue(new Error('boom'));
       const service = new CreateEventService(dependencies);
+      const generatedId = EventId.from('event-2');
+      const generateSpy = vi.spyOn(EventId, 'generate').mockReturnValue(generatedId);
 
       await expect(
         service.execute({
-          eventId: 'event-2',
           name: 'Spring Gala',
           startDate: '2024-05-01T09:00:00.000Z',
           endDate: '2024-05-02T17:00:00.000Z',
           venue: 'Forest Edge',
         }),
       ).rejects.toBeInstanceOf(PersistenceError);
+
+      generateSpy.mockRestore();
     });
   });
 

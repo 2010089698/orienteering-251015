@@ -13,7 +13,6 @@ const EVENT_ID = 'event-1';
 
 function buildCreateEventPayload() {
   return {
-    eventId: EVENT_ID,
     name: 'Orienteering Cup',
     startDate: '2024-04-01T09:00:00.000Z',
     endDate: '2024-04-02T17:00:00.000Z',
@@ -35,12 +34,15 @@ describe('createEventModule', () => {
     expect(module.eventQueryService).toBeInstanceOf(EventQueryService);
 
     const createPayload = buildCreateEventPayload();
+    const generatedId = EventId.from(EVENT_ID);
+    const generateSpy = vi.spyOn(EventId, 'generate').mockReturnValue(generatedId);
     const created = await module.createEventService.execute(createPayload);
     expect(created.id).toBe(EVENT_ID);
 
     const queryResult = await module.eventQueryService.getById(EVENT_ID);
     expect(queryResult?.id).toBe(EVENT_ID);
     expect(queryResult?.races).toHaveLength(0);
+    generateSpy.mockRestore();
   });
 
   it('subscribes startlist sync ports to race scheduled events', async () => {
@@ -48,6 +50,9 @@ describe('createEventModule', () => {
     const module = createEventModule({
       startlistSync: { port: { notifyRaceScheduled } },
     });
+
+    const generatedId = EventId.from(EVENT_ID);
+    const generateSpy = vi.spyOn(EventId, 'generate').mockReturnValue(generatedId);
 
     await module.createEventService.execute(buildCreateEventPayload());
 
@@ -65,5 +70,6 @@ describe('createEventModule', () => {
     expect(call?.raceId).toBeInstanceOf(RaceId);
     expect(call?.schedule).toBeInstanceOf(RaceSchedule);
     expect(call?.updatedAt).toBeInstanceOf(Date);
+    generateSpy.mockRestore();
   });
 });

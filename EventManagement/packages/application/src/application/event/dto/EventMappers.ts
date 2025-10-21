@@ -37,7 +37,7 @@ export function mapToEventProps(command: CreateEventCommand): EventProps {
   const end = parseDateTime(command.endDate, 'Event end date');
 
   return {
-    id: EventId.from(command.eventId),
+    id: EventId.generate(),
     name: command.name,
     dateRange: EventDateRange.from(start, end),
     venue: command.venue,
