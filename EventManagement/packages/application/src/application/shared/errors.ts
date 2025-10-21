@@ -32,3 +32,10 @@ export class PersistenceError extends EventApplicationError {
     this.name = 'PersistenceError';
   }
 }
+
+export class StartlistSyncError extends EventApplicationError {
+  constructor(message: string, cause?: unknown) {
+    super(message, cause);
+    this.name = 'StartlistSyncError';
+  }
+}

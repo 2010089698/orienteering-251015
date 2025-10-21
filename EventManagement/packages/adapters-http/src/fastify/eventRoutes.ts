@@ -11,6 +11,7 @@ import {
   ScheduleRaceService,
   ValidationError,
   EventApplicationError,
+  StartlistSyncError,
 } from '@event-management/application';
 
 import {
@@ -45,6 +46,7 @@ const errorResponses = {
   400: ErrorResponseSchema,
   404: ErrorResponseSchema,
   500: ErrorResponseSchema,
+  502: ErrorResponseSchema,
 } as const;
 
 const eventRoutes: FastifyPluginAsyncTypebox<EventRoutesOptions> = async (
@@ -185,6 +187,12 @@ function handleServiceError(
     logger.error(error, 'Event persistence error');
     reply.code(500);
     return { message: error.message } satisfies ErrorResponse;
+  }
+
+  if (error instanceof StartlistSyncError) {
+    logger.error(error, 'Startlist synchronization error');
+    reply.code(502);
+    return { message: 'Startlist synchronization service is unavailable.' } satisfies ErrorResponse;
   }
 
   if (error instanceof EventApplicationError) {

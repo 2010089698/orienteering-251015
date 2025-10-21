@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEventModule } from '@event-management/infrastructure';
+import { StartlistSyncError } from '@event-management/application';
+import { createEventModule, type EventModule } from '@event-management/infrastructure';
 import { createServer, type EventServer } from '../server.js';
 
 const EVENT_ID = 'event-1';
@@ -23,16 +24,17 @@ const SCHEDULE_RACE_PAYLOAD = {
 describe('eventRoutes', () => {
   let server: EventServer;
   let notifyRaceScheduled: ReturnType<typeof vi.fn>;
+  let eventModule: EventModule;
 
   beforeEach(async () => {
     notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
-    const module = createEventModule({ startlistSync: { port: { notifyRaceScheduled } } });
+    eventModule = createEventModule({ startlistSync: { port: { notifyRaceScheduled } } });
     server = createServer({
       events: {
-        createEventService: module.createEventService,
-        scheduleRaceService: module.scheduleRaceService,
-        attachStartlistService: module.attachStartlistService,
-        eventQueryService: module.eventQueryService,
+        createEventService: eventModule.createEventService,
+        scheduleRaceService: eventModule.scheduleRaceService,
+        attachStartlistService: eventModule.attachStartlistService,
+        eventQueryService: eventModule.eventQueryService,
       },
     });
     await server.ready();
@@ -101,6 +103,26 @@ describe('eventRoutes', () => {
     expect(notifyRaceScheduled.mock.calls[0]?.[0]?.updatedAt).toBeInstanceOf(Date);
   });
 
+  it('still schedules races when the startlist sync endpoint is unavailable', async () => {
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+    notifyRaceScheduled.mockRejectedValueOnce(new StartlistSyncError('Not implemented'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races`,
+      payload: SCHEDULE_RACE_PAYLOAD,
+    });
+
+    consoleSpy.mockRestore();
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.event.races).toHaveLength(1);
+    expect(body.event.races[0]?.id).toBe(RACE_ID);
+    expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
+  });
+
   it('attaches startlist links to races', async () => {
     await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
     await server.inject({
@@ -135,6 +157,27 @@ describe('eventRoutes', () => {
     });
     expect(response.statusCode).toBe(404);
     expect(response.json().message).toContain('missing');
+  });
+
+  it('returns 502 when the startlist sync service fails', async () => {
+    const scheduleSpy = vi
+      .spyOn(eventModule.scheduleRaceService, 'execute')
+      .mockRejectedValueOnce(new StartlistSyncError('Sync failed'));
+
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races`,
+      payload: SCHEDULE_RACE_PAYLOAD,
+    });
+
+    scheduleSpy.mockRestore();
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toEqual({
+      message: 'Startlist synchronization service is unavailable.',
+    });
   });
 
   it('returns 404 when attaching a startlist to a missing race', async () => {

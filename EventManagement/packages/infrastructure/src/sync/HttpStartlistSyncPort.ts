@@ -1,4 +1,4 @@
-import { StartlistSyncPort } from '@event-management/application';
+import { StartlistSyncError, StartlistSyncPort } from '@event-management/application';
 import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
 
 export interface FetchLike {
@@ -47,15 +47,22 @@ export class HttpStartlistSyncPort implements StartlistSyncPort {
       updatedAt: payload.updatedAt.toISOString(),
     };
 
-    const response = await this.fetchImpl(new URL(this.endpoint, this.options.baseUrl).toString(), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    let response;
+    try {
+      response = await this.fetchImpl(new URL(this.endpoint, this.options.baseUrl).toString(), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      throw new StartlistSyncError('Failed to sync startlist.', error);
+    }
 
     if (!response.ok) {
       const message = await safeReadBody(response);
-      throw new Error(`Failed to sync startlist: ${response.status} ${message}`.trim());
+      throw new StartlistSyncError(
+        `Failed to sync startlist: ${response.status} ${message}`.trim(),
+      );
     }
   }
 }
