@@ -192,3 +192,17 @@ export const ManualClassOrderBodySchema = Type.Object({
 export const InvalidateStartTimesBodySchema = Type.Object({
   reason: Type.String({ minLength: 1 }),
 });
+
+const StartlistSyncScheduleSchema = Type.Object({
+  start: Type.String({ format: 'date-time' }),
+  end: Type.Optional(Type.String({ format: 'date-time' })),
+});
+
+export const StartlistSyncBodySchema = Type.Object({
+  eventId: Type.String({ minLength: 1 }),
+  raceId: Type.String({ minLength: 1 }),
+  schedule: StartlistSyncScheduleSchema,
+  updatedAt: Type.String({ format: 'date-time' }),
+});
+
+export const StartlistSyncResponseSchema = Type.Null();
