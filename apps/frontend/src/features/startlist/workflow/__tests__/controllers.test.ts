@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   mockDownloadStartlistCsv: vi.fn(),
   mockDispatch: vi.fn(),
   mockEnterSettings: vi.fn(),
+  mockAssignPlayerOrder: vi.fn(),
   mockAssignStartTimes: vi.fn(),
   mockFinalize: vi.fn(),
   mockUpdateSnapshot: vi.fn(),
@@ -105,6 +106,7 @@ vi.mock('../../utils/startlistExport', () => ({
 vi.mock('../../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
     enterSettings: mocks.mockEnterSettings,
+    assignPlayerOrder: mocks.mockAssignPlayerOrder,
     assignStartTimes: mocks.mockAssignStartTimes,
     finalize: mocks.mockFinalize,
   }),
@@ -195,6 +197,8 @@ const resetState = () => {
   mocks.mockNavigate.mockReset();
   mocks.mockEnterSettings.mockReset();
   mocks.mockEnterSettings.mockResolvedValue(mockSnapshot);
+  mocks.mockAssignPlayerOrder.mockReset();
+  mocks.mockAssignPlayerOrder.mockResolvedValue(undefined);
   mocks.mockAssignStartTimes.mockReset();
   mocks.mockAssignStartTimes.mockResolvedValue(undefined);
   mocks.mockFinalize.mockReset();
@@ -373,8 +377,10 @@ describe('useClassOrderController', () => {
   });
 
   it('finalizes the startlist and navigates to the link page', async () => {
+    const classOrderSnapshot = { id: 'order' } as const;
     const assignedSnapshot = { id: 'assigned' } as const;
     const finalizedSnapshot = { id: 'finalized' } as const;
+    mocks.mockAssignPlayerOrder.mockResolvedValueOnce(classOrderSnapshot);
     mocks.mockAssignStartTimes.mockResolvedValueOnce(assignedSnapshot);
     mocks.mockFinalize.mockResolvedValueOnce(finalizedSnapshot);
 
@@ -385,13 +391,28 @@ describe('useClassOrderController', () => {
     });
 
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', true);
+    expect(mocks.mockAssignPlayerOrder).toHaveBeenCalledWith({
+      startlistId: mockStartlistId,
+      assignments: mockClassAssignments,
+    });
     expect(mocks.mockAssignStartTimes).toHaveBeenCalledWith({
       startlistId: mockStartlistId,
       startTimes: mockStartTimes,
     });
     expect(mocks.mockFinalize).toHaveBeenCalledWith({ startlistId: mockStartlistId });
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, classOrderSnapshot);
     expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, assignedSnapshot);
     expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, finalizedSnapshot);
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'classes',
+      expect.objectContaining({ level: 'success', text: 'クラス順序を送信しました。' }),
+    );
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'snapshot',
+      expect.objectContaining({ level: 'info', text: 'スナップショットを更新しました。' }),
+    );
     expect(mocks.mockSetStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
       'startTimes',
@@ -420,6 +441,25 @@ describe('useClassOrderController', () => {
       'startTimes',
       expect.objectContaining({ level: 'error', text: 'スタート時間を先に作成してください。' }),
     );
+    expect(mocks.mockAssignStartTimes).not.toHaveBeenCalled();
+    expect(mocks.mockFinalize).not.toHaveBeenCalled();
+  });
+
+  it('requires class assignments before finalizing', async () => {
+    mockClassAssignments = [];
+
+    const { result } = renderHook(() => useClassOrderController());
+
+    await act(async () => {
+      await result.current.onFinalize();
+    });
+
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'classes',
+      expect.objectContaining({ level: 'error', text: 'クラス順序を送信してから確定してください。' }),
+    );
+    expect(mocks.mockAssignPlayerOrder).not.toHaveBeenCalled();
     expect(mocks.mockAssignStartTimes).not.toHaveBeenCalled();
     expect(mocks.mockFinalize).not.toHaveBeenCalled();
   });
