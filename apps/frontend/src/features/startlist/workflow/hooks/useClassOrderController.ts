@@ -204,12 +204,25 @@ export const useClassOrderController = () => {
       setStatus(dispatch, 'startTimes', createStatus('スタートリスト ID を設定してください。', 'error'));
       return;
     }
+    if (classAssignments.length === 0) {
+      setStatus(dispatch, 'classes', createStatus('クラス順序を送信してから確定してください。', 'error'));
+      return;
+    }
     if (startTimes.length === 0) {
       setStatus(dispatch, 'startTimes', createStatus('スタート時間を先に作成してください。', 'error'));
       return;
     }
     try {
       setLoading(dispatch, 'startTimes', true);
+      const classOrderSnapshot = await api.assignPlayerOrder({
+        startlistId,
+        assignments: classAssignments,
+      });
+      updateSnapshot(dispatch, classOrderSnapshot);
+      setStatus(dispatch, 'classes', createStatus('クラス順序を送信しました。', 'success'));
+      if (classOrderSnapshot) {
+        setStatus(dispatch, 'snapshot', createStatus('スナップショットを更新しました。', 'info'));
+      }
       const assignedSnapshot = await api.assignStartTimes({ startlistId, startTimes });
       if (assignedSnapshot) {
         updateSnapshot(dispatch, assignedSnapshot);
@@ -225,7 +238,14 @@ export const useClassOrderController = () => {
     } finally {
       setLoading(dispatch, 'startTimes', false);
     }
-  }, [api, dispatch, navigate, startlistId, startTimes]);
+  }, [
+    api,
+    classAssignments,
+    dispatch,
+    navigate,
+    startTimes,
+    startlistId,
+  ]);
 
   return {
     viewModel,
