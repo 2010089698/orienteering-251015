@@ -7,6 +7,7 @@ import EventCreateForm from '../../event-management/components/EventCreateForm';
 import AttachStartlistForm from '../../event-management/components/AttachStartlistForm';
 import { useStartlistStartlistId } from '../state/StartlistContext';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
+import { useFinalizedStartlistLink } from '../utils/startlistLinks';
 
 const ensureErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -47,6 +48,7 @@ const StartlistLinkContent = (): JSX.Element => {
     attachStartlist,
   } = useEventManagement();
   const startlistId = useStartlistStartlistId();
+  const finalizedStartlistLink = useFinalizedStartlistLink();
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isInitialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -176,6 +178,7 @@ const StartlistLinkContent = (): JSX.Element => {
                   void selectEvent(selectedEvent.id);
                   void refreshEvents();
                 }}
+                defaultStartlistLink={finalizedStartlistLink}
               />
             </div>
           ) : (
