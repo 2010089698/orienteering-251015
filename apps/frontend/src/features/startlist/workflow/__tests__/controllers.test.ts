@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   mockDeriveClassOrderWarnings: vi.fn(),
   mockDownloadStartlistCsv: vi.fn(),
   mockDispatch: vi.fn(),
+  mockEnterSettings: vi.fn(),
   mockFinalize: vi.fn(),
   mockUpdateSnapshot: vi.fn(),
 }));
@@ -100,6 +101,7 @@ vi.mock('../../utils/startlistExport', () => ({
 
 vi.mock('../../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
+    enterSettings: mocks.mockEnterSettings,
     finalize: mocks.mockFinalize,
   }),
 }));
@@ -119,6 +121,7 @@ let mockStartlistId = 'startlist-1';
 let mockStartTimes: any[] = [];
 let mockClassOrderWarnings: any[] = [];
 let mockLoading: any = { startTimes: false };
+const mockSnapshot: any = { id: 'snapshot-1' };
 
 const resetState = () => {
   mockEntries = [
@@ -184,6 +187,8 @@ const resetState = () => {
   mocks.mockSetLoading.mockReset();
   mocks.mockDispatch.mockReset();
   mocks.mockNavigate.mockReset();
+  mocks.mockEnterSettings.mockReset();
+  mocks.mockEnterSettings.mockResolvedValue(mockSnapshot);
   mocks.mockFinalize.mockReset();
   mocks.mockFinalize.mockResolvedValue(undefined);
   mocks.mockUpdateSnapshot.mockReset();
@@ -211,12 +216,23 @@ describe('useInputStepController', () => {
     });
   });
 
-  it('validates and navigates to the lane step on completion', () => {
+  it('validates and navigates to the lane step on completion', async () => {
     const { result } = renderHook(() => useInputStepController());
 
-    act(() => {
-      result.current.onComplete();
+    await act(async () => {
+      await result.current.onComplete();
     });
+
+    expect(mocks.mockEnterSettings).toHaveBeenCalledWith({
+      startlistId: mockStartlistId,
+      settings: expect.objectContaining({
+        laneCount: 2,
+        intervals: expect.objectContaining({
+          laneClass: expect.objectContaining({ milliseconds: 60000 }),
+        }),
+      }),
+    });
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, mockSnapshot);
 
     expect(mocks.mockGenerateLaneAssignments).toHaveBeenCalledWith(
       expect.any(Array),
@@ -236,6 +252,27 @@ describe('useInputStepController', () => {
       expect.objectContaining({ level: 'success' }),
     );
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/lanes');
+  });
+
+  it('displays an error when saving settings fails', async () => {
+    const error = new Error('設定の保存に失敗しました。');
+    mocks.mockEnterSettings.mockRejectedValueOnce(error);
+
+    const { result } = renderHook(() => useInputStepController());
+
+    await act(async () => {
+      await result.current.onComplete();
+    });
+
+    expect(mocks.mockEnterSettings).toHaveBeenCalled();
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'settings',
+      expect.objectContaining({ level: 'error', text: error.message }),
+    );
+    expect(mocks.mockUpdateSnapshot).not.toHaveBeenCalled();
+    expect(mocks.mockUpdateLaneAssignments).not.toHaveBeenCalled();
+    expect(mocks.mockNavigate).not.toHaveBeenCalled();
   });
 });
 
