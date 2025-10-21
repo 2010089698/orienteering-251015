@@ -23,6 +23,7 @@ describe('HttpStartlistSyncPort', () => {
         new Date('2024-05-01T10:00:00.000Z'),
         new Date('2024-05-01T11:00:00.000Z'),
       ),
+      updatedAt: new Date('2024-04-30T12:00:00.000Z'),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -32,6 +33,7 @@ describe('HttpStartlistSyncPort', () => {
     expect(init?.headers).toEqual({ 'content-type': 'application/json' });
     expect(init?.body).toContain('event-123');
     expect(init?.body).toContain('race-999');
+    expect(init?.body).toContain('2024-04-30T12:00:00.000Z');
   });
 
   it('throws when the upstream service responds with an error', async () => {
@@ -51,6 +53,7 @@ describe('HttpStartlistSyncPort', () => {
         eventId: EventId.from('event-1'),
         raceId: RaceId.from('race-1'),
         schedule: RaceSchedule.from(new Date('2024-05-01T10:00:00.000Z')),
+        updatedAt: new Date('2024-04-30T12:00:00.000Z'),
       }),
     ).rejects.toThrow('Failed to sync startlist: 500 boom');
   });

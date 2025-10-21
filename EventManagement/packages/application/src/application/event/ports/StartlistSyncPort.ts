@@ -5,5 +5,6 @@ export interface StartlistSyncPort {
     eventId: EventId;
     raceId: RaceId;
     schedule: RaceSchedule;
+    updatedAt: Date;
   }): Promise<void>;
 }

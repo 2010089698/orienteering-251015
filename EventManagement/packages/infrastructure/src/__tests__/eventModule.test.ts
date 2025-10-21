@@ -64,5 +64,6 @@ describe('createEventModule', () => {
     expect(call?.eventId).toBeInstanceOf(EventId);
     expect(call?.raceId).toBeInstanceOf(RaceId);
     expect(call?.schedule).toBeInstanceOf(RaceSchedule);
+    expect(call?.updatedAt).toBeInstanceOf(Date);
   });
 });
