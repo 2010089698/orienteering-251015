@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StartlistSyncError } from '@event-management/application';
+import { EventId } from '@event-management/domain';
 import { createEventModule, type EventModule } from '@event-management/infrastructure';
 import { createServer, type EventServer } from '../server.js';
 
@@ -7,7 +8,6 @@ const EVENT_ID = 'event-1';
 const RACE_ID = 'race-1';
 
 const CREATE_EVENT_PAYLOAD = {
-  eventId: EVENT_ID,
   name: 'National Orienteering',
   startDate: '2024-06-01T09:00:00.000Z',
   endDate: '2024-06-02T17:00:00.000Z',
@@ -25,10 +25,12 @@ describe('eventRoutes', () => {
   let server: EventServer;
   let notifyRaceScheduled: ReturnType<typeof vi.fn>;
   let eventModule: EventModule;
+  let generateSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
     eventModule = createEventModule({ startlistSync: { port: { notifyRaceScheduled } } });
+    generateSpy = vi.spyOn(EventId, 'generate').mockImplementation(() => EventId.from(EVENT_ID));
     server = createServer({
       events: {
         createEventService: eventModule.createEventService,
@@ -42,6 +44,7 @@ describe('eventRoutes', () => {
 
   afterEach(async () => {
     await server.close();
+    generateSpy.mockRestore();
   });
 
   it('responds to health checks', async () => {
@@ -58,6 +61,7 @@ describe('eventRoutes', () => {
     });
     expect(createResponse.statusCode).toBe(201);
     const createdBody = createResponse.json();
+    expect(generateSpy).toHaveBeenCalled();
     expect(createdBody.event.allowMultipleRacesPerDay).toBe(true);
     expect(createdBody.event.allowScheduleOverlap).toBe(true);
 

@@ -61,7 +61,7 @@ describe('EventManagementLayout', () => {
     ];
 
     const createEventMock = vi.fn(async (command) => {
-      return createEvent({ id: command.eventId, name: command.name });
+      return createEvent({ id: 'event-3', name: command.name });
     });
 
     const apiMock = createEventManagementApiMock({
@@ -83,7 +83,6 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByRole('link', { name: '夏のロング' })).toBeInTheDocument();
     expect(apiMock.listEvents).toHaveBeenCalledTimes(1);
 
-    await user.type(screen.getByLabelText('イベントID'), 'event-3');
     await user.type(screen.getByLabelText('イベント名'), '秋のスプリント');
     await user.type(screen.getByLabelText('開始日'), '2024-10-01');
     await user.type(screen.getByLabelText('終了日'), '2024-10-01');
@@ -93,13 +92,13 @@ describe('EventManagementLayout', () => {
     await waitFor(() => {
       expect(createEventMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventId: 'event-3',
           name: '秋のスプリント',
         }),
       );
     });
 
     const createPayload = createEventMock.mock.calls[0]?.[0];
+    expect(createPayload).not.toHaveProperty('eventId');
     expect(createPayload?.startDate).toMatch(/Z$/);
     expect(createPayload?.endDate).toMatch(/Z$/);
 
@@ -109,7 +108,6 @@ describe('EventManagementLayout', () => {
     // Trigger a failure to ensure the error banner is shown.
     createEventMock.mockRejectedValueOnce(new Error('作成エラー'));
 
-    await user.type(screen.getByLabelText('イベントID'), 'event-4');
     await user.type(screen.getByLabelText('イベント名'), '冬のスプリント');
     await user.type(screen.getByLabelText('開始日'), '2024-12-01');
     await user.type(screen.getByLabelText('終了日'), '2024-12-01');

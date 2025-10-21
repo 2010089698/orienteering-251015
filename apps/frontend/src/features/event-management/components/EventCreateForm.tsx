@@ -1,15 +1,14 @@
 import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
-import type { CreateEventCommand } from '@event-management/application';
+import type { CreateEventCommand, EventDto } from '@event-management/application';
 
 interface EventCreateFormProps {
   isSubmitting: boolean;
-  onCreate: (command: CreateEventCommand) => Promise<void>;
+  onCreate: (command: CreateEventCommand) => Promise<EventDto>;
   onCreated?: (eventId: string) => void;
 }
 
 const initialState: CreateEventCommand = {
-  eventId: '',
   name: '',
   startDate: '',
   endDate: '',
@@ -34,7 +33,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
 
   const isValid = useMemo(() => {
-    if (!form.eventId || !form.name || !form.startDate || !form.endDate || !form.venue) {
+    if (!form.name || !form.startDate || !form.endDate || !form.venue) {
       return false;
     }
     const start = new Date(form.startDate);
@@ -45,7 +44,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
     return start.getTime() <= end.getTime();
   }, [form]);
 
-  const updateField = useCallback((name: 'eventId' | 'name' | 'startDate' | 'endDate' | 'venue', value: string) => {
+  const updateField = useCallback((name: 'name' | 'startDate' | 'endDate' | 'venue', value: string) => {
     setForm((current) => ({
       ...current,
       [name]: value,
@@ -65,10 +64,10 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
           startDate: toIsoString(form.startDate),
           endDate: toIsoString(form.endDate),
         };
-        await onCreate(payload);
+        const event = await onCreate(payload);
         setStatus({ tone: 'success', message: 'イベントを作成しました。' });
         setForm(createInitialForm());
-        onCreated?.(payload.eventId);
+        onCreated?.(event.id);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'イベントの作成に失敗しました。';
         setStatus({ tone: 'critical', message });
@@ -82,15 +81,6 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
       <h2 id="event-create-heading">新しいイベントを作成</h2>
       <form className="event-create__form" onSubmit={handleSubmit}>
         <div className="event-create__grid">
-          <label className="event-create__field">
-            <span>イベントID</span>
-            <input
-              type="text"
-              value={form.eventId}
-              onChange={(event) => updateField('eventId', event.target.value)}
-              required
-            />
-          </label>
           <label className="event-create__field">
             <span>イベント名</span>
             <input type="text" value={form.name} onChange={(event) => updateField('name', event.target.value)} required />

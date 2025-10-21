@@ -7,7 +7,6 @@ const DateTimeString = Type.String({ minLength: 1 });
 
 export const CreateEventCommandSchema = Type.Object(
   {
-    eventId: EventIdSchema,
     name: NonEmptyString,
     startDate: DateTimeString,
     endDate: DateTimeString,
