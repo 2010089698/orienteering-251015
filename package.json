@@ -8,8 +8,10 @@
     "dev:event-backend": "npm run start --workspace @event-management/backend"
   },
   "workspaces": [
+    "StartlistManagement",
     "apps/*",
     "StartlistManagement/packages/*",
+    "StartlistManagement/apps/*",
     "EntryManagement/packages/*",
     "EventManagement",
     "EventManagement/packages/*",
