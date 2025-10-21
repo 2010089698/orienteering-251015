@@ -6,6 +6,7 @@ export * from './commands/FinalizeStartlistUseCase.js';
 export * from './commands/InvalidateStartTimesUseCase.js';
 export * from './commands/ManuallyFinalizeClassStartOrderUseCase.js';
 export * from './commands/ManuallyReassignLaneOrderUseCase.js';
+export * from './commands/SyncRaceScheduleUseCase.js';
 export * from './dto/StartlistDtos.js';
 export * from './dto/StartlistMappers.js';
 export * from './errors.js';

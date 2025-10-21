@@ -17,6 +17,8 @@
     "fastify": "^4.28.1"
   },
   "devDependencies": {
-    "vitest": "^1.6.1"
+    "vitest": "^1.6.1",
+    "@event-management/infrastructure": "file:../../../EventManagement/packages/infrastructure",
+    "@event-management/domain": "file:../../../EventManagement/packages/domain"
   }
 }

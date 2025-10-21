@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
+import { HttpStartlistSyncPort } from '@event-management/infrastructure';
 import { Startlist, StartlistId, SystemClock } from '@startlist-management/domain';
 import { createStartlistModule } from '@startlist-management/infrastructure';
 import { createServer, StartlistServer } from '../server.js';
@@ -102,6 +104,53 @@ describe('startlistRoutes', () => {
       payload: { startTimes: START_TIMES },
     });
   };
+
+  it('accepts race schedule sync payloads from the EventManagement HTTP port', async () => {
+    const syncSpy = vi.spyOn(module.useCases.syncRaceSchedule, 'execute').mockResolvedValue(undefined);
+
+    const port = new HttpStartlistSyncPort({
+      baseUrl: 'http://startlists.local',
+      fetchImpl: async (input, init) => {
+        const url = new URL(input);
+        const response = await server.inject({
+          method: init?.method ?? 'GET',
+          url: `${url.pathname}${url.search}`,
+          headers: init?.headers,
+          payload: init?.body,
+        });
+        return {
+          ok: response.statusCode >= 200 && response.statusCode < 300,
+          status: response.statusCode,
+          text: async () => response.body ?? '',
+        };
+      },
+    });
+
+    const schedule = RaceSchedule.from(
+      new Date('2024-05-01T10:00:00.000Z'),
+      new Date('2024-05-01T11:30:00.000Z'),
+    );
+    const updatedAt = new Date('2024-04-30T12:00:00.000Z');
+
+    await port.notifyRaceScheduled({
+      eventId: EventId.from('event-sync'),
+      raceId: RaceId.from('race-sync'),
+      schedule,
+      updatedAt,
+    });
+
+    expect(syncSpy).toHaveBeenCalledTimes(1);
+    const call = syncSpy.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      eventId: 'event-sync',
+      raceId: 'race-sync',
+    });
+    expect(call?.updatedAt.toISOString()).toBe(updatedAt.toISOString());
+    expect(call?.schedule.start.toISOString()).toBe(schedule.getStart().toISOString());
+    expect(call?.schedule.end?.toISOString()).toBe(schedule.getEnd()?.toISOString());
+
+    syncSpy.mockRestore();
+  });
 
   it('responds to health checks', async () => {
     const response = await server.inject({ method: 'GET', url: '/health' });

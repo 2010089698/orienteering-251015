@@ -15,6 +15,8 @@ import {
   StartlistVersionListQuerySchema,
   StartlistDiffQuerySchema,
   StartlistQueryOptionsSchema,
+  StartlistSyncBodySchema,
+  StartlistSyncResponseSchema,
 } from './schemas.js';
 import { toEnterStartlistSettingsCommand, toStartlistHttpResponse } from './mappers.js';
 import {
@@ -26,6 +28,7 @@ import {
   InvalidateStartTimesUseCase,
   ManuallyFinalizeClassStartOrderUseCase,
   ManuallyReassignLaneOrderUseCase,
+  SyncRaceScheduleUseCase,
   StartlistQueryService,
   InvalidCommandError,
   PersistenceError,
@@ -44,6 +47,7 @@ export interface StartlistRoutesOptions {
     manuallyReassignLaneOrder: ManuallyReassignLaneOrderUseCase;
     manuallyFinalizeClassStartOrder: ManuallyFinalizeClassStartOrderUseCase;
     invalidateStartTimes: InvalidateStartTimesUseCase;
+    syncRaceSchedule: SyncRaceScheduleUseCase;
   };
   queryService: StartlistQueryService;
 }
@@ -59,6 +63,7 @@ type InvalidateStartTimesBody = Static<typeof InvalidateStartTimesBodySchema>;
 type StartlistQueryOptions = Static<typeof StartlistQueryOptionsSchema>;
 type StartlistVersionListQuery = Static<typeof StartlistVersionListQuerySchema>;
 type StartlistDiffQuery = Static<typeof StartlistDiffQuerySchema>;
+type StartlistSyncBody = Static<typeof StartlistSyncBodySchema>;
 type JapanRankingParams = { categoryId: string; page: string };
 
 type ErrorPayload = {
@@ -119,6 +124,29 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
     const payload = buildErrorResponse(500, 'Unexpected server error');
     reply.status(payload.statusCode).send(payload);
   });
+
+  fastify.post<{ Body: StartlistSyncBody }>(
+    '/api/startlists',
+    {
+      schema: {
+        body: StartlistSyncBodySchema,
+        response: { 204: StartlistSyncResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { eventId, raceId, schedule, updatedAt } = request.body;
+      await useCases.syncRaceSchedule.execute({
+        eventId,
+        raceId,
+        schedule: {
+          start: new Date(schedule.start),
+          end: schedule.end ? new Date(schedule.end) : undefined,
+        },
+        updatedAt: new Date(updatedAt),
+      });
+      return reply.status(204).send();
+    },
+  );
 
   fastify.post<{ Params: StartlistParams; Body: StartlistSettingsBody }>(
     '/api/startlists/:id/settings',
