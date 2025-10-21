@@ -30,6 +30,7 @@ const toIsoString = (value: string): string => {
 
 const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormProps) => {
   const [form, setForm] = useState<CreateEventCommand>(createInitialForm);
+  const [shouldSyncEndDate, setShouldSyncEndDate] = useState(true);
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
 
   const isValid = useMemo(() => {
@@ -44,12 +45,39 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
     return start.getTime() <= end.getTime();
   }, [form]);
 
-  const updateField = useCallback((name: 'name' | 'startDate' | 'endDate' | 'venue', value: string) => {
+  const updateField = useCallback((name: 'name' | 'venue', value: string) => {
     setForm((current) => ({
       ...current,
       [name]: value,
     }));
   }, []);
+
+  const handleStartDateChange = useCallback(
+    (value: string) => {
+      setForm((current) => {
+        const next = {
+          ...current,
+          startDate: value,
+        };
+        if (shouldSyncEndDate) {
+          next.endDate = value;
+        }
+        return next;
+      });
+    },
+    [shouldSyncEndDate],
+  );
+
+  const handleEndDateChange = useCallback(
+    (value: string) => {
+      setShouldSyncEndDate(value === form.startDate);
+      setForm((current) => ({
+        ...current,
+        endDate: value,
+      }));
+    },
+    [form.startDate],
+  );
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -67,6 +95,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
         const event = await onCreate(payload);
         setStatus({ tone: 'success', message: 'イベントを作成しました。' });
         setForm(createInitialForm());
+        setShouldSyncEndDate(true);
         onCreated?.(event.id);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'イベントの作成に失敗しました。';
@@ -90,7 +119,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
             <input
               type="date"
               value={form.startDate}
-              onChange={(event) => updateField('startDate', event.target.value)}
+              onChange={(event) => handleStartDateChange(event.target.value)}
               required
             />
           </label>
@@ -99,7 +128,7 @@ const EventCreateForm = ({ isSubmitting, onCreate, onCreated }: EventCreateFormP
             <input
               type="date"
               value={form.endDate}
-              onChange={(event) => updateField('endDate', event.target.value)}
+              onChange={(event) => handleEndDateChange(event.target.value)}
               required
             />
           </label>
