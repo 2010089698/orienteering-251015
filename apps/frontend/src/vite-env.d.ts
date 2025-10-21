@@ -5,4 +5,5 @@ interface ImportMetaEnv {
   readonly VITE_ENTRY_MANAGEMENT_API_BASE_URL?: string;
   readonly VITE_EVENT_MANAGEMENT_API_BASE_URL?: string;
   readonly VITE_JAPAN_RANKING_API_BASE_URL?: string;
+  readonly VITE_STARTLIST_PUBLIC_BASE_URL?: string;
 }

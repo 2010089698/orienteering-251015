@@ -8,9 +8,17 @@ interface AttachStartlistFormProps {
   isSubmitting: boolean;
   onAttach: (command: AttachStartlistCommand) => Promise<void>;
   onAttached?: () => void;
+  defaultStartlistLink?: string;
 }
 
-const AttachStartlistForm = ({ eventId, races, isSubmitting, onAttach, onAttached }: AttachStartlistFormProps) => {
+const AttachStartlistForm = ({
+  eventId,
+  races,
+  isSubmitting,
+  onAttach,
+  onAttached,
+  defaultStartlistLink,
+}: AttachStartlistFormProps) => {
   const [raceId, setRaceId] = useState('');
   const [startlistLink, setStartlistLink] = useState('');
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
@@ -27,15 +35,14 @@ const AttachStartlistForm = ({ eventId, races, isSubmitting, onAttach, onAttache
     }
   }, [raceId, startlistLink]);
 
-  const handleSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (!isValid || isSubmitting) {
+  const submitStartlistLink = useCallback(
+    async (link: string) => {
+      if (!raceId || !link || isSubmitting) {
         return;
       }
 
       try {
-        await onAttach({ eventId, raceId, startlistLink });
+        await onAttach({ eventId, raceId, startlistLink: link });
         setStatus({ tone: 'success', message: 'スタートリストを連携しました。' });
         setStartlistLink('');
         onAttached?.();
@@ -44,8 +51,28 @@ const AttachStartlistForm = ({ eventId, races, isSubmitting, onAttach, onAttache
         setStatus({ tone: 'critical', message });
       }
     },
-    [eventId, isSubmitting, isValid, onAttach, onAttached, raceId, startlistLink],
+    [eventId, isSubmitting, onAttach, onAttached, raceId],
   );
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!isValid || isSubmitting) {
+        return;
+      }
+
+      await submitStartlistLink(startlistLink);
+    },
+    [isSubmitting, isValid, startlistLink, submitStartlistLink],
+  );
+
+  const handleAttachDefault = useCallback(() => {
+    if (!defaultStartlistLink) {
+      return;
+    }
+
+    void submitStartlistLink(defaultStartlistLink);
+  }, [defaultStartlistLink, submitStartlistLink]);
 
   return (
     <section className="attach-startlist" aria-labelledby="attach-startlist-heading">
@@ -75,6 +102,16 @@ const AttachStartlistForm = ({ eventId, races, isSubmitting, onAttach, onAttache
           />
         </label>
         <div className="attach-startlist__actions">
+          {defaultStartlistLink ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={handleAttachDefault}
+              disabled={!raceId || isSubmitting || races.length === 0}
+            >
+              確定したスタートリストを連携
+            </button>
+          ) : null}
           <button type="submit" disabled={!isValid || isSubmitting || races.length === 0}>
             {isSubmitting ? '送信中…' : 'スタートリストを設定'}
           </button>
