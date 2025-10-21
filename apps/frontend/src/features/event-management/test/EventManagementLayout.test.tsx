@@ -200,16 +200,14 @@ describe('EventManagementLayout', () => {
     expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1');
     expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
 
-    await user.type(screen.getByLabelText('レースID'), 'race-2');
     await user.type(screen.getByLabelText('レース名'), 'Day 2');
-    await user.type(screen.getByLabelText('開始日時'), '2024-04-02T10:00');
+    await user.type(screen.getByLabelText('レース日'), '2024-04-02');
     await user.click(screen.getByRole('button', { name: 'レースを登録' }));
 
     expect(await screen.findByText('レースをスケジュールしました。')).toBeInTheDocument();
     expect(await screen.findByRole('rowheader', { name: 'Day 2' })).toBeInTheDocument();
     const schedulePayload = scheduleRaceMock.mock.calls.at(-1)?.[0];
-    expect(schedulePayload).toMatchObject({ eventId: 'event-1', raceId: 'race-2' });
-    expect(schedulePayload?.start).toMatch(/Z$/);
+    expect(schedulePayload).toMatchObject({ eventId: 'event-1', name: 'Day 2', date: '2024-04-02' });
 
     await user.selectOptions(screen.getByLabelText('対象レース'), 'race-1');
     await user.type(screen.getByLabelText('スタートリストURL'), 'https://example.com/startlist');

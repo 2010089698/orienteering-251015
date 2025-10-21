@@ -27,7 +27,7 @@ interface StartlistAttachmentInput {
 function parseDateTime(value: string, label: string): Date {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) {
-    throw new ValidationError(`${label} must be a valid ISO 8601 date-time string.`);
+    throw new ValidationError(`${label} must be a valid ISO 8601 date string.`);
   }
   return date;
 }
@@ -49,12 +49,11 @@ export function mapToScheduleRaceInput(command: ScheduleRaceCommand): {
   name: string;
   schedule: RaceSchedule;
 } {
-  const start = parseDateTime(command.start, 'Race start');
-  const end = command.end ? parseDateTime(command.end, 'Race end') : undefined;
+  const date = parseDateTime(command.date, 'Race date');
   return {
-    id: RaceId.from(command.raceId),
+    id: RaceId.generate(),
     name: command.name,
-    schedule: RaceSchedule.from(start, end),
+    schedule: RaceSchedule.from(date),
   };
 }
 

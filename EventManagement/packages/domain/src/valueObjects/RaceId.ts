@@ -1,5 +1,11 @@
+import { nanoid } from 'nanoid';
+
 export class RaceId {
   private constructor(private readonly value: string) {}
+
+  public static generate(): RaceId {
+    return new RaceId(nanoid());
+  }
 
   public static from(value: string): RaceId {
     const trimmed = value?.trim();

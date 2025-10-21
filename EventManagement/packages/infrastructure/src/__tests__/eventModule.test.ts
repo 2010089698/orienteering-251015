@@ -14,8 +14,8 @@ const EVENT_ID = 'event-1';
 function buildCreateEventPayload() {
   return {
     name: 'Orienteering Cup',
-    startDate: '2024-04-01T09:00:00.000Z',
-    endDate: '2024-04-02T17:00:00.000Z',
+    startDate: '2024-04-01T00:00:00.000Z',
+    endDate: '2024-04-02T23:59:59.000Z',
     venue: 'Forest Arena',
   };
 }
@@ -56,12 +56,13 @@ describe('createEventModule', () => {
 
     await module.createEventService.execute(buildCreateEventPayload());
 
+    const generatedRaceId = RaceId.from('race-1');
+    const raceIdSpy = vi.spyOn(RaceId, 'generate').mockReturnValue(generatedRaceId);
+
     await module.scheduleRaceService.execute({
       eventId: EVENT_ID,
-      raceId: 'race-1',
       name: 'Sprint Qualifier',
-      start: '2024-04-01T10:00:00.000Z',
-      end: '2024-04-01T11:00:00.000Z',
+      date: '2024-04-01',
     });
 
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
@@ -70,6 +71,7 @@ describe('createEventModule', () => {
     expect(call?.raceId).toBeInstanceOf(RaceId);
     expect(call?.schedule).toBeInstanceOf(RaceSchedule);
     expect(call?.updatedAt).toBeInstanceOf(Date);
+    raceIdSpy.mockRestore();
     generateSpy.mockRestore();
   });
 });

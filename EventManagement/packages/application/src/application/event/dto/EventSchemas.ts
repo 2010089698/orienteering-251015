@@ -4,6 +4,7 @@ export const EventIdSchema = Type.String({ minLength: 1 });
 export const RaceIdSchema = Type.String({ minLength: 1 });
 const NonEmptyString = Type.String({ minLength: 1 });
 const DateTimeString = Type.String({ minLength: 1 });
+const DateString = Type.String({ minLength: 1 });
 
 export const CreateEventCommandSchema = Type.Object(
   {
@@ -18,10 +19,8 @@ export const CreateEventCommandSchema = Type.Object(
 export const ScheduleRaceCommandSchema = Type.Object(
   {
     eventId: EventIdSchema,
-    raceId: RaceIdSchema,
     name: NonEmptyString,
-    start: DateTimeString,
-    end: Type.Optional(DateTimeString),
+    date: DateString,
   },
   { additionalProperties: false },
 );

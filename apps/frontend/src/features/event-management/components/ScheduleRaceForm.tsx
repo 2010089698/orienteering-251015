@@ -10,31 +10,18 @@ interface ScheduleRaceFormProps {
 }
 
 const initialState = {
-  raceId: '',
   name: '',
-  start: '',
-  end: '',
+  date: '',
 };
 
 const createInitialFormState = () => ({ ...initialState });
-
-const toIsoString = (value: string): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toISOString();
-};
 
 const ScheduleRaceForm = ({ eventId, isSubmitting, onSchedule, onScheduled }: ScheduleRaceFormProps) => {
   const [form, setForm] = useState(createInitialFormState);
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
 
   const isValid = useMemo(() => {
-    return Boolean(form.raceId && form.name && form.start);
+    return Boolean(form.name && form.date);
   }, [form]);
 
   const updateField = useCallback((name: keyof typeof initialState, value: string) => {
@@ -54,10 +41,8 @@ const ScheduleRaceForm = ({ eventId, isSubmitting, onSchedule, onScheduled }: Sc
       try {
         const payload: ScheduleRaceCommand = {
           eventId,
-          raceId: form.raceId,
           name: form.name,
-          start: toIsoString(form.start) ?? form.start,
-          ...(form.end ? { end: toIsoString(form.end) ?? form.end } : {}),
+          date: form.date,
         };
         await onSchedule(payload);
         setStatus({ tone: 'success', message: 'レースをスケジュールしました。' });
@@ -77,20 +62,12 @@ const ScheduleRaceForm = ({ eventId, isSubmitting, onSchedule, onScheduled }: Sc
       <form className="schedule-race__form" onSubmit={handleSubmit}>
         <div className="schedule-race__grid">
           <label className="schedule-race__field">
-            <span>レースID</span>
-            <input type="text" value={form.raceId} onChange={(event) => updateField('raceId', event.target.value)} required />
-          </label>
-          <label className="schedule-race__field">
             <span>レース名</span>
             <input type="text" value={form.name} onChange={(event) => updateField('name', event.target.value)} required />
           </label>
           <label className="schedule-race__field">
-            <span>開始日時</span>
-            <input type="datetime-local" value={form.start} onChange={(event) => updateField('start', event.target.value)} required />
-          </label>
-          <label className="schedule-race__field">
-            <span>終了日時</span>
-            <input type="datetime-local" value={form.end} onChange={(event) => updateField('end', event.target.value)} />
+            <span>レース日</span>
+            <input type="date" value={form.date} onChange={(event) => updateField('date', event.target.value)} required />
           </label>
         </div>
         <div className="schedule-race__actions">
