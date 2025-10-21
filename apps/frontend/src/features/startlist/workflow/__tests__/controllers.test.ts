@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   mockDownloadStartlistCsv: vi.fn(),
   mockDispatch: vi.fn(),
   mockEnterSettings: vi.fn(),
+  mockAssignStartTimes: vi.fn(),
   mockFinalize: vi.fn(),
   mockUpdateSnapshot: vi.fn(),
 }));
@@ -104,6 +105,7 @@ vi.mock('../../utils/startlistExport', () => ({
 vi.mock('../../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
     enterSettings: mocks.mockEnterSettings,
+    assignStartTimes: mocks.mockAssignStartTimes,
     finalize: mocks.mockFinalize,
   }),
 }));
@@ -193,6 +195,8 @@ const resetState = () => {
   mocks.mockNavigate.mockReset();
   mocks.mockEnterSettings.mockReset();
   mocks.mockEnterSettings.mockResolvedValue(mockSnapshot);
+  mocks.mockAssignStartTimes.mockReset();
+  mocks.mockAssignStartTimes.mockResolvedValue(undefined);
   mocks.mockFinalize.mockReset();
   mocks.mockFinalize.mockResolvedValue(undefined);
   mocks.mockUpdateSnapshot.mockReset();
@@ -369,7 +373,10 @@ describe('useClassOrderController', () => {
   });
 
   it('finalizes the startlist and navigates to the link page', async () => {
-    mocks.mockFinalize.mockResolvedValue({});
+    const assignedSnapshot = { id: 'assigned' } as const;
+    const finalizedSnapshot = { id: 'finalized' } as const;
+    mocks.mockAssignStartTimes.mockResolvedValueOnce(assignedSnapshot);
+    mocks.mockFinalize.mockResolvedValueOnce(finalizedSnapshot);
 
     const { result } = renderHook(() => useClassOrderController());
 
@@ -378,8 +385,13 @@ describe('useClassOrderController', () => {
     });
 
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', true);
+    expect(mocks.mockAssignStartTimes).toHaveBeenCalledWith({
+      startlistId: mockStartlistId,
+      startTimes: mockStartTimes,
+    });
     expect(mocks.mockFinalize).toHaveBeenCalledWith({ startlistId: mockStartlistId });
-    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, {});
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, assignedSnapshot);
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, finalizedSnapshot);
     expect(mocks.mockSetStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
       'startTimes',
@@ -392,5 +404,23 @@ describe('useClassOrderController', () => {
     );
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/link');
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', false);
+  });
+
+  it('shows an error when start times are missing before finalize', async () => {
+    mockStartTimes = [];
+
+    const { result } = renderHook(() => useClassOrderController());
+
+    await act(async () => {
+      await result.current.onFinalize();
+    });
+
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'startTimes',
+      expect.objectContaining({ level: 'error', text: 'スタート時間を先に作成してください。' }),
+    );
+    expect(mocks.mockAssignStartTimes).not.toHaveBeenCalled();
+    expect(mocks.mockFinalize).not.toHaveBeenCalled();
   });
 });

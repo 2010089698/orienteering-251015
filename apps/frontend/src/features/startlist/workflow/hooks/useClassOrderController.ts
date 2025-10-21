@@ -204,10 +204,18 @@ export const useClassOrderController = () => {
       setStatus(dispatch, 'startTimes', createStatus('スタートリスト ID を設定してください。', 'error'));
       return;
     }
+    if (startTimes.length === 0) {
+      setStatus(dispatch, 'startTimes', createStatus('スタート時間を先に作成してください。', 'error'));
+      return;
+    }
     try {
       setLoading(dispatch, 'startTimes', true);
-      const snapshot = await api.finalize({ startlistId });
-      updateSnapshot(dispatch, snapshot);
+      const assignedSnapshot = await api.assignStartTimes({ startlistId, startTimes });
+      if (assignedSnapshot) {
+        updateSnapshot(dispatch, assignedSnapshot);
+      }
+      const finalizedSnapshot = await api.finalize({ startlistId });
+      updateSnapshot(dispatch, finalizedSnapshot);
       setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
       setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
       navigate(STARTLIST_STEP_PATHS.link);
@@ -217,7 +225,7 @@ export const useClassOrderController = () => {
     } finally {
       setLoading(dispatch, 'startTimes', false);
     }
-  }, [api, dispatch, navigate, startlistId]);
+  }, [api, dispatch, navigate, startlistId, startTimes]);
 
   return {
     viewModel,
