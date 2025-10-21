@@ -4,9 +4,11 @@ import { PointerSensor, type DragEndEvent, useSensor, useSensors } from '@dnd-ki
 
 import {
   createStatus,
+  setLoading,
   setStatus,
   updateClassAssignments,
   updateLaneAssignments,
+  updateSnapshot,
   updateStartTimes,
   useStartlistClassAssignments,
   useStartlistClassOrderPreferences,
@@ -34,6 +36,7 @@ import {
 } from '../../utils/classOrderPolicy';
 import { createLaneAssignmentViewModel, moveClassBetweenLanes } from '../createLaneAssignmentViewModel';
 import { sanitizeActiveTab } from '../utils';
+import { useStartlistApi } from '../../api/useStartlistApi';
 
 export const useLaneAssignmentController = () => {
   const laneAssignments = useStartlistLaneAssignments();
@@ -50,6 +53,7 @@ export const useLaneAssignmentController = () => {
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
   const navigate = useNavigate();
+  const api = useStartlistApi();
 
   const [activeTab, setActiveTab] = useState<string>('overview');
 
@@ -174,7 +178,11 @@ export const useLaneAssignmentController = () => {
     [dispatch, laneAssignments, viewModel.effectiveSplitResult, viewModel.laneIntervalMs],
   );
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
+    if (!startlistId) {
+      setStatus(dispatch, 'lanes', createStatus('スタートリスト ID を設定してください。', 'error'));
+      return;
+    }
     if (!settings) {
       setStatus(dispatch, 'lanes', createStatus('基本情報を先に入力してください。', 'error'));
       return;
@@ -184,8 +192,28 @@ export const useLaneAssignmentController = () => {
       return;
     }
 
+    setLoading(dispatch, 'lanes', true);
+
+    let laneOrderPersisted = false;
     let nextClassAssignments = existingClassAssignments;
     let nextSplitResult = classSplitResult;
+
+    try {
+      const snapshot = await api.assignLaneOrder({ startlistId, assignments: laneAssignments });
+      updateSnapshot(dispatch, snapshot);
+      setStatus(dispatch, 'lanes', createStatus('レーン割り当てを送信しました。', 'success'));
+      laneOrderPersisted = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'レーン割り当ての送信に失敗しました。';
+      setStatus(dispatch, 'lanes', createStatus(message, 'error'));
+    } finally {
+      setLoading(dispatch, 'lanes', false);
+    }
+
+    if (!laneOrderPersisted) {
+      return;
+    }
+
     if (!nextClassAssignments.length) {
       const missingWorldRankingClasses = startOrderRules
         .filter((rule) => rule.method === 'worldRanking' && rule.classId && !rule.csvName)
@@ -273,6 +301,7 @@ export const useLaneAssignmentController = () => {
     setStatus(dispatch, 'startTimes', createStatus('スタート時間を割り当てました。', 'success'));
     navigate(STARTLIST_STEP_PATHS.order);
   }, [
+    api,
     classOrderPreferences.avoidConsecutiveClubs,
     classOrderSeed,
     classSplitResult,

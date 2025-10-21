@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   mockDownloadStartlistCsv: vi.fn(),
   mockDispatch: vi.fn(),
   mockEnterSettings: vi.fn(),
+  mockAssignLaneOrder: vi.fn(),
   mockAssignPlayerOrder: vi.fn(),
   mockAssignStartTimes: vi.fn(),
   mockFinalize: vi.fn(),
@@ -106,6 +107,7 @@ vi.mock('../../utils/startlistExport', () => ({
 vi.mock('../../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
     enterSettings: mocks.mockEnterSettings,
+    assignLaneOrder: mocks.mockAssignLaneOrder,
     assignPlayerOrder: mocks.mockAssignPlayerOrder,
     assignStartTimes: mocks.mockAssignStartTimes,
     finalize: mocks.mockFinalize,
@@ -171,18 +173,21 @@ const resetState = () => {
       laneCount: 2,
     },
   });
+  mocks.mockGenerateLaneAssignments.mockReset();
   mocks.mockGenerateLaneAssignments.mockReturnValue({
     assignments: [
       { laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } },
     ],
     splitResult: undefined,
   });
+  mocks.mockCreateDefaultClassAssignments.mockReset();
   mocks.mockCreateDefaultClassAssignments.mockReturnValue({
     assignments: [{ classId: 'M21', playerOrder: ['1'] }],
     seed: 'seed-1',
     warnings: [],
     splitResult: undefined,
   });
+  mocks.mockCalculateStartTimes.mockReset();
   mocks.mockCalculateStartTimes.mockReturnValue([{ playerId: '1', startTime: '2024-01-01T09:00:00Z' }]);
   mocks.mockReorderLaneClass.mockImplementation((lanes) => lanes);
   mocks.mockUpdateClassPlayerOrder.mockImplementation((assignments) => assignments);
@@ -197,6 +202,8 @@ const resetState = () => {
   mocks.mockNavigate.mockReset();
   mocks.mockEnterSettings.mockReset();
   mocks.mockEnterSettings.mockResolvedValue(mockSnapshot);
+  mocks.mockAssignLaneOrder.mockReset();
+  mocks.mockAssignLaneOrder.mockResolvedValue(mockSnapshot);
   mocks.mockAssignPlayerOrder.mockReset();
   mocks.mockAssignPlayerOrder.mockResolvedValue(undefined);
   mocks.mockAssignStartTimes.mockReset();
@@ -310,13 +317,20 @@ describe('useLaneAssignmentController', () => {
     });
   });
 
-  it('creates class assignments and start times on confirm', () => {
+  it('creates class assignments and start times on confirm', async () => {
     const { result } = renderHook(() => useLaneAssignmentController());
 
-    act(() => {
-      result.current.onConfirm();
+    await act(async () => {
+      await result.current.onConfirm();
     });
 
+    expect(mocks.mockAssignLaneOrder).toHaveBeenCalledWith({
+      startlistId: mockStartlistId,
+      assignments: mockLaneAssignments,
+    });
+    expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'lanes', true);
+    expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'lanes', false);
+    expect(mocks.mockUpdateSnapshot).toHaveBeenCalledWith(mocks.mockDispatch, mockSnapshot);
     expect(mocks.mockCreateDefaultClassAssignments).toHaveBeenCalled();
     expect(mocks.mockUpdateClassAssignments).toHaveBeenCalled();
     expect(mocks.mockCalculateStartTimes).toHaveBeenCalledWith(
@@ -326,7 +340,33 @@ describe('useLaneAssignmentController', () => {
       }),
     );
     expect(mocks.mockUpdateStartTimes).toHaveBeenCalled();
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'lanes',
+      expect.objectContaining({ level: 'success' }),
+    );
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/order');
+  });
+
+  it('reports an error when lane assignment submission fails', async () => {
+    const error = new Error('network error');
+    mocks.mockAssignLaneOrder.mockRejectedValue(error);
+
+    const { result } = renderHook(() => useLaneAssignmentController());
+
+    await act(async () => {
+      await result.current.onConfirm();
+    });
+
+    expect(mocks.mockAssignLaneOrder).toHaveBeenCalled();
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'lanes',
+      expect.objectContaining({ level: 'error', text: error.message }),
+    );
+    expect(mocks.mockCreateDefaultClassAssignments).not.toHaveBeenCalled();
+    expect(mocks.mockCalculateStartTimes).not.toHaveBeenCalled();
+    expect(mocks.mockNavigate).not.toHaveBeenCalled();
   });
 });
 
