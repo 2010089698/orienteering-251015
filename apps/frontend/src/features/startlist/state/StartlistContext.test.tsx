@@ -25,8 +25,11 @@ import {
   updateClassWorldRanking,
   setClassSplitRules,
   setClassSplitResult,
+  updateVersionHistory,
+  updateDiff,
 } from './StartlistContext';
 import type { ClassSplitResult, ClassSplitRule, StartlistState } from './types';
+import type { StartlistDiffDto, StartlistVersionSummaryDto } from '@startlist-management/application';
 
 describe('StartlistContext', () => {
   it('throws when hooks used outside provider', () => {
@@ -114,6 +117,27 @@ describe('StartlistContext', () => {
       laneCount: 2,
     };
 
+    const versions: StartlistVersionSummaryDto[] = [
+      { version: 2, confirmedAt: '2024-04-02T00:00:00.000Z' },
+      { version: 1, confirmedAt: '2024-04-01T00:00:00.000Z' },
+    ];
+
+    const diff: StartlistDiffDto = {
+      startlistId: 'SL-1',
+      to: versions[0],
+      from: versions[1],
+      changes: {
+        startTimes: {
+          previous: [
+            { playerId: 'prev-player', laneNumber: 1, startTime: settings.startTime },
+          ],
+          current: [
+            { playerId: 'current-player', laneNumber: 2, startTime: settings.startTime },
+          ],
+        },
+      },
+    };
+
     act(() => {
       updateSettings(result.current.dispatch, { startlistId: 'SL-1', settings });
       appendEntry(result.current.dispatch, {
@@ -158,6 +182,8 @@ describe('StartlistContext', () => {
         laneAssignments: [],
         classAssignments: [],
         startTimes: [],
+        versions,
+        diff,
       });
       setStartOrderRules(result.current.dispatch, [
         { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
@@ -179,6 +205,13 @@ describe('StartlistContext', () => {
     ]);
     expect(result.current.state.classSplitResult?.signature).toBe('sig-1');
     expect(result.current.state.snapshot?.id).toBe('SL-1');
+    expect(result.current.state.versionHistory).toEqual([
+      { version: 2, confirmedAt: '2024-04-02T00:00:00.000Z' },
+      { version: 1, confirmedAt: '2024-04-01T00:00:00.000Z' },
+    ]);
+    expect(result.current.state.latestVersion?.version).toBe(2);
+    expect(result.current.state.previousVersion?.version).toBe(1);
+    expect(result.current.state.diff).toEqual(diff);
     expect(result.current.state.startOrderRules).toEqual([
       { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
     ]);
@@ -187,10 +220,16 @@ describe('StartlistContext', () => {
     act(() => {
       removeEntry(result.current.dispatch, entryId);
       setLoading(result.current.dispatch, 'entries', false);
+      updateVersionHistory(result.current.dispatch, []);
+      updateDiff(result.current.dispatch, undefined);
     });
 
     expect(result.current.state.entries).toHaveLength(0);
     expect(result.current.state.loading.entries).toBe(false);
+    expect(result.current.state.versionHistory).toEqual([]);
+    expect(result.current.state.latestVersion).toBeUndefined();
+    expect(result.current.state.previousVersion).toBeUndefined();
+    expect(result.current.state.diff).toBeUndefined();
   });
 
   it('manages editing entry id through dedicated hooks', () => {

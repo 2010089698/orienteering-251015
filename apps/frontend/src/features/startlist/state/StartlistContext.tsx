@@ -32,6 +32,8 @@ import {
   createEntriesActions,
   createSetSettingsAction,
   createSetSnapshotAction,
+  createSetVersionHistoryAction,
+  createSetDiffAction,
   createSetClassOrderPreferencesAction,
   createSetStartOrderRulesAction,
   createSetClassWorldRankingAction,
@@ -135,6 +137,18 @@ export const useStartlistLoading = (): StartlistState['loading'] =>
 export const useStartlistSnapshot = (): StartlistState['snapshot'] =>
   useStartlistStateSelector((state) => state.snapshot);
 
+export const useStartlistVersionHistory = (): StartlistState['versionHistory'] =>
+  useStartlistStateSelector((state) => state.versionHistory);
+
+export const useStartlistLatestVersion = (): StartlistState['latestVersion'] =>
+  useStartlistStateSelector((state) => state.latestVersion);
+
+export const useStartlistPreviousVersion = (): StartlistState['previousVersion'] =>
+  useStartlistStateSelector((state) => state.previousVersion);
+
+export const useStartlistDiff = (): StartlistState['diff'] =>
+  useStartlistStateSelector((state) => state.diff);
+
 export const useStartlistStartOrderRules = (): StartlistState['startOrderRules'] =>
   useStartlistStateSelector((state) => state.startOrderRules);
 
@@ -235,6 +249,17 @@ export const updateSnapshot = (
   snapshot?: StartlistWithHistoryDto,
 ): void => {
   dispatch(createSetSnapshotAction(snapshot));
+};
+
+export const updateVersionHistory = (
+  dispatch: Dispatch<StartlistAction>,
+  history: StartlistState['versionHistory'],
+): void => {
+  dispatch(createSetVersionHistoryAction(history));
+};
+
+export const updateDiff = (dispatch: Dispatch<StartlistAction>, diff?: StartlistState['diff']): void => {
+  dispatch(createSetDiffAction(diff));
 };
 
 export const updateClassOrderPreferences = (

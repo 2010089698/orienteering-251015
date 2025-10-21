@@ -20,6 +20,8 @@ import {
   setClassSplitRules,
   setClassSplitResult,
   useSetStartlistEditingEntryId,
+  updateVersionHistory,
+  updateDiff,
 } from '../state/StartlistContext';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
@@ -28,6 +30,8 @@ import type {
   ClassAssignmentDto,
   StartTimeDto,
   StartlistWithHistoryDto,
+  StartlistVersionSummaryDto,
+  StartlistDiffDto,
 } from '@startlist-management/application';
 import type {
   ClassOrderPreferences,
@@ -58,6 +62,8 @@ export interface StartlistTestInitialState {
   classSplitRules?: ClassSplitRule[];
   classSplitResult?: ClassSplitResult;
   editingEntryId?: string;
+  versionHistory?: StartlistVersionSummaryDto[];
+  diff?: StartlistDiffDto;
 }
 
 interface WrapperProps {
@@ -116,6 +122,12 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
     }
     if (initialState?.snapshot !== undefined) {
       updateSnapshot(dispatch, initialState.snapshot);
+    }
+    if (initialState?.versionHistory) {
+      updateVersionHistory(dispatch, initialState.versionHistory);
+    }
+    if (initialState?.diff !== undefined) {
+      updateDiff(dispatch, initialState.diff);
     }
     if (initialState?.statuses) {
       for (const [key, status] of Object.entries(initialState.statuses) as [StatusKey, StatusMessageState][]) {

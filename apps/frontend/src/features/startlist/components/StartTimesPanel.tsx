@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
+import type { StartTimeDto } from '@startlist-management/application';
 import { useStartlistApi } from '../api/useStartlistApi';
 import {
   createStatus,
@@ -6,6 +8,8 @@ import {
   setStatus,
   updateSnapshot,
   updateStartTimes,
+  updateVersionHistory,
+  updateDiff,
   useStartlistClassAssignments,
   useStartlistClassSplitResult,
   useStartlistClassSplitRules,
@@ -19,6 +23,9 @@ import {
   useStartlistStartOrderRules,
   useStartlistStatuses,
   useStartlistWorldRankingByClass,
+  useStartlistLatestVersion,
+  useStartlistPreviousVersion,
+  useStartlistDiff,
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
@@ -54,6 +61,105 @@ const StartTimesPanel = (): JSX.Element => {
   const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
+  const latestVersion = useStartlistLatestVersion();
+  const previousVersion = useStartlistPreviousVersion();
+  const diff = useStartlistDiff();
+  const [diffError, setDiffError] = useState<string>();
+  const [diffLoading, setDiffLoading] = useState(false);
+
+  const refreshDiff = useCallback(async () => {
+    if (!startlistId) {
+      updateVersionHistory(dispatch, []);
+      updateDiff(dispatch, undefined);
+      return;
+    }
+
+    try {
+      setDiffError(undefined);
+      setDiffLoading(true);
+      const versions = await api.fetchVersions({ startlistId, limit: 2 });
+      const summaries = versions.items
+        .map(({ version, confirmedAt }) => ({ version, confirmedAt }))
+        .sort((a, b) => b.version - a.version);
+      updateVersionHistory(dispatch, summaries);
+
+      if (!summaries.length) {
+        updateDiff(dispatch, undefined);
+        return;
+      }
+
+      const [latest, previous] = summaries;
+      const diffResult = await api.fetchDiff({
+        startlistId,
+        ...(previous ? { fromVersion: previous.version } : {}),
+        toVersion: latest.version,
+      });
+      updateDiff(dispatch, diffResult);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '差分の取得に失敗しました。';
+      setDiffError(message);
+      updateVersionHistory(dispatch, []);
+      updateDiff(dispatch, undefined);
+    } finally {
+      setDiffLoading(false);
+    }
+  }, [api, dispatch, startlistId]);
+
+  useEffect(() => {
+    void refreshDiff();
+  }, [refreshDiff]);
+
+  const diffHighlights = useMemo(() => {
+    const highlights: {
+      rowClasses: Map<string, 'diff-added' | 'diff-updated'>;
+      removed: StartTimeDto[];
+    } = { rowClasses: new Map(), removed: [] };
+
+    const startTimesDiff = diff?.changes?.startTimes;
+    if (!startTimesDiff) {
+      return highlights;
+    }
+
+    const previousList = startTimesDiff.previous ?? [];
+    const previousByPlayer = new Map(previousList.map((item) => [item.playerId, item]));
+    const currentList = startTimesDiff.current ?? startTimes;
+    const currentIds = new Set(currentList.map((item) => item.playerId));
+
+    for (const time of startTimes) {
+      const prev = previousByPlayer.get(time.playerId);
+      if (!prev) {
+        highlights.rowClasses.set(time.playerId, 'diff-added');
+        continue;
+      }
+      if (prev.laneNumber !== time.laneNumber || prev.startTime !== time.startTime) {
+        highlights.rowClasses.set(time.playerId, 'diff-updated');
+      }
+    }
+
+    for (const prev of previousList) {
+      if (!currentIds.has(prev.playerId)) {
+        highlights.removed.push(prev);
+      }
+    }
+
+    return highlights;
+  }, [diff, startTimes]);
+
+  const showDiffLegend = diffHighlights.rowClasses.size > 0 || diffHighlights.removed.length > 0;
+
+  const versionInfoText = useMemo(() => {
+    if (diffLoading) {
+      return '差分を読み込み中…';
+    }
+    if (!latestVersion) {
+      return 'バージョン履歴がまだありません。';
+    }
+    const latestText = `最新 v${latestVersion.version} (${formatDateTime(latestVersion.confirmedAt)})`;
+    const previousText = previousVersion
+      ? ` / 前回 v${previousVersion.version} (${formatDateTime(previousVersion.confirmedAt)})`
+      : '';
+    return `比較対象: ${latestText}${previousText}`;
+  }, [diffLoading, latestVersion, previousVersion]);
 
   const ready = Boolean(settings && laneAssignments.length > 0 && classAssignments.length > 0);
 
@@ -97,6 +203,7 @@ const StartTimesPanel = (): JSX.Element => {
       if (snapshot) {
         setStatus(dispatch, 'snapshot', createStatus('スナップショットを更新しました。', 'info'));
       }
+      await refreshDiff();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'スタート時間の送信に失敗しました。';
       setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
@@ -138,6 +245,7 @@ const StartTimesPanel = (): JSX.Element => {
       updateSnapshot(dispatch, snapshot);
       setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
       setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
+      await refreshDiff();
     } catch (error) {
       const message = error instanceof Error ? error.message : '確定処理に失敗しました。';
       setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
@@ -164,6 +272,7 @@ const StartTimesPanel = (): JSX.Element => {
       if (snapshot) {
         setStatus(dispatch, 'snapshot', createStatus('スナップショットを更新しました。', 'info'));
       }
+      await refreshDiff();
     } catch (error) {
       const message = error instanceof Error ? error.message : '無効化処理に失敗しました。';
       setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
@@ -201,7 +310,31 @@ const StartTimesPanel = (): JSX.Element => {
         </button>
         <span className="muted">{startTimes.length} 件のスタート時間</span>
       </div>
-      {startTimes.length === 0 ? (
+      <div className="start-times__diff-meta">
+        <p className="muted" aria-live="polite">{versionInfoText}</p>
+        {showDiffLegend ? (
+          <div className="diff-legend" role="note" aria-label="差分ハイライトの凡例">
+            <span className="diff-legend__item">
+              <span className="diff-swatch diff-swatch--added" aria-hidden="true" />
+              <span>追加</span>
+            </span>
+            <span className="diff-legend__item">
+              <span className="diff-swatch diff-swatch--updated" aria-hidden="true" />
+              <span>更新</span>
+            </span>
+            <span className="diff-legend__item">
+              <span className="diff-swatch diff-swatch--removed" aria-hidden="true" />
+              <span>削除</span>
+            </span>
+          </div>
+        ) : null}
+        {diffError ? (
+          <p className="diff-error" role="status">
+            {diffError}
+          </p>
+        ) : null}
+      </div>
+      {startTimes.length === 0 && diffHighlights.removed.length === 0 ? (
         <p className="muted">まだスタート時間が計算されていません。</p>
       ) : (
         <div className="table-wrapper">
@@ -217,14 +350,29 @@ const StartTimesPanel = (): JSX.Element => {
               {startTimes.map((time) => {
                 const isoValue =
                   typeof time.startTime === 'string' ? time.startTime : new Date(time.startTime).toISOString();
+                const diffClass = diffHighlights.rowClasses.get(time.playerId);
+                const annotation = diffClass === 'diff-added' ? '追加' : diffClass === 'diff-updated' ? '更新' : undefined;
                 return (
-                  <tr key={`${time.playerId}-${time.laneNumber}`}>
-                    <td>{time.playerId}</td>
+                  <tr key={`${time.playerId}-${time.laneNumber}`} className={diffClass} data-diff={diffClass}>
+                    <td>
+                      {time.playerId}
+                      {annotation ? <span className="diff-annotation">{annotation}</span> : null}
+                    </td>
                     <td>{time.laneNumber}</td>
                     <td>{formatDateTime(isoValue)}</td>
                   </tr>
                 );
               })}
+              {diffHighlights.removed.map((removed) => (
+                <tr key={`removed-${removed.playerId}-${removed.laneNumber}`} className="diff-removed" data-diff="diff-removed">
+                  <td>
+                    {removed.playerId}
+                    <span className="diff-annotation">削除</span>
+                  </td>
+                  <td>{removed.laneNumber}</td>
+                  <td>{formatDateTime(removed.startTime)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
