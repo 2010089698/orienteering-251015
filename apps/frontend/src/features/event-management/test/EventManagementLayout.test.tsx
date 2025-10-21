@@ -85,7 +85,7 @@ describe('EventManagementLayout', () => {
 
     await user.type(screen.getByLabelText('イベント名'), '秋のスプリント');
     await user.type(screen.getByLabelText('開始日'), '2024-10-01');
-    await user.type(screen.getByLabelText('終了日'), '2024-10-01');
+    expect(screen.getByLabelText('終了日')).toHaveValue('2024-10-01');
     await user.type(screen.getByLabelText('会場'), '札幌');
     await user.click(screen.getByRole('button', { name: 'イベントを作成' }));
 
@@ -110,7 +110,7 @@ describe('EventManagementLayout', () => {
 
     await user.type(screen.getByLabelText('イベント名'), '冬のスプリント');
     await user.type(screen.getByLabelText('開始日'), '2024-12-01');
-    await user.type(screen.getByLabelText('終了日'), '2024-12-01');
+    expect(screen.getByLabelText('終了日')).toHaveValue('2024-12-01');
     await user.type(screen.getByLabelText('会場'), '札幌');
     await user.click(screen.getByRole('button', { name: 'イベントを作成' }));
 
