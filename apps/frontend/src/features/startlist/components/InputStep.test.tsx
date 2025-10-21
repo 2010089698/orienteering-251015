@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import InputStepWorkflow from '../workflow/InputStepWorkflow';
@@ -61,6 +61,7 @@ describe('InputStep', () => {
     const submitMock = vi.fn(() => ({ error: 'レーン数は 1 以上の整数で入力してください。' }));
     useSettingsFormSpy.mockReturnValue({
       fields: {
+        eventId: 'event-1',
         startTime: '2024-01-01T09:00',
         laneIntervalMs: 0,
         playerIntervalMs: 60000,
@@ -72,6 +73,7 @@ describe('InputStep', () => {
       playerIntervalOptions: [{ label: '1分', value: 60000 }],
       status: { level: 'error', text: 'レーン数は 1 以上の整数で入力してください。' },
       onChange: {
+        eventId: vi.fn(),
         startTime: vi.fn(),
         laneIntervalMs: vi.fn(),
         playerIntervalMs: vi.fn(),
@@ -88,7 +90,9 @@ describe('InputStep', () => {
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
     expect(submitMock).toHaveBeenCalled();
-    expect(await screen.findByText('レーン数は 1 以上の整数で入力してください。')).toBeInTheDocument();
+    expect(
+      await screen.findAllByText('レーン数は 1 以上の整数で入力してください。'),
+    ).not.toHaveLength(0);
 
     useSettingsFormSpy.mockRestore();
   });
@@ -102,6 +106,9 @@ describe('InputStep', () => {
         entries: sampleEntries,
       },
     });
+
+    const eventIdInput = (await screen.findByLabelText(/イベントID（必須）/)) as HTMLInputElement;
+    await waitFor(() => expect(eventIdInput.value).toBe('event-1'));
 
     await userEvent.click(screen.getByRole('button', { name: '入力完了（レーンを自動作成）' }));
 
@@ -168,6 +175,9 @@ describe('InputStep', () => {
         },
       },
     );
+
+    const eventIdInput = (await screen.findByLabelText(/イベントID（必須）/)) as HTMLInputElement;
+    await waitFor(() => expect(eventIdInput.value).toBe('event-1'));
 
     const classSelect = screen.getByLabelText('基準クラス');
     await userEvent.selectOptions(classSelect, 'SP');

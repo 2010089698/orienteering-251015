@@ -10,6 +10,7 @@ export type SettingsFormErrors = {
 };
 
 export type SettingsFormChangeHandlers = {
+  eventId: (value: string) => void;
   startTime: (value: string) => void;
   laneIntervalMs: (value: number) => void;
   playerIntervalMs: (value: number) => void;
@@ -41,7 +42,8 @@ const SettingsForm = ({
     onSubmit();
   };
 
-  const { startTime, laneIntervalMs, playerIntervalMs, laneCount, avoidConsecutiveClubs } = fields;
+  const { eventId, startTime, laneIntervalMs, playerIntervalMs, laneCount, avoidConsecutiveClubs } =
+    fields;
 
   return (
     <section aria-labelledby="settings-heading">
@@ -57,6 +59,16 @@ const SettingsForm = ({
             {errors.form}
           </p>
         ) : null}
+        <label>
+          イベントID（必須）
+          <input
+            type="text"
+            value={eventId}
+            onChange={(event) => onChange.eventId(event.target.value)}
+            required
+          />
+          <span className="muted">スタートリストと連携する大会の ID を入力してください。</span>
+        </label>
         <label>
           開始時刻
           <input

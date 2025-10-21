@@ -192,6 +192,7 @@ describe('StartlistContext', () => {
     });
 
     expect(result.current.state.startlistId).toBe('SL-1');
+    expect(result.current.state.settings?.eventId).toBe('event');
     expect(result.current.state.entries).toHaveLength(1);
     expect(result.current.state.entries[0]?.iofId).toBe('IOF001');
     expect(result.current.state.entries[0]?.cardNo).toBe('42');

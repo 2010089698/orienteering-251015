@@ -34,10 +34,12 @@ describe('useSettingsForm', () => {
       },
     });
 
+    expect(hook.current.fields.eventId).toMatch(/^SL-/);
     expect(hook.current.fields.laneIntervalMs).toBe(0);
     expect(hook.current.fields.avoidConsecutiveClubs).toBe(true);
 
     act(() => {
+      hook.current.onChange.eventId('event-123');
       hook.current.onChange.startTime('2024-01-01T09:00');
       hook.current.onChange.laneCount(3);
     });
@@ -45,6 +47,7 @@ describe('useSettingsForm', () => {
     act(() => {
       const result = hook.current.submit();
       expect(result.settings).toBeDefined();
+      expect(result.settings?.eventId).toBe('event-123');
       expect(result.settings?.intervals.laneClass.milliseconds).toBe(0);
     });
 
@@ -57,6 +60,7 @@ describe('useSettingsForm', () => {
     const hook = renderHook();
 
     act(() => {
+      hook.current.onChange.eventId('event-1');
       hook.current.onChange.startTime('');
     });
 
@@ -73,6 +77,7 @@ describe('useSettingsForm', () => {
   it('hydrates new settings state via a single dispatch', () => {
     const hook = renderHook({
       initialState: {
+        startlistId: 'SL-1',
         settings: {
           eventId: 'event-1',
           startTime: new Date('2024-02-01T00:00:00Z').toISOString(),
@@ -86,9 +91,27 @@ describe('useSettingsForm', () => {
       },
     });
 
+    expect(hook.current.fields.eventId).toBe('event-1');
     expect(hook.current.fields.startTime).toBe('2024-02-01T09:00');
     expect(hook.current.fields.laneCount).toBe(4);
     expect(hook.current.fields.avoidConsecutiveClubs).toBe(false);
+  });
+
+  it('returns validation error when event ID is blank', () => {
+    const hook = renderHook();
+
+    act(() => {
+      hook.current.onChange.eventId('   ');
+      hook.current.onChange.startTime('2024-01-01T09:00');
+    });
+
+    act(() => {
+      const result = hook.current.submit();
+      expect(result.settings).toBeUndefined();
+      expect(result.error).toBe('イベント ID を入力してください。');
+    });
+
+    expect(hook.current.errors.form).toBe('イベント ID を入力してください。');
   });
 });
 
