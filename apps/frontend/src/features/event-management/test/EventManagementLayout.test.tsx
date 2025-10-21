@@ -33,6 +33,8 @@ const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
         duplicateDay: false,
         overlapsExisting: false,
         startlistLink: undefined,
+        startlistUpdatedAt: undefined,
+        startlistPublicVersion: undefined,
       },
     ],
     ...overrides,
@@ -150,13 +152,22 @@ describe('EventManagementLayout', () => {
           duplicateDay: false,
           overlapsExisting: false,
           startlistLink: undefined,
+          startlistUpdatedAt: undefined,
+          startlistPublicVersion: undefined,
         },
       ],
     };
     const attachedEvent: EventDto = {
       ...scheduledEvent,
       races: scheduledEvent.races.map((race) =>
-        race.id === 'race-1' ? { ...race, startlistLink: 'https://example.com/startlist' } : race,
+        race.id === 'race-1'
+          ? {
+              ...race,
+              startlistLink: 'https://example.com/startlist',
+              startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+              startlistPublicVersion: 5,
+            }
+          : race,
       ),
     };
 
@@ -209,6 +220,8 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByText('スタートリストを連携しました。')).toBeInTheDocument();
     const startlistLink = await screen.findByRole('link', { name: 'スタートリストを表示' });
     expect(startlistLink).toHaveAttribute('href', 'https://example.com/startlist');
+    expect(await screen.findByText(/更新: /)).toBeInTheDocument();
+    expect(await screen.findByText('v5')).toBeInTheDocument();
     const attachPayload = attachStartlistMock.mock.calls.at(-1)?.[0];
     expect(attachPayload).toMatchObject({ eventId: 'event-1', raceId: 'race-1', startlistLink: 'https://example.com/startlist' });
   });

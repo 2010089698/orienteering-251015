@@ -99,10 +99,10 @@ export const useEventManagementApi = () => {
 
   const attachStartlist = useCallback(
     async (command: AttachStartlistCommand): Promise<EventDto> => {
-      const { eventId, raceId, startlistLink } = command;
+      const { eventId, raceId, ...payload } = command;
       const { event } = (await postJson(
         `/${encodeURIComponent(eventId)}/races/${encodeURIComponent(raceId)}/startlist`,
-        { startlistLink },
+        payload,
       )) as EventResponse;
       return event;
     },

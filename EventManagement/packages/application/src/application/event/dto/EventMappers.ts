@@ -18,6 +18,12 @@ import {
   type RaceDto,
 } from './EventDtos.js';
 
+interface StartlistAttachmentInput {
+  link: StartlistLink;
+  updatedAt?: Date;
+  publicVersion?: number;
+}
+
 function parseDateTime(value: string, label: string): Date {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) {
@@ -52,14 +58,24 @@ export function mapToScheduleRaceInput(command: ScheduleRaceCommand): {
   };
 }
 
-export function mapToStartlistLink(command: AttachStartlistCommand): StartlistLink {
-  return StartlistLink.from(command.startlistLink);
+export function mapToStartlistAttachment(command: AttachStartlistCommand): StartlistAttachmentInput {
+  const link = StartlistLink.from(command.startlistLink);
+  const updatedAt = command.startlistUpdatedAt
+    ? parseDateTime(command.startlistUpdatedAt, 'Startlist updated at')
+    : undefined;
+  return {
+    link,
+    updatedAt,
+    publicVersion: command.startlistPublicVersion,
+  };
 }
 
 export function mapRaceToDto(race: Race): RaceDto {
   const schedule = race.getSchedule();
   const end = schedule.getEnd();
   const startlistLink = race.getStartlistLink();
+  const startlistUpdatedAt = race.getStartlistUpdatedAt();
+  const startlistPublicVersion = race.getStartlistPublicVersion();
   return {
     id: race.getId().toString(),
     name: race.getName(),
@@ -70,6 +86,8 @@ export function mapRaceToDto(race: Race): RaceDto {
     duplicateDay: race.hasDuplicateDay(),
     overlapsExisting: race.hasScheduleOverlap(),
     ...(startlistLink ? { startlistLink: startlistLink.toString() } : {}),
+    ...(startlistUpdatedAt ? { startlistUpdatedAt: startlistUpdatedAt.toISOString() } : {}),
+    ...(startlistPublicVersion ? { startlistPublicVersion } : {}),
   };
 }
 

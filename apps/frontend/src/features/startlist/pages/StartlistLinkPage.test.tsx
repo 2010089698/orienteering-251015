@@ -56,6 +56,8 @@ describe('StartlistLinkPage', () => {
           id: 'race-1',
           name: '本戦',
           startlistLink: 'https://example.com/startlist',
+          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+          startlistPublicVersion: 6,
         },
       ],
     });

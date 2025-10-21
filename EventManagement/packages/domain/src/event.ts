@@ -113,9 +113,15 @@ export class Event {
     return race;
   }
 
-  public linkStartlist(raceId: RaceId, link: StartlistLink): void {
+  public linkStartlist(
+    raceId: RaceId,
+    payload: { link: StartlistLink; updatedAt?: Date; publicVersion?: number }
+  ): void {
     const race = this.findRace(raceId);
-    race.attachStartlist(link);
+    race.attachStartlist(payload.link, {
+      updatedAt: payload.updatedAt,
+      publicVersion: payload.publicVersion,
+    });
   }
 
   public getRaces(): readonly Race[] {

@@ -125,10 +125,18 @@ describe('Event aggregate', () => {
     );
 
     const link = StartlistLink.from('https://example.com/startlist');
-    event.linkStartlist(race.getId(), link);
+    const updatedAt = new Date('2024-04-05T10:15:00.000Z');
+    event.linkStartlist(race.getId(), {
+      link,
+      updatedAt,
+      publicVersion: 3,
+    });
 
     const storedRace = event.getRace(race.getId());
     expect(storedRace?.getStartlistLink()?.toString()).toBe('https://example.com/startlist');
+    expect(storedRace?.getStartlistUpdatedAt()?.toISOString()).toBe(updatedAt.toISOString());
+    expect(storedRace?.getStartlistPublicVersion()).toBe(3);
+    expect(storedRace?.hasPublishedStartlist()).toBe(true);
 
     const publicationPolicy = new EventPublicationPolicy();
     expect(() => event.assertCanBePublished(publicationPolicy)).not.toThrow();

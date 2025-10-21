@@ -172,6 +172,8 @@ describe('Event application services', () => {
         eventId: 'event-1',
         raceId: 'race-1',
         startlistLink: 'https://example.com/startlist',
+        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+        startlistPublicVersion: 2,
       });
 
       expect(dependencies.transactionManager.execute).toHaveBeenCalledTimes(1);
@@ -179,6 +181,8 @@ describe('Event application services', () => {
       const publishMock = dependencies.eventPublisher.publish as ReturnType<typeof vi.fn>;
       expect(publishMock).not.toHaveBeenCalled();
       expect(result.races[0]?.startlistLink).toBe('https://example.com/startlist');
+      expect(result.races[0]?.startlistUpdatedAt).toBe('2024-04-05T09:00:00.000Z');
+      expect(result.races[0]?.startlistPublicVersion).toBe(2);
     });
 
     it('throws RaceNotFoundError when race is missing', async () => {

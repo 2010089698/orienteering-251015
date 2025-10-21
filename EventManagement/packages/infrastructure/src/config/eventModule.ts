@@ -77,6 +77,7 @@ export const createEventModule = (options: CreateEventModuleOptions = {}): Event
           eventId: event.eventId,
           raceId: event.raceId,
           schedule: event.schedule,
+          updatedAt: event.occurredAt,
         });
       }
     });

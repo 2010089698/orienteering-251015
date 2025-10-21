@@ -146,6 +146,8 @@ describe('useEventManagementApi', () => {
       eventId: 'EV-4',
       raceId: 'race-1',
       startlistLink: 'https://example.com/startlist',
+      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+      startlistPublicVersion: 7,
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -153,7 +155,11 @@ describe('useEventManagementApi', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     const [, init] = fetchMock.mock.calls[0];
-    expect(JSON.parse(init?.body as string)).toEqual({ startlistLink: 'https://example.com/startlist' });
+    expect(JSON.parse(init?.body as string)).toEqual({
+      startlistLink: 'https://example.com/startlist',
+      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+      startlistPublicVersion: 7,
+    });
     expect(response).toEqual(event);
   });
 

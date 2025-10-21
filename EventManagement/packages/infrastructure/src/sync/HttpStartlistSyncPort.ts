@@ -22,6 +22,7 @@ interface RaceScheduledPayload {
     start: string;
     end?: string;
   };
+  updatedAt: string;
 }
 
 export class HttpStartlistSyncPort implements StartlistSyncPort {
@@ -37,11 +38,13 @@ export class HttpStartlistSyncPort implements StartlistSyncPort {
     eventId: EventId;
     raceId: RaceId;
     schedule: RaceSchedule;
+    updatedAt: Date;
   }): Promise<void> {
     const body: RaceScheduledPayload = {
       eventId: payload.eventId.toString(),
       raceId: payload.raceId.toString(),
       schedule: serializeSchedule(payload.schedule),
+      updatedAt: payload.updatedAt.toISOString(),
     };
 
     const response = await this.fetchImpl(new URL(this.endpoint, this.options.baseUrl).toString(), {

@@ -98,6 +98,7 @@ describe('eventRoutes', () => {
     expect(body.event.allowMultipleRacesPerDay).toBe(true);
     expect(body.event.allowScheduleOverlap).toBe(true);
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
+    expect(notifyRaceScheduled.mock.calls[0]?.[0]?.updatedAt).toBeInstanceOf(Date);
   });
 
   it('attaches startlist links to races', async () => {
@@ -111,11 +112,17 @@ describe('eventRoutes', () => {
     const response = await server.inject({
       method: 'POST',
       url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
-      payload: { startlistLink: 'https://example.com/startlist' },
+      payload: {
+        startlistLink: 'https://example.com/startlist',
+        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+        startlistPublicVersion: 4,
+      },
     });
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.event.races[0]?.startlistLink).toBe('https://example.com/startlist');
+    expect(body.event.races[0]?.startlistUpdatedAt).toBe('2024-04-05T09:00:00.000Z');
+    expect(body.event.races[0]?.startlistPublicVersion).toBe(4);
     expect(body.event.allowMultipleRacesPerDay).toBe(true);
     expect(body.event.allowScheduleOverlap).toBe(true);
   });

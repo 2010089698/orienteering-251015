@@ -33,6 +33,9 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
         {races.map((race) => {
           const start = dateTimeFormatter.format(new Date(race.schedule.start));
           const end = race.schedule.end ? dateTimeFormatter.format(new Date(race.schedule.end)) : '-';
+          const formattedUpdatedAt = race.startlistUpdatedAt
+            ? dateTimeFormatter.format(new Date(race.startlistUpdatedAt))
+            : null;
           const startlistCreationLink = eventId
             ? `/startlist?eventId=${encodeURIComponent(eventId)}&raceId=${encodeURIComponent(race.id)}`
             : undefined;
@@ -49,11 +52,26 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
               </td>
               <td>
                 {race.startlistLink ? (
-                  <a href={race.startlistLink} target="_blank" rel="noreferrer">
-                    スタートリストを表示
-                  </a>
+                  <div className="race-list__startlist">
+                    <a href={race.startlistLink} target="_blank" rel="noreferrer">
+                      スタートリストを表示
+                    </a>
+                    {formattedUpdatedAt || race.startlistPublicVersion ? (
+                      <div className="race-list__startlist-meta">
+                        {formattedUpdatedAt ? (
+                          <span className="race-list__startlist-updated">更新: {formattedUpdatedAt}</span>
+                        ) : null}
+                        {race.startlistPublicVersion ? (
+                          <span className="race-list__startlist-version">v{race.startlistPublicVersion}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 ) : (
-                  '未設定'
+                  <div className="race-list__startlist race-list__startlist--empty">
+                    <span className="race-list__startlist-status">未公開</span>
+                    <span className="race-list__startlist-note">スタートリストはまだ公開されていません。</span>
+                  </div>
                 )}
               </td>
               <td>
