@@ -73,12 +73,19 @@ export const createEventModule = (options: CreateEventModuleOptions = {}): Event
   if (startlistSyncPort) {
     domainEventBus.subscribe(async (event) => {
       if (event instanceof RaceScheduled) {
-        await startlistSyncPort.notifyRaceScheduled({
-          eventId: event.eventId,
-          raceId: event.raceId,
-          schedule: event.schedule,
-          updatedAt: event.occurredAt,
-        });
+        try {
+          await startlistSyncPort.notifyRaceScheduled({
+            eventId: event.eventId,
+            raceId: event.raceId,
+            schedule: event.schedule,
+            updatedAt: event.occurredAt,
+          });
+        } catch (error) {
+          console.error(
+            `Failed to notify startlist sync port for event ${event.eventId.toString()} and race ${event.raceId.toString()}.`,
+            error,
+          );
+        }
       }
     });
   }

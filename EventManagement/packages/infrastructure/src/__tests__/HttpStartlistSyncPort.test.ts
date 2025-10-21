@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { StartlistSyncError } from '@event-management/application';
 import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
 
 import { HttpStartlistSyncPort } from '../sync/HttpStartlistSyncPort.js';
@@ -36,7 +37,7 @@ describe('HttpStartlistSyncPort', () => {
     expect(init?.body).toContain('2024-04-30T12:00:00.000Z');
   });
 
-  it('throws when the upstream service responds with an error', async () => {
+  it('throws a StartlistSyncError when the upstream service responds with an error', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -48,13 +49,33 @@ describe('HttpStartlistSyncPort', () => {
       fetchImpl: fetchMock,
     });
 
-    await expect(
-      port.notifyRaceScheduled({
-        eventId: EventId.from('event-1'),
-        raceId: RaceId.from('race-1'),
-        schedule: RaceSchedule.from(new Date('2024-05-01T10:00:00.000Z')),
-        updatedAt: new Date('2024-04-30T12:00:00.000Z'),
-      }),
-    ).rejects.toThrow('Failed to sync startlist: 500 boom');
+    const action = port.notifyRaceScheduled({
+      eventId: EventId.from('event-1'),
+      raceId: RaceId.from('race-1'),
+      schedule: RaceSchedule.from(new Date('2024-05-01T10:00:00.000Z')),
+      updatedAt: new Date('2024-04-30T12:00:00.000Z'),
+    });
+
+    await expect(action).rejects.toBeInstanceOf(StartlistSyncError);
+    await expect(action).rejects.toThrow('Failed to sync startlist: 500 boom');
+  });
+
+  it('wraps network errors in a StartlistSyncError', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('connection lost'));
+
+    const port = new HttpStartlistSyncPort({
+      baseUrl: 'https://startlists.test',
+      fetchImpl: fetchMock,
+    });
+
+    const action = port.notifyRaceScheduled({
+      eventId: EventId.from('event-1'),
+      raceId: RaceId.from('race-1'),
+      schedule: RaceSchedule.from(new Date('2024-05-01T10:00:00.000Z')),
+      updatedAt: new Date('2024-04-30T12:00:00.000Z'),
+    });
+
+    await expect(action).rejects.toBeInstanceOf(StartlistSyncError);
+    await expect(action).rejects.toThrow('Failed to sync startlist.');
   });
 });
