@@ -2,7 +2,9 @@ import type {
   ClassAssignmentDto,
   LaneAssignmentDto,
   StartTimeDto,
+  StartlistDiffDto,
   StartlistSettingsDto,
+  StartlistVersionSummaryDto,
   StartlistWithHistoryDto,
 } from '@startlist-management/application';
 import type {
@@ -62,6 +64,10 @@ export const createInitialStartlistState = (): StartlistState => {
     ...initialLanesState,
     classOrderPreferences: { avoidConsecutiveClubs: true },
     snapshot: undefined,
+    versionHistory: [],
+    latestVersion: undefined,
+    previousVersion: undefined,
+    diff: undefined,
     statuses: statusState.statuses,
     loading: statusState.loading,
     startOrderRules: [],
@@ -76,6 +82,13 @@ export type SettingsAction = {
 };
 
 export type SnapshotAction = { type: 'settings/setSnapshot'; payload?: StartlistWithHistoryDto };
+
+export type VersionHistoryAction = {
+  type: 'versions/setHistory';
+  payload: StartlistVersionSummaryDto[];
+};
+
+export type DiffAction = { type: 'versions/setDiff'; payload?: StartlistDiffDto };
 
 export type PreferencesAction = {
   type: 'preferences/setClassOrder';
@@ -100,7 +113,20 @@ export type StartlistAction =
   | SnapshotAction
   | PreferencesAction
   | StartOrderAction
-  | WorldRankingAction;
+  | WorldRankingAction
+  | VersionHistoryAction
+  | DiffAction;
+
+const createVersionState = (
+  versions: StartlistVersionSummaryDto[],
+): Pick<StartlistState, 'versionHistory' | 'latestVersion' | 'previousVersion'> => {
+  const sorted = [...versions].sort((a, b) => b.version - a.version);
+  return {
+    versionHistory: sorted,
+    latestVersion: sorted[0],
+    previousVersion: sorted[1],
+  };
+};
 
 export const startlistReducer = (
   state: StartlistState,
@@ -184,11 +210,27 @@ export const startlistReducer = (
         startlistId: action.payload.startlistId,
         settings: action.payload.settings,
         snapshot: action.payload.snapshot ?? state.snapshot,
+        ...(action.payload.snapshot?.versions
+          ? createVersionState(action.payload.snapshot.versions)
+          : {}),
+        ...(action.payload.snapshot?.diff ? { diff: action.payload.snapshot.diff } : {}),
       };
     case 'settings/setSnapshot':
+      if (!action.payload) {
+        return {
+          ...state,
+          snapshot: undefined,
+          versionHistory: [],
+          latestVersion: undefined,
+          previousVersion: undefined,
+          diff: undefined,
+        };
+      }
       return {
         ...state,
         snapshot: action.payload,
+        ...(action.payload.versions ? createVersionState(action.payload.versions) : {}),
+        ...(action.payload.diff ? { diff: action.payload.diff } : {}),
       };
     case 'preferences/setClassOrder':
       return {
@@ -216,6 +258,25 @@ export const startlistReducer = (
         worldRankingByClass: next,
       };
     }
+    case 'versions/setHistory': {
+      if (action.payload.length === 0) {
+        return {
+          ...state,
+          versionHistory: [],
+          latestVersion: undefined,
+          previousVersion: undefined,
+        };
+      }
+      return {
+        ...state,
+        ...createVersionState(action.payload),
+      };
+    }
+    case 'versions/setDiff':
+      return {
+        ...state,
+        diff: action.payload,
+      };
     default:
       return state;
   }
@@ -272,6 +333,18 @@ export const createSetSettingsAction = (
 export const createSetSnapshotAction = (snapshot?: StartlistWithHistoryDto): SnapshotAction => ({
   type: 'settings/setSnapshot',
   payload: snapshot,
+});
+
+export const createSetVersionHistoryAction = (
+  versions: StartlistVersionSummaryDto[],
+): VersionHistoryAction => ({
+  type: 'versions/setHistory',
+  payload: versions,
+});
+
+export const createSetDiffAction = (diff?: StartlistDiffDto): DiffAction => ({
+  type: 'versions/setDiff',
+  payload: diff,
 });
 
 export const createSetClassOrderPreferencesAction = (

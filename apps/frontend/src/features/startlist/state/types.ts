@@ -4,7 +4,11 @@ import type {
   StartTimeDto,
   StartlistSettingsDto,
 } from '@startlist-management/application';
-import type { StartlistWithHistoryDto } from '@startlist-management/application';
+import type {
+  StartlistDiffDto,
+  StartlistVersionSummaryDto,
+  StartlistWithHistoryDto,
+} from '@startlist-management/application';
 
 export type ClassSplitMethod = 'random' | 'rankingTopBottom' | 'rankingBalanced';
 
@@ -112,6 +116,10 @@ export interface StartlistState {
   classOrderPreferences: ClassOrderPreferences;
   startTimes: StartTimeDto[];
   snapshot?: StartlistWithHistoryDto;
+  versionHistory: StartlistVersionSummaryDto[];
+  latestVersion?: StartlistVersionSummaryDto;
+  previousVersion?: StartlistVersionSummaryDto;
+  diff?: StartlistDiffDto;
   statuses: Record<StatusKey, StatusMessageState>;
   loading: Partial<Record<StatusKey, boolean>>;
   startOrderRules: StartOrderRules;
