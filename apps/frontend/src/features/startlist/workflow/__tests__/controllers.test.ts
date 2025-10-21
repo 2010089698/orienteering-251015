@@ -59,6 +59,7 @@ vi.mock('../../state/StartlistContext', () => ({
 vi.mock('../../hooks/useSettingsForm', () => ({
   useSettingsForm: () => ({
     fields: {
+      eventId: 'event-1',
       startTime: '2024-01-01T09:00',
       laneIntervalMs: 60000,
       playerIntervalMs: 45000,
@@ -70,6 +71,7 @@ vi.mock('../../hooks/useSettingsForm', () => ({
     playerIntervalOptions: [],
     status: { text: '', level: 'info' },
     onChange: {
+      eventId: vi.fn(),
       startTime: vi.fn(),
       laneIntervalMs: vi.fn(),
       playerIntervalMs: vi.fn(),
@@ -133,6 +135,7 @@ const resetState = () => {
     { laneNumber: 2, classOrder: ['W21'], interval: { milliseconds: 60000 } },
   ];
   mockSettings = {
+    eventId: 'event-1',
     startTime: '2024-01-01T09:00:00Z',
     laneCount: 2,
     intervals: {
@@ -159,6 +162,7 @@ const resetState = () => {
   mockLoading = { startTimes: false };
   mocks.mockSubmitSettings.mockReturnValue({
     settings: {
+      eventId: 'event-1',
       intervals: { laneClass: { milliseconds: 60000 } },
       laneCount: 2,
     },

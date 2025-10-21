@@ -9,6 +9,7 @@ import SettingsForm, {
 
 const createProps = (overrides: Partial<SettingsFormProps> = {}): SettingsFormProps => ({
   fields: {
+    eventId: 'event-1',
     startTime: '2024-01-01T09:00',
     laneIntervalMs: 0,
     playerIntervalMs: 60000,
@@ -27,6 +28,7 @@ const createProps = (overrides: Partial<SettingsFormProps> = {}): SettingsFormPr
   ],
   status: { level: 'idle', text: '' },
   onChange: {
+    eventId: vi.fn(),
     startTime: vi.fn(),
     laneIntervalMs: vi.fn(),
     playerIntervalMs: vi.fn(),
@@ -65,6 +67,9 @@ describe('SettingsForm', () => {
   it('notifies when field values change', async () => {
     const props = createProps();
     render(<SettingsForm {...props} />);
+
+    await userEvent.type(screen.getByLabelText(/イベントID（必須）/), '2');
+    expect(props.onChange.eventId).toHaveBeenCalledWith('event-12');
 
     await userEvent.selectOptions(screen.getByLabelText('クラス内選手間隔'), '30000');
     expect(props.onChange.playerIntervalMs).toHaveBeenCalledWith(30000);

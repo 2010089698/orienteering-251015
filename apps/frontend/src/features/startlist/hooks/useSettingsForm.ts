@@ -173,10 +173,7 @@ export const useSettingsForm = () => {
   );
 
   const submit = useCallback((): SettingsFormSubmitResult => {
-    const { settings: nextSettings, error } = validateSettingsFormFields(
-      formState.fields,
-      settings?.eventId ?? '',
-    );
+    const { settings: nextSettings, error } = validateSettingsFormFields(formState.fields);
 
     if (error || !nextSettings) {
       const normalizedError =
@@ -192,12 +189,11 @@ export const useSettingsForm = () => {
     dispatchForm({ type: 'setError', error: null });
 
     return { settings: nextSettings };
-  }, [
-    dispatch,
-    formState.fields,
-    settings?.eventId,
-    startlistId,
-  ]);
+  }, [dispatch, formState.fields, startlistId]);
+
+  const handleEventIdChange = useCallback((value: string) => {
+    dispatchForm({ type: 'updateField', field: 'eventId', value });
+  }, []);
 
   const handleStartTimeChange = useCallback((value: string) => {
     dispatchForm({ type: 'updateField', field: 'startTime', value });
@@ -222,6 +218,7 @@ export const useSettingsForm = () => {
     playerIntervalOptions,
     status: statuses.settings,
     onChange: {
+      eventId: handleEventIdChange,
       startTime: handleStartTimeChange,
       laneIntervalMs: handleLaneIntervalChange,
       playerIntervalMs: handlePlayerIntervalChange,
