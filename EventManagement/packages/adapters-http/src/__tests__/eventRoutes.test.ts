@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StartlistSyncError } from '@event-management/application';
-import { EventId } from '@event-management/domain';
+import { EventId, RaceId } from '@event-management/domain';
 import { createEventModule, type EventModule } from '@event-management/infrastructure';
 import { createServer, type EventServer } from '../server.js';
 
@@ -9,16 +9,14 @@ const RACE_ID = 'race-1';
 
 const CREATE_EVENT_PAYLOAD = {
   name: 'National Orienteering',
-  startDate: '2024-06-01T09:00:00.000Z',
-  endDate: '2024-06-02T17:00:00.000Z',
+  startDate: '2024-06-01T00:00:00.000Z',
+  endDate: '2024-06-02T23:59:59.000Z',
   venue: 'Mountain Park',
 };
 
 const SCHEDULE_RACE_PAYLOAD = {
-  raceId: RACE_ID,
   name: 'Sprint Qualifier',
-  start: '2024-06-01T10:00:00.000Z',
-  end: '2024-06-01T11:00:00.000Z',
+  date: '2024-06-01',
 };
 
 describe('eventRoutes', () => {
@@ -26,11 +24,13 @@ describe('eventRoutes', () => {
   let notifyRaceScheduled: ReturnType<typeof vi.fn>;
   let eventModule: EventModule;
   let generateSpy: ReturnType<typeof vi.spyOn>;
+  let raceIdSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
     eventModule = createEventModule({ startlistSync: { port: { notifyRaceScheduled } } });
     generateSpy = vi.spyOn(EventId, 'generate').mockImplementation(() => EventId.from(EVENT_ID));
+    raceIdSpy = vi.spyOn(RaceId, 'generate').mockImplementation(() => RaceId.from(RACE_ID));
     server = createServer({
       events: {
         createEventService: eventModule.createEventService,
@@ -45,6 +45,7 @@ describe('eventRoutes', () => {
   afterEach(async () => {
     await server.close();
     generateSpy.mockRestore();
+    raceIdSpy.mockRestore();
   });
 
   it('responds to health checks', async () => {

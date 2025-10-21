@@ -111,9 +111,8 @@ describe('useEventManagementApi', () => {
 
     const response = await result.current.scheduleRace({
       eventId: 'EV-3',
-      raceId: 'race-2',
       name: 'Final',
-      start: '2024-05-02T08:00:00.000Z',
+      date: '2024-05-02',
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -122,9 +121,8 @@ describe('useEventManagementApi', () => {
     );
     const [, init] = fetchMock.mock.calls[0];
     expect(JSON.parse(init?.body as string)).toEqual({
-      raceId: 'race-2',
       name: 'Final',
-      start: '2024-05-02T08:00:00.000Z',
+      date: '2024-05-02',
     });
     expect(response).toEqual(event);
   });

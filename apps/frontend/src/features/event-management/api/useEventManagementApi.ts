@@ -90,8 +90,8 @@ export const useEventManagementApi = () => {
 
   const scheduleRace = useCallback(
     async (command: ScheduleRaceCommand): Promise<EventDto> => {
-      const { eventId, ...payload } = command;
-      const { event } = (await postJson(`/${encodeURIComponent(eventId)}/races`, payload)) as EventResponse;
+      const { eventId, name, date } = command;
+      const { event } = (await postJson(`/${encodeURIComponent(eventId)}/races`, { name, date })) as EventResponse;
       return event;
     },
     [postJson],

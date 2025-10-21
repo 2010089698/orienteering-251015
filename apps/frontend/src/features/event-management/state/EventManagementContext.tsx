@@ -158,6 +158,7 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
       try {
         const event = await scheduleRaceApi(command);
         upsertEvent(event);
+        setSelectedEventId(event.id);
         return event;
       } catch (scheduleError) {
         const message = ensureErrorMessage(scheduleError);

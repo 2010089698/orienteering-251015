@@ -117,22 +117,24 @@ describe('Event application services', () => {
         ...dependencies,
         raceSchedulingService: new RaceSchedulingService(),
       });
+      const generatedRaceId = RaceId.from('race-123');
+      const raceIdSpy = vi.spyOn(RaceId, 'generate').mockReturnValue(generatedRaceId);
 
       const result = await service.execute({
         eventId: 'event-1',
-        raceId: 'race-123',
         name: 'Sprint Heats',
-        start: '2024-04-02T08:00:00.000Z',
-        end: '2024-04-02T10:00:00.000Z',
+        date: '2024-04-02',
       });
 
       expect(dependencies.transactionManager.execute).toHaveBeenCalledTimes(1);
       expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
       expect(result.races).toHaveLength(1);
+      expect(result.races[0]?.id).toBe('race-123');
       const publishMock = dependencies.eventPublisher.publish as ReturnType<typeof vi.fn>;
       expect(publishMock).toHaveBeenCalledTimes(1);
       const publishedEvents = publishMock.mock.calls[0][0];
       expect(publishedEvents[0]).toBeInstanceOf(RaceScheduled);
+      raceIdSpy.mockRestore();
     });
 
     it('throws EventNotFoundError when event is missing', async () => {
@@ -147,10 +149,8 @@ describe('Event application services', () => {
       await expect(
         service.execute({
           eventId: 'missing',
-          raceId: 'race-1',
           name: 'Qualifier',
-          start: '2024-04-02T08:00:00.000Z',
-          end: '2024-04-02T10:00:00.000Z',
+          date: '2024-04-02',
         }),
       ).rejects.toBeInstanceOf(EventNotFoundError);
     });
