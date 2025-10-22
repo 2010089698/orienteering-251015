@@ -40,6 +40,7 @@ import {
   createRemoveClassWorldRankingAction,
   createSetClassSplitRulesAction,
   createSetClassSplitResultAction,
+  createSetEventContextAction,
   ensureEntryId,
   ensureEntryIds,
   createStatus,
@@ -160,6 +161,9 @@ export const useStartlistClassSplitRules = (): StartlistState['classSplitRules']
 
 export const useStartlistClassSplitResult = (): StartlistState['classSplitResult'] =>
   useStartlistStateSelector((state) => state.classSplitResult);
+
+export const useStartlistEventContext = (): StartlistState['eventContext'] =>
+  useStartlistStateSelector((state) => state.eventContext);
 
 export const setStatus = (
   dispatch: Dispatch<StartlistAction>,
@@ -303,6 +307,13 @@ export const setClassSplitResult = (
   result: ClassSplitResult | undefined,
 ): void => {
   dispatch(createSetClassSplitResultAction(result));
+};
+
+export const setEventContext = (
+  dispatch: Dispatch<StartlistAction>,
+  eventContext: StartlistState['eventContext'],
+): void => {
+  dispatch(createSetEventContextAction(eventContext));
 };
 
 export { ensureEntryId, ensureEntryIds, createStatus, createDefaultStartlistId, generateEntryId };

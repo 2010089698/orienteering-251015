@@ -1,6 +1,6 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { PropsWithChildren, useEffect, type Dispatch } from 'react';
+import { PropsWithChildren, useEffect, useLayoutEffect, type Dispatch } from 'react';
 import { MemoryRouter, type MemoryRouterProps } from 'react-router-dom';
 import {
   StartlistProvider,
@@ -22,6 +22,7 @@ import {
   useSetStartlistEditingEntryId,
   updateVersionHistory,
   updateDiff,
+  setEventContext,
 } from '../state/StartlistContext';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
@@ -42,6 +43,7 @@ import type {
   StartOrderRules,
   StatusKey,
   StatusMessageState,
+  EventContext,
 } from '../state/types';
 
 export interface StartlistTestInitialState {
@@ -64,6 +66,7 @@ export interface StartlistTestInitialState {
   editingEntryId?: string;
   versionHistory?: StartlistVersionSummaryDto[];
   diff?: StartlistDiffDto;
+  eventContext?: EventContext;
 }
 
 interface WrapperProps {
@@ -75,7 +78,7 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
   const dispatch = useStartlistDispatch();
   const setEditingEntryId = useSetStartlistEditingEntryId();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (initialState?.settings && initialState.startlistId) {
       updateSettings(dispatch, {
         startlistId: initialState.startlistId,
@@ -85,7 +88,13 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
     }
   }, [dispatch, initialState]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (initialState?.eventContext) {
+      setEventContext(dispatch, initialState.eventContext);
+    }
+  }, [dispatch, initialState]);
+
+  useLayoutEffect(() => {
     if (initialState?.entries) {
       updateEntries(dispatch, initialState.entries);
     }

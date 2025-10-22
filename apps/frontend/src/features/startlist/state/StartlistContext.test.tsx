@@ -9,6 +9,7 @@ import {
   useStartlistEditingEntryId,
   useSetStartlistEditingEntryId,
   useStartlistStatuses,
+  useStartlistEventContext,
   createStatus,
   setStatus,
   setLoading,
@@ -27,6 +28,7 @@ import {
   setClassSplitResult,
   updateVersionHistory,
   updateDiff,
+  setEventContext,
 } from './StartlistContext';
 import type { ClassSplitResult, ClassSplitRule, StartlistState } from './types';
 import type { StartlistDiffDto, StartlistVersionSummaryDto } from '@startlist-management/application';
@@ -38,6 +40,7 @@ describe('StartlistContext', () => {
     expect(() => renderHook(() => useStartlistEntries())).toThrowError();
     expect(() => renderHook(() => useStartlistEditingEntryId())).toThrowError();
     expect(() => renderHook(() => useSetStartlistEditingEntryId())).toThrowError();
+    expect(() => renderHook(() => useStartlistEventContext())).toThrowError();
   });
 
   it('avoids re-rendering unrelated subscribers when slices change', () => {
@@ -189,6 +192,7 @@ describe('StartlistContext', () => {
         { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
       ]);
       updateClassWorldRanking(result.current.dispatch, 'M21', new Map([['IOF001', 12]]));
+      setEventContext(result.current.dispatch, { eventId: 'event', raceId: 'race-42' });
     });
 
     expect(result.current.state.startlistId).toBe('SL-1');
@@ -198,6 +202,7 @@ describe('StartlistContext', () => {
     expect(result.current.state.entries[0]?.cardNo).toBe('42');
     expect(result.current.state.statuses.entries.text).toBe('ok');
     expect(result.current.state.loading.entries).toBe(true);
+    expect(result.current.state.eventContext).toEqual({ eventId: 'event', raceId: 'race-42' });
     expect(result.current.state.laneAssignments).toHaveLength(1);
     expect(result.current.state.classAssignments).toHaveLength(1);
     expect(result.current.state.startTimes).toHaveLength(1);

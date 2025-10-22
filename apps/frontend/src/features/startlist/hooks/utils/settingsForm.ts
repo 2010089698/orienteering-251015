@@ -1,7 +1,7 @@
 import type { StartlistSettingsDto } from '@startlist-management/application';
 
 import { createDefaultStartlistId } from '../../state/StartlistContext';
-import type { ClassOrderPreferences } from '../../state/types';
+import type { ClassOrderPreferences, EventContext } from '../../state/types';
 import { getNextSundayAtTenJst, toTokyoInputValue, fromTokyoInputValue } from '../../utils/time';
 
 export const DEFAULT_LANE_INTERVAL_MS = 0;
@@ -35,8 +35,9 @@ export type SettingsFormValidationResult = {
 export const createSettingsFormFields = (
   settings: StartlistSettingsDto | undefined,
   classOrderPreferences: ClassOrderPreferences,
+  eventContext?: EventContext,
 ): SettingsFormFields => ({
-  eventId: settings?.eventId ?? createDefaultStartlistId(),
+  eventId: settings?.eventId ?? eventContext?.eventId ?? createDefaultStartlistId(),
   startTime: toTokyoInputValue(settings?.startTime ?? getNextSundayAtTenJst()),
   laneIntervalMs: settings?.intervals?.laneClass?.milliseconds ?? DEFAULT_LANE_INTERVAL_MS,
   playerIntervalMs: settings?.intervals?.classPlayer?.milliseconds ?? DEFAULT_PLAYER_INTERVAL_MS,

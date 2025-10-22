@@ -13,6 +13,7 @@ import type {
   ClassSplitResult,
   ClassSplitRules,
   Entry,
+  EventContext,
   StartOrderRules,
   StartlistState,
   StatusKey,
@@ -73,6 +74,7 @@ export const createInitialStartlistState = (): StartlistState => {
     startOrderRules: [],
     worldRankingByClass: new Map(),
     ...initialClassSplitState,
+    eventContext: {},
   };
 };
 
@@ -104,6 +106,8 @@ export type WorldRankingAction =
   | { type: 'worldRanking/set'; payload: { classId: string; ranking: [string, number][] } }
   | { type: 'worldRanking/remove'; payload: { classId: string } };
 
+export type EventContextAction = { type: 'context/setEvent'; payload: EventContext };
+
 export type StartlistAction =
   | EntriesAction
   | LanesAction
@@ -115,7 +119,8 @@ export type StartlistAction =
   | StartOrderAction
   | WorldRankingAction
   | VersionHistoryAction
-  | DiffAction;
+  | DiffAction
+  | EventContextAction;
 
 const createVersionState = (
   versions: StartlistVersionSummaryDto[],
@@ -277,6 +282,11 @@ export const startlistReducer = (
         ...state,
         diff: action.payload,
       };
+    case 'context/setEvent':
+      return {
+        ...state,
+        eventContext: action.payload,
+      };
     default:
       return state;
   }
@@ -388,6 +398,11 @@ export const createSetClassSplitResultAction = (
 ): ClassSplitAction => ({
   type: 'classSplit/setResult',
   payload: result,
+});
+
+export const createSetEventContextAction = (eventContext: EventContext): EventContextAction => ({
+  type: 'context/setEvent',
+  payload: eventContext,
 });
 
 export { ensureEntryId, ensureEntryIds, createStatus };
