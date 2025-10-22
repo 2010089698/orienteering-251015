@@ -8,4 +8,7 @@ export { EventDateRange } from './valueObjects/EventDateRange.js';
 export { EventId } from './valueObjects/EventId.js';
 export { RaceId } from './valueObjects/RaceId.js';
 export { RaceSchedule } from './valueObjects/RaceSchedule.js';
-export { StartlistLink } from './valueObjects/StartlistLink.js';
+export {
+  StartlistAttachment,
+  type StartlistAttachmentProps,
+} from './valueObjects/StartlistAttachment.js';

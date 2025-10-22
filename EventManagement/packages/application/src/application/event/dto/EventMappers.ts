@@ -6,7 +6,7 @@ import {
   EventId,
   RaceId,
   RaceSchedule,
-  StartlistLink,
+  StartlistAttachment,
 } from '@event-management/domain';
 
 import { ValidationError } from '../../shared/errors.js';
@@ -17,12 +17,6 @@ import {
   type EventDto,
   type RaceDto,
 } from './EventDtos.js';
-
-interface StartlistAttachmentInput {
-  link: StartlistLink;
-  updatedAt?: Date;
-  publicVersion?: number;
-}
 
 function parseDateTime(value: string, label: string): Date {
   const date = new Date(value);
@@ -57,22 +51,23 @@ export function mapToScheduleRaceInput(command: ScheduleRaceCommand): {
   };
 }
 
-export function mapToStartlistAttachment(command: AttachStartlistCommand): StartlistAttachmentInput {
-  const link = StartlistLink.from(command.startlistLink);
+export function mapToStartlistAttachment(command: AttachStartlistCommand): StartlistAttachment {
   const updatedAt = command.startlistUpdatedAt
     ? parseDateTime(command.startlistUpdatedAt, 'Startlist updated at')
     : undefined;
-  return {
-    link,
+  return StartlistAttachment.create({
+    startlistId: command.startlistId,
+    publicUrl: command.startlistLink,
     updatedAt,
     publicVersion: command.startlistPublicVersion,
-  };
+  });
 }
 
 export function mapRaceToDto(race: Race): RaceDto {
   const schedule = race.getSchedule();
   const end = schedule.getEnd();
-  const startlistLink = race.getStartlistLink();
+  const startlistId = race.getStartlistId();
+  const startlistLink = race.getStartlistPublicUrl();
   const startlistUpdatedAt = race.getStartlistUpdatedAt();
   const startlistPublicVersion = race.getStartlistPublicVersion();
   return {
@@ -84,9 +79,10 @@ export function mapRaceToDto(race: Race): RaceDto {
     },
     duplicateDay: race.hasDuplicateDay(),
     overlapsExisting: race.hasScheduleOverlap(),
-    ...(startlistLink ? { startlistLink: startlistLink.toString() } : {}),
+    ...(startlistId ? { startlistId } : {}),
+    ...(startlistLink ? { startlistLink } : {}),
     ...(startlistUpdatedAt ? { startlistUpdatedAt: startlistUpdatedAt.toISOString() } : {}),
-    ...(startlistPublicVersion ? { startlistPublicVersion } : {}),
+    ...(startlistPublicVersion !== undefined ? { startlistPublicVersion } : {}),
   };
 }
 

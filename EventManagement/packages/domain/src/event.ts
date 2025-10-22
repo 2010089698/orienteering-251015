@@ -6,7 +6,7 @@ import { EventDateRange } from './valueObjects/EventDateRange.js';
 import { EventId } from './valueObjects/EventId.js';
 import { RaceId } from './valueObjects/RaceId.js';
 import { RaceSchedule } from './valueObjects/RaceSchedule.js';
-import { StartlistLink } from './valueObjects/StartlistLink.js';
+import { StartlistAttachment } from './valueObjects/StartlistAttachment.js';
 
 export interface EventProps {
   id: EventId;
@@ -113,15 +113,9 @@ export class Event {
     return race;
   }
 
-  public linkStartlist(
-    raceId: RaceId,
-    payload: { link: StartlistLink; updatedAt?: Date; publicVersion?: number }
-  ): void {
+  public linkStartlist(raceId: RaceId, attachment: StartlistAttachment): void {
     const race = this.findRace(raceId);
-    race.attachStartlist(payload.link, {
-      updatedAt: payload.updatedAt,
-      publicVersion: payload.publicVersion,
-    });
+    race.attachStartlist(attachment);
   }
 
   public getRaces(): readonly Race[] {

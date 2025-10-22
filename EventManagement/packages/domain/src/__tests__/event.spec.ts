@@ -10,7 +10,7 @@ import {
   RaceSchedule,
   RaceSchedulingService,
   RaceScheduled,
-  StartlistLink
+  StartlistAttachment
 } from '../index.js';
 
 describe('Event aggregate', () => {
@@ -124,16 +124,18 @@ describe('Event aggregate', () => {
       schedulingService
     );
 
-    const link = StartlistLink.from('https://example.com/startlist');
     const updatedAt = new Date('2024-04-05T10:15:00.000Z');
-    event.linkStartlist(race.getId(), {
-      link,
+    const attachment = StartlistAttachment.create({
+      startlistId: 'startlist-1',
+      publicUrl: 'https://example.com/startlist',
       updatedAt,
       publicVersion: 3,
     });
+    event.linkStartlist(race.getId(), attachment);
 
     const storedRace = event.getRace(race.getId());
-    expect(storedRace?.getStartlistLink()?.toString()).toBe('https://example.com/startlist');
+    expect(storedRace?.getStartlistId()).toBe('startlist-1');
+    expect(storedRace?.getStartlistPublicUrl()).toBe('https://example.com/startlist');
     expect(storedRace?.getStartlistUpdatedAt()?.toISOString()).toBe(updatedAt.toISOString());
     expect(storedRace?.getStartlistPublicVersion()).toBe(3);
     expect(storedRace?.hasPublishedStartlist()).toBe(true);

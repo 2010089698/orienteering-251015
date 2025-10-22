@@ -1,6 +1,6 @@
 import { RaceId } from './valueObjects/RaceId.js';
 import { RaceSchedule } from './valueObjects/RaceSchedule.js';
-import { StartlistLink } from './valueObjects/StartlistLink.js';
+import { StartlistAttachment } from './valueObjects/StartlistAttachment.js';
 
 export interface RaceProps {
   id: RaceId;
@@ -8,15 +8,11 @@ export interface RaceProps {
   schedule: RaceSchedule;
   isDuplicateDay?: boolean;
   overlapsExisting?: boolean;
-  startlistLink?: StartlistLink;
-  startlistUpdatedAt?: Date;
-  startlistPublicVersion?: number;
+  startlistAttachment?: StartlistAttachment;
 }
 
 export class Race {
-  private startlistLink?: StartlistLink;
-  private startlistUpdatedAt?: Date;
-  private startlistPublicVersion?: number;
+  private startlistAttachment?: StartlistAttachment;
 
   private constructor(
     private readonly id: RaceId,
@@ -24,13 +20,9 @@ export class Race {
     private readonly schedule: RaceSchedule,
     private readonly isDuplicateDay: boolean,
     private readonly overlapsExisting: boolean,
-    startlistLink?: StartlistLink,
-    startlistUpdatedAt?: Date,
-    startlistPublicVersion?: number
+    startlistAttachment?: StartlistAttachment,
   ) {
-    this.startlistLink = startlistLink;
-    this.startlistUpdatedAt = startlistUpdatedAt ? new Date(startlistUpdatedAt) : undefined;
-    this.startlistPublicVersion = startlistPublicVersion;
+    this.startlistAttachment = startlistAttachment;
   }
 
   public static create(props: RaceProps): Race {
@@ -45,9 +37,7 @@ export class Race {
       props.schedule,
       Boolean(props.isDuplicateDay),
       Boolean(props.overlapsExisting),
-      props.startlistLink,
-      props.startlistUpdatedAt,
-      props.startlistPublicVersion
+      props.startlistAttachment,
     );
   }
 
@@ -71,28 +61,31 @@ export class Race {
     return this.overlapsExisting;
   }
 
-  public getStartlistLink(): StartlistLink | undefined {
-    return this.startlistLink;
+  public getStartlistAttachment(): StartlistAttachment | undefined {
+    return this.startlistAttachment;
+  }
+
+  public getStartlistId(): string | undefined {
+    return this.startlistAttachment?.getId();
+  }
+
+  public getStartlistPublicUrl(): string | undefined {
+    return this.startlistAttachment?.getPublicUrl();
   }
 
   public getStartlistUpdatedAt(): Date | undefined {
-    return this.startlistUpdatedAt ? new Date(this.startlistUpdatedAt) : undefined;
+    return this.startlistAttachment?.getUpdatedAt();
   }
 
   public getStartlistPublicVersion(): number | undefined {
-    return this.startlistPublicVersion;
+    return this.startlistAttachment?.getPublicVersion();
   }
 
   public hasPublishedStartlist(): boolean {
-    return Boolean(this.startlistLink);
+    return Boolean(this.startlistAttachment);
   }
 
-  public attachStartlist(
-    link: StartlistLink,
-    options: { updatedAt?: Date; publicVersion?: number } = {}
-  ): void {
-    this.startlistLink = link;
-    this.startlistUpdatedAt = options.updatedAt ? new Date(options.updatedAt) : undefined;
-    this.startlistPublicVersion = options.publicVersion;
+  public attachStartlist(attachment: StartlistAttachment): void {
+    this.startlistAttachment = attachment;
   }
 }
