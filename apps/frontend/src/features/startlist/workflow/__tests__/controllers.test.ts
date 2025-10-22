@@ -26,8 +26,14 @@ const mocks = vi.hoisted(() => ({
   mockAssignPlayerOrder: vi.fn(),
   mockAssignStartTimes: vi.fn(),
   mockFinalize: vi.fn(),
+  mockFetchVersions: vi.fn(),
   mockUpdateSnapshot: vi.fn(),
+  mockAttachStartlist: vi.fn(),
+  mockSetEventLinkStatus: vi.fn(),
 }));
+
+const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
+let previousPublicBaseUrl: string | undefined;
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mocks.mockNavigate,
@@ -42,6 +48,7 @@ vi.mock('../../state/StartlistContext', () => ({
   useStartlistLaneAssignments: () => mockLaneAssignments,
   useStartlistSettings: () => mockSettings,
   useStartlistStartlistId: () => mockStartlistId,
+  useStartlistEventContext: () => mockEventContext,
   useStartlistClassAssignments: () => mockClassAssignments,
   useStartlistClassOrderSeed: () => mockClassOrderSeed,
   useStartlistClassOrderPreferences: () => mockClassOrderPreferences,
@@ -57,6 +64,7 @@ vi.mock('../../state/StartlistContext', () => ({
   updateStartTimes: mocks.mockUpdateStartTimes,
   updateSnapshot: mocks.mockUpdateSnapshot,
   setLoading: mocks.mockSetLoading,
+  setEventLinkStatus: mocks.mockSetEventLinkStatus,
 }));
 
 vi.mock('../../hooks/useSettingsForm', () => ({
@@ -111,6 +119,13 @@ vi.mock('../../api/useStartlistApi', () => ({
     assignPlayerOrder: mocks.mockAssignPlayerOrder,
     assignStartTimes: mocks.mockAssignStartTimes,
     finalize: mocks.mockFinalize,
+    fetchVersions: mocks.mockFetchVersions,
+  }),
+}));
+
+vi.mock('../../../event-management/api/useEventManagementApi', () => ({
+  useEventManagementApi: () => ({
+    attachStartlist: mocks.mockAttachStartlist,
   }),
 }));
 
@@ -129,6 +144,7 @@ let mockStartlistId = 'startlist-1';
 let mockStartTimes: any[] = [];
 let mockClassOrderWarnings: any[] = [];
 let mockLoading: any = { startTimes: false };
+let mockEventContext: any = {};
 const mockSnapshot: any = { id: 'snapshot-1' };
 
 const resetState = () => {
@@ -210,11 +226,40 @@ const resetState = () => {
   mocks.mockAssignStartTimes.mockResolvedValue(undefined);
   mocks.mockFinalize.mockReset();
   mocks.mockFinalize.mockResolvedValue(undefined);
+  mocks.mockFetchVersions.mockReset();
+  mocks.mockFetchVersions.mockResolvedValue({
+    startlistId: mockStartlistId,
+    total: 1,
+    items: [
+      {
+        version: 3,
+        confirmedAt: '2024-04-05T09:00:00.000Z',
+        snapshot: {
+          id: mockStartlistId,
+          status: 'FINALIZED',
+          settings: undefined,
+          laneAssignments: [],
+          classAssignments: [],
+          startTimes: [],
+        },
+      },
+    ],
+  });
   mocks.mockUpdateSnapshot.mockReset();
+  mocks.mockAttachStartlist.mockReset();
+  mocks.mockAttachStartlist.mockResolvedValue(undefined);
+  mocks.mockSetEventLinkStatus.mockReset();
+  mockEventContext = { eventId: 'event-1', raceId: 'race-1' };
 };
 
 beforeEach(() => {
+  previousPublicBaseUrl = env.VITE_STARTLIST_PUBLIC_BASE_URL;
+  env.VITE_STARTLIST_PUBLIC_BASE_URL = 'https://public.example.com';
   resetState();
+});
+
+afterEach(() => {
+  env.VITE_STARTLIST_PUBLIC_BASE_URL = previousPublicBaseUrl;
 });
 
 describe('useInputStepController', () => {
@@ -419,7 +464,7 @@ describe('useClassOrderController', () => {
   it('finalizes the startlist and navigates to the link page', async () => {
     const classOrderSnapshot = { id: 'order' } as const;
     const assignedSnapshot = { id: 'assigned' } as const;
-    const finalizedSnapshot = { id: 'finalized' } as const;
+    const finalizedSnapshot = { id: mockStartlistId } as const;
     mocks.mockAssignPlayerOrder.mockResolvedValueOnce(classOrderSnapshot);
     mocks.mockAssignStartTimes.mockResolvedValueOnce(assignedSnapshot);
     mocks.mockFinalize.mockResolvedValueOnce(finalizedSnapshot);
@@ -462,6 +507,34 @@ describe('useClassOrderController', () => {
       mocks.mockDispatch,
       'snapshot',
       expect.objectContaining({ level: 'success' }),
+    );
+    expect(mocks.mockFetchVersions).toHaveBeenCalledWith({ startlistId: mockStartlistId, limit: 1 });
+    expect(mocks.mockAttachStartlist).toHaveBeenCalledWith({
+      eventId: 'event-1',
+      raceId: 'race-1',
+      startlistLink: 'https://public.example.com/startlists/startlist-1/v/3',
+      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+      startlistPublicVersion: 3,
+    });
+    expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      expect.objectContaining({ status: 'linking' }),
+    );
+    expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      expect.objectContaining({
+        status: 'success',
+        eventId: 'event-1',
+        raceId: 'race-1',
+        startlistLink: 'https://public.example.com/startlists/startlist-1/v/3',
+        startlistPublicVersion: 3,
+        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+      }),
+    );
+    expect(mocks.mockSetStatus).toHaveBeenCalledWith(
+      mocks.mockDispatch,
+      'snapshot',
+      expect.objectContaining({ level: 'success', text: 'イベントにスタートリストを自動連携しました。' }),
     );
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/link');
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', false);

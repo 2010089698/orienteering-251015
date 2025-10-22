@@ -197,4 +197,89 @@ describe('StartlistLinkPage', () => {
     expect(listEventsMock).toHaveBeenCalledTimes(2);
     expect(getEventMock).toHaveBeenCalledTimes(2);
   });
+
+  it('auto selects the event and hides the attach form when already linked', async () => {
+    env.VITE_STARTLIST_PUBLIC_BASE_URL = 'https://public.example.com';
+
+    renderWithStartlistRouter(
+      <StartlistLinkPage />,
+      {
+        routerProps: {
+          initialEntries: ['/startlist/link'],
+          initialIndex: 0,
+        },
+        initialState: {
+          startlistId: 'SL-1',
+          eventContext: { eventId: 'event-1', raceId: 'race-1' },
+          eventLinkStatus: {
+            status: 'success',
+            eventId: 'event-1',
+            raceId: 'race-1',
+            startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+            startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+            startlistPublicVersion: 3,
+          },
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(getEventMock).toHaveBeenCalledWith('event-1');
+    });
+
+    expect(
+      await screen.findByText('イベント「春の大会」にスタートリストを自動連携しました。'),
+    ).toBeInTheDocument();
+    const eventDetailLinks = screen.getAllByRole('link', { name: 'イベント詳細を開く' });
+    expect(eventDetailLinks.some((link) => link.getAttribute('href') === '/events/event-1')).toBe(
+      true,
+    );
+    expect(screen.queryByRole('button', { name: 'スタートリストを設定' })).not.toBeInTheDocument();
+    expect(screen.getByText('このイベントにはスタートリストが自動連携されています。')).toBeInTheDocument();
+  });
+
+  it('preselects the race when auto linking fails and allows manual retry', async () => {
+    env.VITE_STARTLIST_PUBLIC_BASE_URL = 'https://public.example.com';
+    const user = userEvent.setup();
+
+    renderWithStartlistRouter(
+      <StartlistLinkPage />,
+      {
+        routerProps: {
+          initialEntries: ['/startlist/link'],
+          initialIndex: 0,
+        },
+        initialState: {
+          startlistId: 'SL-1',
+          eventContext: { eventId: 'event-1', raceId: 'race-1' },
+          eventLinkStatus: {
+            status: 'error',
+            eventId: 'event-1',
+            raceId: 'race-1',
+            errorMessage: 'イベント連携に失敗しました。',
+            startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+          },
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(getEventMock).toHaveBeenCalledWith('event-1');
+    });
+
+    expect(await screen.findByText('イベント連携に失敗しました。')).toBeInTheDocument();
+    const raceSelect = await screen.findByLabelText('対象レース');
+    expect((raceSelect as HTMLSelectElement).value).toBe('race-1');
+
+    const autoButton = await screen.findByRole('button', { name: '確定したスタートリストを連携' });
+    await user.click(autoButton);
+
+    await waitFor(() => {
+      expect(attachStartlistMock).toHaveBeenCalledWith({
+        eventId: 'event-1',
+        raceId: 'race-1',
+        startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+      });
+    });
+  });
 });

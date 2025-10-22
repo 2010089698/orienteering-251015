@@ -41,6 +41,7 @@ import {
   createSetClassSplitRulesAction,
   createSetClassSplitResultAction,
   createSetEventContextAction,
+  createSetEventLinkStatusAction,
   ensureEntryId,
   ensureEntryIds,
   createStatus,
@@ -164,6 +165,9 @@ export const useStartlistClassSplitResult = (): StartlistState['classSplitResult
 
 export const useStartlistEventContext = (): StartlistState['eventContext'] =>
   useStartlistStateSelector((state) => state.eventContext);
+
+export const useStartlistEventLinkStatus = (): StartlistState['eventLinkStatus'] =>
+  useStartlistStateSelector((state) => state.eventLinkStatus);
 
 export const setStatus = (
   dispatch: Dispatch<StartlistAction>,
@@ -314,6 +318,13 @@ export const setEventContext = (
   eventContext: StartlistState['eventContext'],
 ): void => {
   dispatch(createSetEventContextAction(eventContext));
+};
+
+export const setEventLinkStatus = (
+  dispatch: Dispatch<StartlistAction>,
+  status: StartlistState['eventLinkStatus'],
+): void => {
+  dispatch(createSetEventLinkStatusAction(status));
 };
 
 export { ensureEntryId, ensureEntryIds, createStatus, createDefaultStartlistId, generateEntryId };

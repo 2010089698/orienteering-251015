@@ -15,6 +15,7 @@ import {
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEventContext,
   useStartlistLaneAssignments,
   useStartlistLoading,
   useStartlistSettings,
@@ -26,9 +27,12 @@ import {
   useStartlistLatestVersion,
   useStartlistPreviousVersion,
   useStartlistDiff,
+  setEventLinkStatus,
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
+import { useEventManagementApi } from '../../event-management/api/useEventManagementApi';
+import { tryAutoAttachStartlist } from '../utils/eventLinking';
 
 const formatDateTime = (iso: string): string => {
   const date = new Date(iso);
@@ -64,6 +68,8 @@ const StartTimesPanel = (): JSX.Element => {
   const latestVersion = useStartlistLatestVersion();
   const previousVersion = useStartlistPreviousVersion();
   const diff = useStartlistDiff();
+  const eventContext = useStartlistEventContext();
+  const { attachStartlist } = useEventManagementApi();
   const [diffError, setDiffError] = useState<string>();
   const [diffLoading, setDiffLoading] = useState(false);
 
@@ -245,6 +251,46 @@ const StartTimesPanel = (): JSX.Element => {
       updateSnapshot(dispatch, snapshot);
       setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
       setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
+
+      if (eventContext.eventId && eventContext.raceId) {
+        try {
+          const versions = await api.fetchVersions({ startlistId, limit: 1 });
+          const latest = versions.items
+            .slice()
+            .sort((a, b) => b.version - a.version)[0];
+          if (latest) {
+            await tryAutoAttachStartlist({
+              dispatch,
+              eventContext,
+              attachStartlist,
+              startlistId: snapshot?.id ?? startlistId,
+              version: latest.version,
+              confirmedAt: latest.confirmedAt,
+            });
+          } else {
+            const message = 'スタートリストの最新バージョンが取得できませんでした。';
+            setEventLinkStatus(dispatch, {
+              status: 'error',
+              eventId: eventContext.eventId,
+              raceId: eventContext.raceId,
+              errorMessage: message,
+            });
+            setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
+          }
+        } catch (versionError) {
+          const message =
+            versionError instanceof Error
+              ? versionError.message
+              : 'スタートリストのバージョン取得に失敗しました。';
+          setEventLinkStatus(dispatch, {
+            status: 'error',
+            eventId: eventContext.eventId,
+            raceId: eventContext.raceId,
+            errorMessage: message,
+          });
+          setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
+        }
+      }
       await refreshDiff();
     } catch (error) {
       const message = error instanceof Error ? error.message : '確定処理に失敗しました。';

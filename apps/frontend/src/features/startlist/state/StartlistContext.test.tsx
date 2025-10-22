@@ -10,6 +10,7 @@ import {
   useSetStartlistEditingEntryId,
   useStartlistStatuses,
   useStartlistEventContext,
+  useStartlistEventLinkStatus,
   createStatus,
   setStatus,
   setLoading,
@@ -29,6 +30,7 @@ import {
   updateVersionHistory,
   updateDiff,
   setEventContext,
+  setEventLinkStatus,
 } from './StartlistContext';
 import type { ClassSplitResult, ClassSplitRule, StartlistState } from './types';
 import type { StartlistDiffDto, StartlistVersionSummaryDto } from '@startlist-management/application';
@@ -41,6 +43,7 @@ describe('StartlistContext', () => {
     expect(() => renderHook(() => useStartlistEditingEntryId())).toThrowError();
     expect(() => renderHook(() => useSetStartlistEditingEntryId())).toThrowError();
     expect(() => renderHook(() => useStartlistEventContext())).toThrowError();
+    expect(() => renderHook(() => useStartlistEventLinkStatus())).toThrowError();
   });
 
   it('avoids re-rendering unrelated subscribers when slices change', () => {
@@ -193,6 +196,14 @@ describe('StartlistContext', () => {
       ]);
       updateClassWorldRanking(result.current.dispatch, 'M21', new Map([['IOF001', 12]]));
       setEventContext(result.current.dispatch, { eventId: 'event', raceId: 'race-42' });
+      setEventLinkStatus(result.current.dispatch, {
+        status: 'success',
+        eventId: 'event',
+        raceId: 'race-42',
+        startlistLink: 'https://example.com/startlists/SL-1/v/2',
+        startlistUpdatedAt: '2024-04-02T00:00:00.000Z',
+        startlistPublicVersion: 2,
+      });
     });
 
     expect(result.current.state.startlistId).toBe('SL-1');
@@ -222,6 +233,14 @@ describe('StartlistContext', () => {
       { id: 'rule-1', classId: 'M21', method: 'worldRanking', csvName: 'ranking.csv' },
     ]);
     expect(result.current.state.worldRankingByClass.get('M21')?.get('IOF001')).toBe(12);
+    expect(result.current.state.eventLinkStatus).toEqual({
+      status: 'success',
+      eventId: 'event',
+      raceId: 'race-42',
+      startlistLink: 'https://example.com/startlists/SL-1/v/2',
+      startlistUpdatedAt: '2024-04-02T00:00:00.000Z',
+      startlistPublicVersion: 2,
+    });
 
     act(() => {
       removeEntry(result.current.dispatch, entryId);

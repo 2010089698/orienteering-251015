@@ -10,6 +10,7 @@ const finalizeMock = vi.fn();
 const invalidateStartTimesMock = vi.fn();
 const fetchVersionsMock = vi.fn();
 const fetchDiffMock = vi.fn();
+const attachStartlistMock = vi.fn();
 
 vi.mock('../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
@@ -20,6 +21,15 @@ vi.mock('../api/useStartlistApi', () => ({
     fetchDiff: fetchDiffMock,
   }),
 }));
+
+vi.mock('../../event-management/api/useEventManagementApi', () => ({
+  useEventManagementApi: () => ({
+    attachStartlist: attachStartlistMock,
+  }),
+}));
+
+const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
+let previousPublicBaseUrl: string | undefined;
 
 const entries: Entry[] = [
   {
@@ -66,12 +76,15 @@ describe('StartTimesPanel', () => {
   let originalBlob: typeof Blob;
 
   beforeEach(() => {
+    previousPublicBaseUrl = env.VITE_STARTLIST_PUBLIC_BASE_URL;
+    env.VITE_STARTLIST_PUBLIC_BASE_URL = undefined;
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-04-01T00:00:00.000Z'));
     originalBlob = Blob;
     assignStartTimesMock.mockResolvedValue(undefined);
     finalizeMock.mockResolvedValue(undefined);
     invalidateStartTimesMock.mockResolvedValue(undefined);
+    attachStartlistMock.mockResolvedValue(undefined);
     fetchVersionsMock.mockImplementation(async (query: { startlistId: string; limit?: number; offset?: number }) => ({
       startlistId: query.startlistId,
       total: 0,
@@ -101,6 +114,8 @@ describe('StartTimesPanel', () => {
     invalidateStartTimesMock.mockReset();
     fetchVersionsMock.mockReset();
     fetchDiffMock.mockReset();
+    attachStartlistMock.mockReset();
+    env.VITE_STARTLIST_PUBLIC_BASE_URL = previousPublicBaseUrl;
     vi.restoreAllMocks();
   });
 
@@ -385,5 +400,72 @@ describe('StartTimesPanel', () => {
     await waitFor(() => expect(assignStartTimesMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(fetchVersionsMock.mock.calls.length).toBeGreaterThan(0));
     await waitFor(() => expect(fetchDiffMock.mock.calls.length).toBeGreaterThan(0));
+  });
+
+  it('auto-attaches finalized startlists when event context is provided', async () => {
+    const versionsResponse = {
+      startlistId: 'SL-1',
+      total: 1,
+      items: [
+        {
+          version: 3,
+          confirmedAt: '2024-04-05T09:00:00.000Z',
+          snapshot: {
+            id: 'SL-1',
+            status: 'FINALIZED',
+            settings: undefined,
+            laneAssignments: [],
+            classAssignments: [],
+            startTimes: [],
+          },
+        },
+      ],
+    };
+
+    fetchVersionsMock.mockImplementation(async (query: { startlistId: string; limit?: number; offset?: number }) => {
+      if (query.limit === 1) {
+        return versionsResponse;
+      }
+      return versionsResponse;
+    });
+
+    finalizeMock.mockResolvedValue({
+      id: 'SL-1',
+      status: 'FINALIZED',
+      laneAssignments: [],
+      classAssignments: [],
+      startTimes: [],
+    });
+
+    env.VITE_STARTLIST_PUBLIC_BASE_URL = 'https://public.example.com';
+
+    renderWithStartlist(<StartTimesPanel />, {
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        startTimes,
+        classAssignments,
+        statuses: {
+          startTimes: { level: 'idle', text: '' },
+        },
+        eventContext: { eventId: 'event-1', raceId: 'race-1' },
+      },
+    });
+
+    const finalizeButton = screen.getByRole('button', { name: 'スタートリストを確定' });
+    fireEvent.click(finalizeButton);
+
+    await waitFor(() => expect(finalizeMock).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(attachStartlistMock).toHaveBeenCalledWith({
+        eventId: 'event-1',
+        raceId: 'race-1',
+        startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+        startlistPublicVersion: 3,
+      });
+    });
+    const [firstCall] = fetchVersionsMock.mock.calls;
+    expect(firstCall[0]).toEqual({ startlistId: 'SL-1', limit: 1 });
   });
 });

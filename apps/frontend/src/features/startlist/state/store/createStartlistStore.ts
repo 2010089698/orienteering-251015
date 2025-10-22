@@ -14,6 +14,7 @@ import type {
   ClassSplitRules,
   Entry,
   EventContext,
+  EventLinkStatus,
   StartOrderRules,
   StartlistState,
   StatusKey,
@@ -75,6 +76,7 @@ export const createInitialStartlistState = (): StartlistState => {
     worldRankingByClass: new Map(),
     ...initialClassSplitState,
     eventContext: {},
+    eventLinkStatus: { status: 'idle' },
   };
 };
 
@@ -107,6 +109,7 @@ export type WorldRankingAction =
   | { type: 'worldRanking/remove'; payload: { classId: string } };
 
 export type EventContextAction = { type: 'context/setEvent'; payload: EventContext };
+export type EventLinkStatusAction = { type: 'context/setEventLinkStatus'; payload: EventLinkStatus };
 
 export type StartlistAction =
   | EntriesAction
@@ -120,7 +123,8 @@ export type StartlistAction =
   | WorldRankingAction
   | VersionHistoryAction
   | DiffAction
-  | EventContextAction;
+  | EventContextAction
+  | EventLinkStatusAction;
 
 const createVersionState = (
   versions: StartlistVersionSummaryDto[],
@@ -287,6 +291,11 @@ export const startlistReducer = (
         ...state,
         eventContext: action.payload,
       };
+    case 'context/setEventLinkStatus':
+      return {
+        ...state,
+        eventLinkStatus: action.payload,
+      };
     default:
       return state;
   }
@@ -403,6 +412,13 @@ export const createSetClassSplitResultAction = (
 export const createSetEventContextAction = (eventContext: EventContext): EventContextAction => ({
   type: 'context/setEvent',
   payload: eventContext,
+});
+
+export const createSetEventLinkStatusAction = (
+  status: EventLinkStatus,
+): EventLinkStatusAction => ({
+  type: 'context/setEventLinkStatus',
+  payload: status,
 });
 
 export { ensureEntryId, ensureEntryIds, createStatus };

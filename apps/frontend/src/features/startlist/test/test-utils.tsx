@@ -23,6 +23,7 @@ import {
   updateVersionHistory,
   updateDiff,
   setEventContext,
+  setEventLinkStatus,
 } from '../state/StartlistContext';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
@@ -44,6 +45,7 @@ import type {
   StatusKey,
   StatusMessageState,
   EventContext,
+  EventLinkStatus,
 } from '../state/types';
 
 export interface StartlistTestInitialState {
@@ -67,6 +69,7 @@ export interface StartlistTestInitialState {
   versionHistory?: StartlistVersionSummaryDto[];
   diff?: StartlistDiffDto;
   eventContext?: EventContext;
+  eventLinkStatus?: EventLinkStatus;
 }
 
 interface WrapperProps {
@@ -91,6 +94,12 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
   useLayoutEffect(() => {
     if (initialState?.eventContext) {
       setEventContext(dispatch, initialState.eventContext);
+    }
+  }, [dispatch, initialState]);
+
+  useLayoutEffect(() => {
+    if (initialState?.eventLinkStatus) {
+      setEventLinkStatus(dispatch, initialState.eventLinkStatus);
     }
   }, [dispatch, initialState]);
 

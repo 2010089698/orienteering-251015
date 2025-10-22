@@ -22,6 +22,20 @@ const buildStartlistSpectatorPath = (startlistId: string, version: number): stri
   return `/startlists/${encodedId}/v/${version}`;
 };
 
+export const buildStartlistPublicUrl = (
+  startlistId: string,
+  version: number,
+): string | undefined => {
+  if (!startlistId || typeof version !== 'number' || Number.isNaN(version)) {
+    return undefined;
+  }
+  const baseUrl = readPublicBaseUrl();
+  if (!baseUrl) {
+    return undefined;
+  }
+  return `${baseUrl}${buildStartlistSpectatorPath(startlistId, version)}`;
+};
+
 export const useFinalizedStartlistLink = (): string | undefined => {
   const snapshot = useStartlistSnapshot();
   const latestVersion = useStartlistLatestVersion();
@@ -33,15 +47,10 @@ export const useFinalizedStartlistLink = (): string | undefined => {
     if (!latestVersion) {
       return undefined;
     }
-    const baseUrl = readPublicBaseUrl();
-    if (!baseUrl) {
-      return undefined;
-    }
-
     if (!snapshot.id) {
       return undefined;
     }
 
-    return `${baseUrl}${buildStartlistSpectatorPath(snapshot.id, latestVersion.version)}`;
+    return buildStartlistPublicUrl(snapshot.id, latestVersion.version);
   }, [snapshot, latestVersion]);
 };

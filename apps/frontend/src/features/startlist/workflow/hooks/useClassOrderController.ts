@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PointerSensor, type DragEndEvent, useSensor, useSensors } from '@dnd-kit/core';
 import {
   createStatus,
+  setEventLinkStatus,
   setLoading,
   setStatus,
   updateClassAssignments,
@@ -15,6 +16,7 @@ import {
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEventContext,
   useStartlistLaneAssignments,
   useStartlistLoading,
   useStartlistSettings,
@@ -32,6 +34,8 @@ import { downloadStartlistCsv } from '../../utils/startlistExport';
 import { createClassOrderViewModel, parsePlayerItemId } from '../createClassOrderViewModel';
 import { sanitizeActiveTab } from '../utils';
 import { useStartlistApi } from '../../api/useStartlistApi';
+import { useEventManagementApi } from '../../../event-management/api/useEventManagementApi';
+import { tryAutoAttachStartlist } from '../../utils/eventLinking';
 
 export const useClassOrderController = () => {
   const navigate = useNavigate();
@@ -48,7 +52,9 @@ export const useClassOrderController = () => {
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
   const startlistId = useStartlistStartlistId();
+  const eventContext = useStartlistEventContext();
   const api = useStartlistApi();
+  const { attachStartlist } = useEventManagementApi();
 
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -231,6 +237,46 @@ export const useClassOrderController = () => {
       updateSnapshot(dispatch, finalizedSnapshot);
       setStatus(dispatch, 'startTimes', createStatus('スタートリストを確定しました。', 'success'));
       setStatus(dispatch, 'snapshot', createStatus('スタートリストを確定しました。', 'success'));
+
+      if (eventContext.eventId && eventContext.raceId) {
+        try {
+          const versions = await api.fetchVersions({ startlistId, limit: 1 });
+          const latest = versions.items
+            .slice()
+            .sort((a, b) => b.version - a.version)[0];
+          if (latest) {
+            await tryAutoAttachStartlist({
+              dispatch,
+              eventContext,
+              attachStartlist,
+              startlistId: finalizedSnapshot?.id ?? startlistId,
+              version: latest.version,
+              confirmedAt: latest.confirmedAt,
+            });
+          } else {
+            const message = 'スタートリストの最新バージョンが取得できませんでした。';
+            setEventLinkStatus(dispatch, {
+              status: 'error',
+              eventId: eventContext.eventId,
+              raceId: eventContext.raceId,
+              errorMessage: message,
+            });
+            setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
+          }
+        } catch (versionError) {
+          const message =
+            versionError instanceof Error
+              ? versionError.message
+              : 'スタートリストのバージョン取得に失敗しました。';
+          setEventLinkStatus(dispatch, {
+            status: 'error',
+            eventId: eventContext.eventId,
+            raceId: eventContext.raceId,
+            errorMessage: message,
+          });
+          setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
+        }
+      }
       navigate(STARTLIST_STEP_PATHS.link);
     } catch (error) {
       const message = error instanceof Error ? error.message : '確定処理に失敗しました。';
@@ -240,8 +286,11 @@ export const useClassOrderController = () => {
     }
   }, [
     api,
+    attachStartlist,
     classAssignments,
     dispatch,
+    eventContext.eventId,
+    eventContext.raceId,
     navigate,
     startTimes,
     startlistId,
