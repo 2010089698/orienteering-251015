@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusMessage } from '@orienteering/shared-ui';
 
 import { EventManagementProvider, useEventManagement } from '../../event-management/state';
 import EventCreateForm from '../../event-management/components/EventCreateForm';
 import AttachStartlistForm from '../../event-management/components/AttachStartlistForm';
-import { useStartlistStartlistId } from '../state/StartlistContext';
+import {
+  useStartlistEventContext,
+  useStartlistEventLinkStatus,
+  useStartlistStartlistId,
+} from '../state/StartlistContext';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
 import { useFinalizedStartlistLink } from '../utils/startlistLinks';
 
@@ -49,9 +53,12 @@ const StartlistLinkContent = (): JSX.Element => {
   } = useEventManagement();
   const startlistId = useStartlistStartlistId();
   const finalizedStartlistLink = useFinalizedStartlistLink();
+  const eventContext = useStartlistEventContext();
+  const eventLinkStatus = useStartlistEventLinkStatus();
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isInitialLoadComplete, setInitialLoadComplete] = useState(false);
+  const autoSelectEventIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -98,6 +105,21 @@ const StartlistLinkContent = (): JSX.Element => {
     [selectEvent],
   );
 
+  useEffect(() => {
+    if (!eventContext.eventId) {
+      autoSelectEventIdRef.current = null;
+      return;
+    }
+    if (autoSelectEventIdRef.current === eventContext.eventId) {
+      return;
+    }
+    if (selectedEventId) {
+      return;
+    }
+    autoSelectEventIdRef.current = eventContext.eventId;
+    void handleSelectEvent(eventContext.eventId);
+  }, [eventContext.eventId, handleSelectEvent, selectedEventId]);
+
   const eventOptions = useMemo(() => {
     return events
       .slice()
@@ -107,6 +129,13 @@ const StartlistLinkContent = (): JSX.Element => {
         label: formatEventLabel(event),
       }));
   }, [events]);
+
+  const defaultStartlistLink = eventLinkStatus.startlistLink ?? finalizedStartlistLink;
+  const defaultRaceId = eventLinkStatus.raceId ?? eventContext.raceId;
+  const autoLinkedEventId = eventLinkStatus.status === 'success' ? eventLinkStatus.eventId : undefined;
+  const isSelectedAutoLinkedEvent = Boolean(
+    autoLinkedEventId && selectedEvent && selectedEvent.id === autoLinkedEventId,
+  );
 
   return (
     <div className="startlist-link">
@@ -163,23 +192,54 @@ const StartlistLinkContent = (): JSX.Element => {
           {selectionError ? <StatusMessage tone="critical" message={selectionError} /> : null}
           {refreshError ? <StatusMessage tone="critical" message={refreshError} /> : null}
           {error ? <StatusMessage tone="critical" message={error} /> : null}
+          {eventLinkStatus.status === 'success' && eventLinkStatus.eventId ? (
+            <div className="startlist-link__status">
+              <StatusMessage
+                tone="success"
+                message={`イベント「${
+                  selectedEvent && selectedEvent.id === eventLinkStatus.eventId
+                    ? selectedEvent.name
+                    : eventLinkStatus.eventId
+                }」にスタートリストを自動連携しました。`}
+              />
+              <p className="muted">
+                <Link to={`/events/${eventLinkStatus.eventId}`}>イベント詳細を開く</Link>
+                {eventLinkStatus.startlistLink ? (
+                  <>
+                    {' / '}
+                    <a href={eventLinkStatus.startlistLink} target="_blank" rel="noreferrer">
+                      公開URLを確認
+                    </a>
+                  </>
+                ) : null}
+              </p>
+            </div>
+          ) : null}
+          {eventLinkStatus.status === 'error' && eventLinkStatus.errorMessage ? (
+            <StatusMessage tone="critical" message={eventLinkStatus.errorMessage} />
+          ) : null}
           {selectedEvent ? (
             <div className="startlist-link__attach">
               <h3>{selectedEvent.name}</h3>
               <p className="muted">
                 <Link to={`/events/${selectedEvent.id}`}>イベント詳細を開く</Link>
               </p>
-              <AttachStartlistForm
-                eventId={selectedEvent.id}
-                races={selectedEvent.races ?? []}
-                isSubmitting={isMutating}
-                onAttach={attachStartlist}
-                onAttached={() => {
-                  void selectEvent(selectedEvent.id);
-                  void refreshEvents();
-                }}
-                defaultStartlistLink={finalizedStartlistLink}
-              />
+              {isSelectedAutoLinkedEvent ? (
+                <p className="muted">このイベントにはスタートリストが自動連携されています。</p>
+              ) : (
+                <AttachStartlistForm
+                  eventId={selectedEvent.id}
+                  races={selectedEvent.races ?? []}
+                  isSubmitting={isMutating}
+                  onAttach={attachStartlist}
+                  onAttached={() => {
+                    void selectEvent(selectedEvent.id);
+                    void refreshEvents();
+                  }}
+                  defaultStartlistLink={defaultStartlistLink}
+                  defaultRaceId={defaultRaceId}
+                />
+              )}
             </div>
           ) : (
             <p className="muted">イベントを選択すると紐づけフォームが表示されます。</p>

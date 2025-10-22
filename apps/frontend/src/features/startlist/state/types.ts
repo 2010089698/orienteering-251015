@@ -110,6 +110,18 @@ export interface EventContext {
   raceId?: string;
 }
 
+export type EventLinkStatusState = 'idle' | 'linking' | 'success' | 'error';
+
+export interface EventLinkStatus {
+  status: EventLinkStatusState;
+  eventId?: string;
+  raceId?: string;
+  startlistLink?: string;
+  startlistUpdatedAt?: string;
+  startlistPublicVersion?: number;
+  errorMessage?: string;
+}
+
 export interface StartlistState {
   startlistId: string;
   settings?: StartlistSettingsDto;
@@ -132,4 +144,5 @@ export interface StartlistState {
   classSplitRules: ClassSplitRule[];
   classSplitResult?: ClassSplitResult;
   eventContext: EventContext;
+  eventLinkStatus: EventLinkStatus;
 }

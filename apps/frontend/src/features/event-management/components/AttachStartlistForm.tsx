@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { AttachStartlistCommand, RaceDto } from '@event-management/application';
 
@@ -9,6 +9,7 @@ interface AttachStartlistFormProps {
   onAttach: (command: AttachStartlistCommand) => Promise<void>;
   onAttached?: () => void;
   defaultStartlistLink?: string;
+  defaultRaceId?: string;
 }
 
 const AttachStartlistForm = ({
@@ -18,8 +19,9 @@ const AttachStartlistForm = ({
   onAttach,
   onAttached,
   defaultStartlistLink,
+  defaultRaceId,
 }: AttachStartlistFormProps) => {
-  const [raceId, setRaceId] = useState('');
+  const [raceId, setRaceId] = useState(defaultRaceId ?? '');
   const [startlistLink, setStartlistLink] = useState('');
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
 
@@ -73,6 +75,17 @@ const AttachStartlistForm = ({
 
     void submitStartlistLink(defaultStartlistLink);
   }, [defaultStartlistLink, submitStartlistLink]);
+
+  useEffect(() => {
+    if (!defaultRaceId) {
+      return;
+    }
+    const hasDefault = races.some((race) => race.id === defaultRaceId);
+    if (!hasDefault) {
+      return;
+    }
+    setRaceId((current) => (current ? current : defaultRaceId));
+  }, [defaultRaceId, races]);
 
   return (
     <section className="attach-startlist" aria-labelledby="attach-startlist-heading">
