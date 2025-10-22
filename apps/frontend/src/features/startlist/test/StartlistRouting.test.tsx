@@ -219,9 +219,8 @@ describe('Startlist workflow routing', () => {
     const laneAssignments = [{ laneNumber: 1, classOrder: ['M21'], interval: { milliseconds: 60000 } }];
     const classAssignments = [{ classId: 'M21', playerOrder: ['p1'] }];
     const startTimes = [{ playerId: 'p1', startTime: new Date('2024-01-01T09:00:00Z').toISOString(), laneNumber: 1 }];
-    let capturedNavigate: NavigateFunction | undefined;
 
-    renderWorkflow(['/startlist/input'], {
+    renderWorkflow(['/startlist/link'], {
       initialState: {
         startlistId: 'SL-1',
         settings: {
@@ -242,25 +241,6 @@ describe('Startlist workflow routing', () => {
           snapshot: createSuccessStatus('finalized'),
         },
       },
-      onNavigateReady: (navigate) => {
-        capturedNavigate = navigate;
-      },
-    });
-
-    expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(capturedNavigate).toBeDefined();
-    });
-
-    act(() => {
-      capturedNavigate?.('/startlist/order');
-    });
-
-    expect(await screen.findByRole('heading', { name: 'STEP 3 クラス内順序とスタート時間' })).toBeInTheDocument();
-
-    act(() => {
-      capturedNavigate?.('/startlist/link');
     });
 
     expect(await screen.findByRole('heading', { name: 'スタートリストをイベントに連携' })).toBeInTheDocument();

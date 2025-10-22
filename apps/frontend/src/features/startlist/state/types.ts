@@ -105,6 +105,11 @@ export type StartOrderRules = StartOrderRule[];
 
 export type WorldRankingByClass = Map<string, WorldRankingMap>;
 
+export interface EventContext {
+  eventId?: string;
+  raceId?: string;
+}
+
 export interface StartlistState {
   startlistId: string;
   settings?: StartlistSettingsDto;
@@ -126,4 +131,5 @@ export interface StartlistState {
   worldRankingByClass: WorldRankingByClass;
   classSplitRules: ClassSplitRule[];
   classSplitResult?: ClassSplitResult;
+  eventContext: EventContext;
 }

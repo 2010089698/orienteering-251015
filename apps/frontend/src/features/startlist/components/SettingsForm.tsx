@@ -24,6 +24,8 @@ export type SettingsFormProps = {
   laneIntervalOptions: IntervalOption[];
   playerIntervalOptions: IntervalOption[];
   status: StatusMessageState;
+  isEventIdReadOnly?: boolean;
+  eventIdAutoFillNotice?: string;
   onChange: SettingsFormChangeHandlers;
   onSubmit: () => void;
 };
@@ -34,6 +36,8 @@ const SettingsForm = ({
   laneIntervalOptions,
   playerIntervalOptions,
   status,
+  isEventIdReadOnly = false,
+  eventIdAutoFillNotice,
   onChange,
   onSubmit,
 }: SettingsFormProps): JSX.Element => {
@@ -66,8 +70,15 @@ const SettingsForm = ({
             value={eventId}
             onChange={(event) => onChange.eventId(event.target.value)}
             required
+            readOnly={isEventIdReadOnly}
+            aria-readonly={isEventIdReadOnly ? 'true' : undefined}
           />
           <span className="muted">スタートリストと連携する大会の ID を入力してください。</span>
+          {isEventIdReadOnly && eventIdAutoFillNotice ? (
+            <span className="muted" role="note">
+              {eventIdAutoFillNotice}
+            </span>
+          ) : null}
         </label>
         <label>
           開始時刻

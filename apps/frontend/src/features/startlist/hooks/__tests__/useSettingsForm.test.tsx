@@ -37,6 +37,8 @@ describe('useSettingsForm', () => {
     expect(hook.current.fields.eventId).toMatch(/^SL-/);
     expect(hook.current.fields.laneIntervalMs).toBe(0);
     expect(hook.current.fields.avoidConsecutiveClubs).toBe(true);
+    expect(hook.current.isEventIdReadOnly).toBe(false);
+    expect(hook.current.eventIdAutoFillNotice).toBeUndefined();
 
     act(() => {
       hook.current.onChange.eventId('event-123');
@@ -54,6 +56,24 @@ describe('useSettingsForm', () => {
     expect(hook.current.status.level).toBe('success');
     expect(hook.current.status.text).toBe('基本情報を保存しました。');
     expect(hook.current.errors.form).toBeNull();
+  });
+
+  it('prefers event context when settings are not yet defined', () => {
+    const hook = renderHook({
+      initialState: {
+        eventContext: { eventId: 'event-from-url', raceId: 'race-1' },
+      },
+    });
+
+    expect(hook.current.fields.eventId).toBe('event-from-url');
+    expect(hook.current.isEventIdReadOnly).toBe(true);
+    expect(hook.current.eventIdAutoFillNotice).toContain('event-from-url');
+
+    act(() => {
+      hook.current.onChange.eventId('should-not-change');
+    });
+
+    expect(hook.current.fields.eventId).toBe('event-from-url');
   });
 
   it('returns validation error when required values are missing', () => {
@@ -95,6 +115,7 @@ describe('useSettingsForm', () => {
     expect(hook.current.fields.startTime).toBe('2024-02-01T09:00');
     expect(hook.current.fields.laneCount).toBe(4);
     expect(hook.current.fields.avoidConsecutiveClubs).toBe(false);
+    expect(hook.current.isEventIdReadOnly).toBe(false);
   });
 
   it('returns validation error when event ID is blank', () => {

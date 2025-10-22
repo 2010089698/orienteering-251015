@@ -137,6 +137,8 @@ export const useInputStepController = () => {
       laneIntervalOptions: settingsForm.laneIntervalOptions,
       playerIntervalOptions: settingsForm.playerIntervalOptions,
       status: settingsForm.status,
+      isEventIdReadOnly: settingsForm.isEventIdReadOnly,
+      eventIdAutoFillNotice: settingsForm.eventIdAutoFillNotice,
       onChange: settingsForm.onChange,
       onSubmit: handleSettingsFormSubmit,
     } satisfies SettingsFormProps,

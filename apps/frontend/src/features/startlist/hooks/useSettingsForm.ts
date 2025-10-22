@@ -15,6 +15,7 @@ import {
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
+  useStartlistEventContext,
   useStartlistSettings,
   useStartlistStartlistId,
   useStartlistStatuses,
@@ -121,10 +122,11 @@ export const useSettingsForm = () => {
   const classSplitRules = useStartlistClassSplitRules();
   const classSplitResult = useStartlistClassSplitResult();
   const dispatch = useStartlistDispatch();
+  const eventContext = useStartlistEventContext();
 
   const initialFields = useMemo(
-    () => createSettingsFormFields(settings, classOrderPreferences),
-    [classOrderPreferences, settings],
+    () => createSettingsFormFields(settings, classOrderPreferences, eventContext),
+    [classOrderPreferences, eventContext, settings],
   );
 
   const [formState, dispatchForm] = useReducer(formReducer, {
@@ -135,6 +137,18 @@ export const useSettingsForm = () => {
   useEffect(() => {
     dispatchForm({ type: 'hydrate', payload: initialFields });
   }, [initialFields]);
+
+  const isEventIdReadOnly = useMemo(
+    () => !settings?.eventId && Boolean(eventContext.eventId),
+    [eventContext.eventId, settings?.eventId],
+  );
+
+  const eventIdAutoFillNotice = useMemo(() => {
+    if (!isEventIdReadOnly || !eventContext.eventId) {
+      return undefined;
+    }
+    return `イベント ID「${eventContext.eventId}」は URL のクエリパラメーターから自動設定されています。変更する場合は URL の eventId を更新してください。`;
+  }, [eventContext.eventId, isEventIdReadOnly]);
 
   const laneIntervalOptions = useMemo(
     () => ensureIntervalOption(createIntervalOptions(60, true), formState.fields.laneIntervalMs),
@@ -217,6 +231,8 @@ export const useSettingsForm = () => {
     laneIntervalOptions,
     playerIntervalOptions,
     status: statuses.settings,
+    isEventIdReadOnly,
+    eventIdAutoFillNotice,
     onChange: {
       eventId: handleEventIdChange,
       startTime: handleStartTimeChange,

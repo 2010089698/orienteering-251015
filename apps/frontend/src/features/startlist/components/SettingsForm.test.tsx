@@ -80,5 +80,20 @@ describe('SettingsForm', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: /同じ所属が連続で並ばないようにする/ }));
     expect(props.onChange.avoidConsecutiveClubs).toHaveBeenCalledWith(false);
   });
+
+  it('renders auto-fill notice when event ID is read-only', async () => {
+    const props = createProps({
+      isEventIdReadOnly: true,
+      eventIdAutoFillNotice: 'URL のクエリから設定されています。',
+    });
+    render(<SettingsForm {...props} />);
+
+    const input = screen.getByLabelText(/イベントID（必須）/) as HTMLInputElement;
+    expect(input.readOnly).toBe(true);
+    expect(screen.getByText('URL のクエリから設定されています。')).toBeInTheDocument();
+
+    await userEvent.type(input, 'ignored');
+    expect(props.onChange.eventId).not.toHaveBeenCalled();
+  });
 });
 
