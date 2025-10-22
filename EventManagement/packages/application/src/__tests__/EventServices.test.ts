@@ -177,6 +177,7 @@ describe('Event application services', () => {
       const result = await service.execute({
         eventId: 'event-1',
         raceId: 'race-1',
+        startlistId: 'startlist-123',
         startlistLink: 'https://example.com/startlist',
         startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
         startlistPublicVersion: 2,
@@ -186,6 +187,7 @@ describe('Event application services', () => {
       expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
       const publishMock = dependencies.eventPublisher.publish as ReturnType<typeof vi.fn>;
       expect(publishMock).not.toHaveBeenCalled();
+      expect(result.races[0]?.startlistId).toBe('startlist-123');
       expect(result.races[0]?.startlistLink).toBe('https://example.com/startlist');
       expect(result.races[0]?.startlistUpdatedAt).toBe('2024-04-05T09:00:00.000Z');
       expect(result.races[0]?.startlistPublicVersion).toBe(2);
@@ -202,6 +204,7 @@ describe('Event application services', () => {
         service.execute({
           eventId: 'event-1',
           raceId: 'race-missing',
+          startlistId: 'startlist-123',
           startlistLink: 'https://example.com/startlist',
         }),
       ).rejects.toBeInstanceOf(RaceNotFoundError);

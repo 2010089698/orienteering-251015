@@ -29,7 +29,8 @@ export const AttachStartlistCommandSchema = Type.Object(
   {
     eventId: EventIdSchema,
     raceId: RaceIdSchema,
-    startlistLink: Type.String({ minLength: 1 }),
+    startlistId: Type.String({ minLength: 1 }),
+    startlistLink: Type.Optional(Type.String({ minLength: 1 })),
     startlistUpdatedAt: Type.Optional(DateTimeString),
     startlistPublicVersion: Type.Optional(Type.Integer({ minimum: 1 })),
   },
@@ -49,6 +50,7 @@ export const RaceDtoSchema = Type.Object(
     ),
     duplicateDay: Type.Boolean(),
     overlapsExisting: Type.Boolean(),
+    startlistId: Type.Optional(Type.String({ minLength: 1 })),
     startlistLink: Type.Optional(Type.String({ minLength: 1 })),
     startlistUpdatedAt: Type.Optional(DateTimeString),
     startlistPublicVersion: Type.Optional(Type.Integer({ minimum: 1 })),
