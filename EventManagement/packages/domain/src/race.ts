@@ -73,6 +73,18 @@ export class Race {
     return this.startlistReference?.getStatus();
   }
 
+  public getStartlistConfirmedAt(): Date | undefined {
+    return this.startlistReference?.getConfirmedAt();
+  }
+
+  public getStartlistPublicVersion(): number | undefined {
+    return this.startlistReference?.getPublicVersion();
+  }
+
+  public getStartlistPublicUrl(): string | undefined {
+    return this.startlistReference?.getPublicUrl();
+  }
+
   public hasStartlistReference(): boolean {
     return Boolean(this.startlistReference);
   }

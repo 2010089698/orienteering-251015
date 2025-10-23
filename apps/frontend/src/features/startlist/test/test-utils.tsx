@@ -25,6 +25,7 @@ import {
   setEventContext,
   setEventLinkStatus,
 } from '../state/StartlistContext';
+import { EventManagementProvider } from '../../event-management';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type {
   StartlistSettingsDto,
@@ -174,11 +175,11 @@ const Initializer = ({ children, initialize, initialState }: PropsWithChildren<W
 
 const Wrapper = ({ children, initialize, initialState }: PropsWithChildren<WrapperProps>) => {
   return (
-    <StartlistProvider>
-      <Initializer initialize={initialize} initialState={initialState}>
-        {children}
-      </Initializer>
-    </StartlistProvider>
+    <EventManagementProvider>
+      <StartlistProvider>
+        <Initializer initialize={initialize} initialState={initialState}>{children}</Initializer>
+      </StartlistProvider>
+    </EventManagementProvider>
   );
 };
 

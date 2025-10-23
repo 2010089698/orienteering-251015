@@ -32,6 +32,7 @@ import {
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import { tryAutoAttachStartlist } from '../utils/eventLinking';
+import { useEventManagementActions } from '../../event-management/state';
 
 const formatDateTime = (iso: string): string => {
   const date = new Date(iso);
@@ -64,6 +65,7 @@ const StartTimesPanel = (): JSX.Element => {
   const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
   const api = useStartlistApi();
+  const { attachStartlist } = useEventManagementActions();
   const latestVersion = useStartlistLatestVersion();
   const previousVersion = useStartlistPreviousVersion();
   const diff = useStartlistDiff();
@@ -263,6 +265,8 @@ const StartTimesPanel = (): JSX.Element => {
               startlistId: snapshot?.id ?? startlistId,
               version: latest.version,
               confirmedAt: latest.confirmedAt,
+              startlistStatus: snapshot?.status,
+              attachStartlist,
             });
           } else {
             const message = 'スタートリストの最新バージョンが取得できませんでした。';

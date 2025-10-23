@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CreateEventService, EventQueryService, ScheduleRaceService } from '@event-management/application';
+import {
+  AttachStartlistService,
+  CreateEventService,
+  EventQueryService,
+  ScheduleRaceService,
+} from '@event-management/application';
 import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
 
 import { createEventModule } from '../config/eventModule.js';
@@ -26,6 +31,7 @@ describe('createEventModule', () => {
     expect(module.createEventService).toBeInstanceOf(CreateEventService);
     expect(module.scheduleRaceService).toBeInstanceOf(ScheduleRaceService);
     expect(module.eventQueryService).toBeInstanceOf(EventQueryService);
+    expect(module.attachStartlistService).toBeInstanceOf(AttachStartlistService);
 
     const createPayload = buildCreateEventPayload();
     const generatedId = EventId.from(EVENT_ID);

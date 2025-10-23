@@ -35,6 +35,7 @@ import { createClassOrderViewModel, parsePlayerItemId } from '../createClassOrde
 import { sanitizeActiveTab } from '../utils';
 import { useStartlistApi } from '../../api/useStartlistApi';
 import { tryAutoAttachStartlist } from '../../utils/eventLinking';
+import { useEventManagementActions } from '../../event-management/state';
 
 export const useClassOrderController = () => {
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ export const useClassOrderController = () => {
   const startlistId = useStartlistStartlistId();
   const eventContext = useStartlistEventContext();
   const api = useStartlistApi();
+  const { attachStartlist } = useEventManagementActions();
 
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -248,6 +250,8 @@ export const useClassOrderController = () => {
               startlistId: finalizedSnapshot?.id ?? startlistId,
               version: latest.version,
               confirmedAt: latest.confirmedAt,
+              startlistStatus: finalizedSnapshot?.status,
+              attachStartlist,
             });
           } else {
             const message = 'スタートリストの最新バージョンが取得できませんでした。';

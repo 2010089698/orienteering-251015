@@ -42,6 +42,7 @@ describe('eventRoutes', () => {
         createEventService: eventModule.createEventService,
         scheduleRaceService: eventModule.scheduleRaceService,
         eventQueryService: eventModule.eventQueryService,
+        attachStartlistService: eventModule.attachStartlistService,
       },
     });
     await server.ready();
@@ -165,6 +166,77 @@ describe('eventRoutes', () => {
     expect(response.json()).toEqual({
       message: 'Startlist synchronization service is unavailable.',
     });
+  });
+  it('attaches finalized startlists to races', async () => {
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+    await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races`,
+      payload: SCHEDULE_RACE_PAYLOAD,
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
+      payload: {
+        startlistId: 'startlist-final',
+        confirmedAt: '2024-06-01T12:00:00.000Z',
+        version: 4,
+        publicUrl: 'https://startlists.example.com/startlist-final',
+        status: 'FINALIZED',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.event.races[0]?.startlist).toMatchObject({
+      id: 'startlist-final',
+      status: 'FINALIZED',
+      confirmedAt: '2024-06-01T12:00:00.000Z',
+      publicVersion: 4,
+      publicUrl: 'https://startlists.example.com/startlist-final',
+    });
+  });
+
+  it('returns 400 when attaching startlists with invalid URLs', async () => {
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+    await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races`,
+      payload: SCHEDULE_RACE_PAYLOAD,
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
+      payload: {
+        startlistId: 'startlist-final',
+        confirmedAt: '2024-06-01T12:00:00.000Z',
+        version: 1,
+        publicUrl: 'not-a-url',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toMatch(/valid absolute URL/i);
+  });
+
+  it('returns 404 when attaching a startlist for a missing race', async () => {
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
+      payload: {
+        startlistId: 'startlist-final',
+        confirmedAt: '2024-06-01T12:00:00.000Z',
+        version: 1,
+        publicUrl: 'https://startlists.example.com/startlist-final',
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().message).toContain(RACE_ID);
   });
 
 });
