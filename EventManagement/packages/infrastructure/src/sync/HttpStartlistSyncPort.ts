@@ -1,5 +1,10 @@
-import { StartlistSyncError, StartlistSyncPort } from '@event-management/application';
-import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
+import {
+  StartlistCreationResult,
+  StartlistSyncError,
+  type StartlistSyncPayload,
+  StartlistSyncPort,
+} from '@event-management/application';
+import { RaceSchedule } from '@event-management/domain';
 
 export interface FetchLike {
   (input: string, init?: { method?: string; headers?: Record<string, string>; body?: string }): Promise<{
@@ -34,12 +39,37 @@ export class HttpStartlistSyncPort implements StartlistSyncPort {
     this.fetchImpl = options.fetchImpl ?? getGlobalFetch();
   }
 
-  async notifyRaceScheduled(payload: {
-    eventId: EventId;
-    raceId: RaceId;
-    schedule: RaceSchedule;
-    updatedAt: Date;
-  }): Promise<void> {
+  async notifyRaceScheduled(payload: StartlistSyncPayload): Promise<void> {
+    await this.sendRequest(payload);
+  }
+
+  async createStartlist(payload: StartlistSyncPayload): Promise<StartlistCreationResult> {
+    const response = await this.sendRequest(payload);
+    let parsed: unknown;
+    if (!response.body) {
+      throw new StartlistSyncError('Startlist creation response was empty.');
+    }
+    try {
+      parsed = JSON.parse(response.body);
+    } catch (error) {
+      throw new StartlistSyncError('Failed to parse startlist creation response.', error);
+    }
+
+    const startlistId = extractString(parsed, ['id', 'startlistId']);
+    const status = extractString(parsed, ['status']);
+
+    if (!startlistId) {
+      throw new StartlistSyncError('Startlist creation response did not include an identifier.');
+    }
+
+    if (!status) {
+      throw new StartlistSyncError('Startlist creation response did not include a status.');
+    }
+
+    return { startlistId, status };
+  }
+
+  private async sendRequest(payload: StartlistSyncPayload): Promise<{ body: string }> {
     const body: RaceScheduledPayload = {
       eventId: payload.eventId.toString(),
       raceId: payload.raceId.toString(),
@@ -58,12 +88,15 @@ export class HttpStartlistSyncPort implements StartlistSyncPort {
       throw new StartlistSyncError('Failed to sync startlist.', error);
     }
 
+    const responseBody = await safeReadBody(response);
+
     if (!response.ok) {
-      const message = await safeReadBody(response);
       throw new StartlistSyncError(
-        `Failed to sync startlist: ${response.status} ${message}`.trim(),
+        `Failed to sync startlist: ${response.status} ${responseBody}`.trim(),
       );
     }
+
+    return { body: responseBody };
   }
 }
 
@@ -87,4 +120,22 @@ async function safeReadBody(response: { text(): Promise<string> }): Promise<stri
   } catch {
     return '';
   }
+}
+
+function extractString(source: unknown, keys: string[]): string | undefined {
+  if (typeof source !== 'object' || source === null) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = (source as Record<string, unknown>)[key];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+
+  return undefined;
 }

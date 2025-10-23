@@ -9,6 +9,6 @@ export { EventId } from './valueObjects/EventId.js';
 export { RaceId } from './valueObjects/RaceId.js';
 export { RaceSchedule } from './valueObjects/RaceSchedule.js';
 export {
-  StartlistAttachment,
-  type StartlistAttachmentProps,
-} from './valueObjects/StartlistAttachment.js';
+  StartlistReference,
+  type StartlistReferenceProps,
+} from './valueObjects/StartlistReference.js';

@@ -9,7 +9,7 @@ describe('HttpStartlistSyncPort', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 202,
-      text: async () => '',
+      text: async () => JSON.stringify({ id: 'startlist-1', status: 'draft' }),
     });
 
     const port = new HttpStartlistSyncPort({
@@ -35,6 +35,28 @@ describe('HttpStartlistSyncPort', () => {
     expect(init?.body).toContain('event-123');
     expect(init?.body).toContain('race-999');
     expect(init?.body).toContain('2024-04-30T12:00:00.000Z');
+  });
+
+  it('creates startlists and returns the identifier and status', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      text: async () => JSON.stringify({ id: 'startlist-777', status: 'draft' }),
+    });
+
+    const port = new HttpStartlistSyncPort({
+      baseUrl: 'https://startlists.test',
+      fetchImpl: fetchMock,
+    });
+
+    const result = await port.createStartlist({
+      eventId: EventId.from('event-123'),
+      raceId: RaceId.from('race-999'),
+      schedule: RaceSchedule.from(new Date('2024-05-01T10:00:00.000Z')),
+      updatedAt: new Date('2024-04-30T12:00:00.000Z'),
+    });
+
+    expect(result).toEqual({ startlistId: 'startlist-777', status: 'draft' });
   });
 
   it('throws a StartlistSyncError when the upstream service responds with an error', async () => {

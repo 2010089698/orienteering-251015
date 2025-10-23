@@ -22,20 +22,25 @@ const SCHEDULE_RACE_PAYLOAD = {
 describe('eventRoutes', () => {
   let server: EventServer;
   let notifyRaceScheduled: ReturnType<typeof vi.fn>;
+  let createStartlist: ReturnType<typeof vi.fn>;
   let eventModule: EventModule;
   let generateSpy: ReturnType<typeof vi.spyOn>;
   let raceIdSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
-    eventModule = createEventModule({ startlistSync: { port: { notifyRaceScheduled } } });
+    createStartlist = vi
+      .fn()
+      .mockResolvedValue({ startlistId: 'startlist-created', status: 'draft' });
+    eventModule = createEventModule({
+      startlistSync: { port: { notifyRaceScheduled, createStartlist } },
+    });
     generateSpy = vi.spyOn(EventId, 'generate').mockImplementation(() => EventId.from(EVENT_ID));
     raceIdSpy = vi.spyOn(RaceId, 'generate').mockImplementation(() => RaceId.from(RACE_ID));
     server = createServer({
       events: {
         createEventService: eventModule.createEventService,
         scheduleRaceService: eventModule.scheduleRaceService,
-        attachStartlistService: eventModule.attachStartlistService,
         eventQueryService: eventModule.eventQueryService,
       },
     });
@@ -102,8 +107,10 @@ describe('eventRoutes', () => {
     const body = response.json();
     expect(body.event.races).toHaveLength(1);
     expect(body.event.races[0]?.id).toBe(RACE_ID);
+    expect(body.event.races[0]?.startlist).toEqual({ id: 'startlist-created', status: 'draft' });
     expect(body.event.allowMultipleRacesPerDay).toBe(true);
     expect(body.event.allowScheduleOverlap).toBe(true);
+    expect(createStartlist).toHaveBeenCalledTimes(1);
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
     expect(notifyRaceScheduled.mock.calls[0]?.[0]?.updatedAt).toBeInstanceOf(Date);
   });
@@ -125,35 +132,8 @@ describe('eventRoutes', () => {
     const body = response.json();
     expect(body.event.races).toHaveLength(1);
     expect(body.event.races[0]?.id).toBe(RACE_ID);
+    expect(body.event.races[0]?.startlist).toEqual({ id: 'startlist-created', status: 'draft' });
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
-  });
-
-  it('attaches startlist links to races', async () => {
-    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
-    await server.inject({
-      method: 'POST',
-      url: `/api/events/${EVENT_ID}/races`,
-      payload: SCHEDULE_RACE_PAYLOAD,
-    });
-
-    const response = await server.inject({
-      method: 'POST',
-      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
-      payload: {
-        startlistId: 'startlist-123',
-        startlistLink: 'https://example.com/startlist',
-        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-        startlistPublicVersion: 4,
-      },
-    });
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body.event.races[0]?.startlistLink).toBe('https://example.com/startlist');
-    expect(body.event.races[0]?.startlistUpdatedAt).toBe('2024-04-05T09:00:00.000Z');
-    expect(body.event.races[0]?.startlistPublicVersion).toBe(4);
-    expect(body.event.races[0]?.startlistId).toBe('startlist-123');
-    expect(body.event.allowMultipleRacesPerDay).toBe(true);
-    expect(body.event.allowScheduleOverlap).toBe(true);
   });
 
   it('returns 404 when scheduling a race for an unknown event', async () => {
@@ -187,14 +167,4 @@ describe('eventRoutes', () => {
     });
   });
 
-  it('returns 404 when attaching a startlist to a missing race', async () => {
-    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
-    const response = await server.inject({
-      method: 'POST',
-      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
-      payload: { startlistId: 'startlist-123', startlistLink: 'https://example.com/startlist' },
-    });
-    expect(response.statusCode).toBe(404);
-    expect(response.json().message).toContain(RACE_ID);
-  });
 });

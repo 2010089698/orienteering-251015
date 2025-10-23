@@ -26,7 +26,6 @@ const start = async () => {
   void server.register(eventRoutes, {
     createEventService: eventModule.createEventService,
     scheduleRaceService: eventModule.scheduleRaceService,
-    attachStartlistService: eventModule.attachStartlistService,
     eventQueryService: eventModule.eventQueryService,
   });
 

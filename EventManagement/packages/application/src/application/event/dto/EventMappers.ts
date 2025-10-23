@@ -6,12 +6,10 @@ import {
   EventId,
   RaceId,
   RaceSchedule,
-  StartlistAttachment,
 } from '@event-management/domain';
 
 import { ValidationError } from '../../shared/errors.js';
 import {
-  type AttachStartlistCommand,
   type CreateEventCommand,
   type ScheduleRaceCommand,
   type EventDto,
@@ -51,25 +49,10 @@ export function mapToScheduleRaceInput(command: ScheduleRaceCommand): {
   };
 }
 
-export function mapToStartlistAttachment(command: AttachStartlistCommand): StartlistAttachment {
-  const updatedAt = command.startlistUpdatedAt
-    ? parseDateTime(command.startlistUpdatedAt, 'Startlist updated at')
-    : undefined;
-  return StartlistAttachment.create({
-    startlistId: command.startlistId,
-    publicUrl: command.startlistLink,
-    updatedAt,
-    publicVersion: command.startlistPublicVersion,
-  });
-}
-
 export function mapRaceToDto(race: Race): RaceDto {
   const schedule = race.getSchedule();
   const end = schedule.getEnd();
-  const startlistId = race.getStartlistId();
-  const startlistLink = race.getStartlistPublicUrl();
-  const startlistUpdatedAt = race.getStartlistUpdatedAt();
-  const startlistPublicVersion = race.getStartlistPublicVersion();
+  const startlistReference = race.getStartlistReference();
   return {
     id: race.getId().toString(),
     name: race.getName(),
@@ -79,10 +62,14 @@ export function mapRaceToDto(race: Race): RaceDto {
     },
     duplicateDay: race.hasDuplicateDay(),
     overlapsExisting: race.hasScheduleOverlap(),
-    ...(startlistId ? { startlistId } : {}),
-    ...(startlistLink ? { startlistLink } : {}),
-    ...(startlistUpdatedAt ? { startlistUpdatedAt: startlistUpdatedAt.toISOString() } : {}),
-    ...(startlistPublicVersion !== undefined ? { startlistPublicVersion } : {}),
+    ...(startlistReference
+      ? {
+          startlist: {
+            id: startlistReference.getId(),
+            status: startlistReference.getStatus(),
+          },
+        }
+      : {}),
   };
 }
 

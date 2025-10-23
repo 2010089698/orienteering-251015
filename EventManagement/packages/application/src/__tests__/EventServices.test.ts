@@ -11,13 +11,11 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  AttachStartlistService,
   CreateEventService,
   EventNotFoundError,
   type EventRepository,
   type EventServiceDependencies,
   PersistenceError,
-  RaceNotFoundError,
   ScheduleRaceService,
   type ScheduleRaceServiceDependencies,
 } from '../index.js';
@@ -146,68 +144,47 @@ describe('Event application services', () => {
         raceSchedulingService: new RaceSchedulingService(),
       });
 
-      await expect(
-        service.execute({
-          eventId: 'missing',
-          name: 'Qualifier',
-          date: '2024-04-02',
-        }),
-      ).rejects.toBeInstanceOf(EventNotFoundError);
-    });
+    await expect(
+      service.execute({
+        eventId: 'missing',
+        name: 'Qualifier',
+        date: '2024-04-02',
+      }),
+    ).rejects.toBeInstanceOf(EventNotFoundError);
   });
 
-  describe('AttachStartlistService', () => {
-    it('attaches a startlist to an existing race without publishing new events', async () => {
-      const dependencies = createDependencies();
+    it('creates startlists when a sync port is provided', async () => {
+      const dependencies = createDependencies() as ScheduleRaceServiceDependencies;
       const event = createEvent();
-      event.scheduleRace(
-        {
-          id: RaceId.from('race-1'),
-          name: 'Classic Final',
-          schedule: RaceSchedule.from(new Date('2024-04-03T08:00:00.000Z')),
-        },
-        new RaceSchedulingService(),
-      );
-      event.pullDomainEvents();
       const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
       findMock.mockResolvedValue(event);
-
-      const service = new AttachStartlistService(dependencies);
+      const createStartlist = vi
+        .fn()
+        .mockResolvedValue({ startlistId: 'startlist-123', status: 'draft' });
+      const notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
+      const service = new ScheduleRaceService({
+        ...dependencies,
+        raceSchedulingService: new RaceSchedulingService(),
+        startlistSyncPort: { createStartlist, notifyRaceScheduled },
+      });
+      const generatedRaceId = RaceId.from('race-456');
+      const raceIdSpy = vi.spyOn(RaceId, 'generate').mockReturnValue(generatedRaceId);
 
       const result = await service.execute({
         eventId: 'event-1',
-        raceId: 'race-1',
-        startlistId: 'startlist-123',
-        startlistLink: 'https://example.com/startlist',
-        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-        startlistPublicVersion: 2,
+        name: 'Sprint Final',
+        date: '2024-04-04',
       });
 
-      expect(dependencies.transactionManager.execute).toHaveBeenCalledTimes(1);
-      expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
-      const publishMock = dependencies.eventPublisher.publish as ReturnType<typeof vi.fn>;
-      expect(publishMock).not.toHaveBeenCalled();
-      expect(result.races[0]?.startlistId).toBe('startlist-123');
-      expect(result.races[0]?.startlistLink).toBe('https://example.com/startlist');
-      expect(result.races[0]?.startlistUpdatedAt).toBe('2024-04-05T09:00:00.000Z');
-      expect(result.races[0]?.startlistPublicVersion).toBe(2);
-    });
-
-    it('throws RaceNotFoundError when race is missing', async () => {
-      const dependencies = createDependencies();
-      const event = createEvent();
-      const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
-      findMock.mockResolvedValue(event);
-      const service = new AttachStartlistService(dependencies);
-
-      await expect(
-        service.execute({
-          eventId: 'event-1',
-          raceId: 'race-missing',
-          startlistId: 'startlist-123',
-          startlistLink: 'https://example.com/startlist',
-        }),
-      ).rejects.toBeInstanceOf(RaceNotFoundError);
+      expect(createStartlist).toHaveBeenCalledTimes(1);
+      const call = createStartlist.mock.calls[0]?.[0];
+      expect(call?.eventId).toBeInstanceOf(EventId);
+      expect(call?.raceId).toBeInstanceOf(RaceId);
+      expect(call?.schedule).toBeInstanceOf(RaceSchedule);
+      expect(call?.updatedAt).toBeInstanceOf(Date);
+      expect(result.races[0]?.startlist).toEqual({ id: 'startlist-123', status: 'draft' });
+      raceIdSpy.mockRestore();
     });
   });
+
 });

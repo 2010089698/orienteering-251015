@@ -2,7 +2,6 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { Static } from '@sinclair/typebox';
 import {
-  AttachStartlistService,
   CreateEventService,
   EventNotFoundError,
   EventQueryService,
@@ -15,28 +14,23 @@ import {
 } from '@event-management/application';
 
 import {
-  AttachStartlistBodySchema,
   CreateEventBodySchema,
   ErrorResponseSchema,
   EventIdParamsSchema,
   EventListResponseSchema,
   EventResponseSchema,
-  RaceIdParamsSchema,
   ScheduleRaceBodySchema,
 } from './schemas.js';
 
 export interface EventRoutesOptions {
   createEventService: CreateEventService;
   scheduleRaceService: ScheduleRaceService;
-  attachStartlistService: AttachStartlistService;
   eventQueryService: EventQueryService;
 }
 
 type CreateEventBody = Static<typeof CreateEventBodySchema>;
 type ScheduleRaceBody = Static<typeof ScheduleRaceBodySchema>;
-type AttachStartlistBody = Static<typeof AttachStartlistBodySchema>;
 type EventParams = Static<typeof EventIdParamsSchema>;
-type RaceParams = Static<typeof RaceIdParamsSchema>;
 
 type EventResponse = Static<typeof EventResponseSchema>;
 type EventListResponse = Static<typeof EventListResponseSchema>;
@@ -136,34 +130,6 @@ const eventRoutes: FastifyPluginAsyncTypebox<EventRoutesOptions> = async (
     },
   );
 
-  fastify.post<{
-    Params: RaceParams;
-    Body: AttachStartlistBody;
-    Reply: EventResponse | ErrorResponse;
-  }>(
-    '/api/events/:eventId/races/:raceId/startlist',
-    {
-      schema: {
-        params: RaceIdParamsSchema,
-        body: AttachStartlistBodySchema,
-        response: { 200: EventResponseSchema, ...errorResponses },
-      },
-    },
-    async (request, reply) => {
-      try {
-        const command = {
-          ...request.body,
-          eventId: request.params.eventId,
-          raceId: request.params.raceId,
-        };
-        const event = await options.attachStartlistService.execute(command);
-        reply.code(200);
-        return { event } satisfies EventResponse;
-      } catch (error) {
-        return handleServiceError(error, reply, fastify.log);
-      }
-    },
-  );
 };
 
 export default eventRoutes;
