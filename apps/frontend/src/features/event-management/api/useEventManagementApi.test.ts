@@ -137,11 +137,12 @@ describe('useEventManagementApi', () => {
       venue: 'Sapporo',
       races: [],
     };
-    fetchMock.mockResolvedValue(createJsonResponse({ event }));
+    fetchMock.mockResolvedValue(createJsonResponse({ event, startlistId: 'SL-4' }));
 
     const response = await result.current.attachStartlist({
       eventId: 'EV-4',
       raceId: 'race-1',
+      startlistId: 'SL-4',
       startlistLink: 'https://example.com/startlist',
       startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
       startlistPublicVersion: 7,
@@ -153,11 +154,12 @@ describe('useEventManagementApi', () => {
     );
     const [, init] = fetchMock.mock.calls[0];
     expect(JSON.parse(init?.body as string)).toEqual({
+      startlistId: 'SL-4',
       startlistLink: 'https://example.com/startlist',
       startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
       startlistPublicVersion: 7,
     });
-    expect(response).toEqual(event);
+    expect(response).toEqual({ event, startlistId: 'SL-4' });
   });
 
   it('throws with the response text when the request fails', async () => {

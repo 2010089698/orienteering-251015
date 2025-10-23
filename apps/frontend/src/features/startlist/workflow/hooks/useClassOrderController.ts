@@ -259,6 +259,7 @@ export const useClassOrderController = () => {
               status: 'error',
               eventId: eventContext.eventId,
               raceId: eventContext.raceId,
+              startlistId: finalizedSnapshot?.id ?? startlistId,
               errorMessage: message,
             });
             setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
@@ -272,6 +273,7 @@ export const useClassOrderController = () => {
             status: 'error',
             eventId: eventContext.eventId,
             raceId: eventContext.raceId,
+            startlistId: finalizedSnapshot?.id ?? startlistId,
             errorMessage: message,
           });
           setStatus(dispatch, 'snapshot', createStatus(message, 'error'));

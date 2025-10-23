@@ -15,6 +15,11 @@ interface EventListResponse {
   events: EventDto[];
 }
 
+interface AttachStartlistResponse {
+  event: EventDto;
+  startlistId: string;
+}
+
 const ensureOk = async (response: Response): Promise<unknown> => {
   if (!response.ok) {
     const text = await response.text();
@@ -98,13 +103,13 @@ export const useEventManagementApi = () => {
   );
 
   const attachStartlist = useCallback(
-    async (command: AttachStartlistCommand): Promise<EventDto> => {
+    async (command: AttachStartlistCommand): Promise<AttachStartlistResponse> => {
       const { eventId, raceId, ...payload } = command;
-      const { event } = (await postJson(
+      const { event, startlistId } = (await postJson(
         `/${encodeURIComponent(eventId)}/races/${encodeURIComponent(raceId)}/startlist`,
         payload,
-      )) as EventResponse;
-      return event;
+      )) as AttachStartlistResponse;
+      return { event, startlistId };
     },
     [postJson],
   );

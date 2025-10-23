@@ -54,17 +54,20 @@ describe('StartlistLinkPage', () => {
     });
 
     attachStartlistMock.mockResolvedValue({
-      id: 'event-1',
-      name: '春の大会',
-      races: [
-        {
-          id: 'race-1',
-          name: '本戦',
-          startlistLink: 'https://example.com/startlist',
-          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-          startlistPublicVersion: 6,
-        },
-      ],
+      event: {
+        id: 'event-1',
+        name: '春の大会',
+        races: [
+          {
+            id: 'race-1',
+            name: '本戦',
+            startlistLink: 'https://example.com/startlist',
+            startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+            startlistPublicVersion: 6,
+          },
+        ],
+      },
+      startlistId: 'SL-1',
     });
   });
 
@@ -124,11 +127,16 @@ describe('StartlistLinkPage', () => {
     await user.click(autoLinkButton);
 
     await waitFor(() => {
-      expect(attachStartlistMock).toHaveBeenCalledWith({
-        eventId: 'event-1',
-        raceId: 'race-1',
-        startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
-      });
+      expect(attachStartlistMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'event-1',
+          raceId: 'race-1',
+          startlistId: 'SL-1',
+          startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+          startlistPublicVersion: 3,
+        }),
+      );
     });
 
     expect(listEventsMock).toHaveBeenCalledTimes(2);
@@ -179,7 +187,11 @@ describe('StartlistLinkPage', () => {
 
     expect(screen.queryByRole('button', { name: '確定したスタートリストを連携' })).not.toBeInTheDocument();
 
-    const urlInput = screen.getByLabelText('スタートリストURL');
+    const startlistIdInput = screen.getByLabelText('スタートリストID');
+    await user.clear(startlistIdInput);
+    await user.type(startlistIdInput, 'SL-1');
+
+    const urlInput = screen.getByLabelText('公開URL（任意）');
     await user.clear(urlInput);
     await user.type(urlInput, 'https://example.com/startlist');
 
@@ -187,11 +199,14 @@ describe('StartlistLinkPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(attachStartlistMock).toHaveBeenCalledWith({
-        eventId: 'event-1',
-        raceId: 'race-1',
-        startlistLink: 'https://example.com/startlist',
-      });
+      expect(attachStartlistMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'event-1',
+          raceId: 'race-1',
+          startlistId: 'SL-1',
+          startlistLink: 'https://example.com/startlist',
+        }),
+      );
     });
 
     expect(listEventsMock).toHaveBeenCalledTimes(2);
@@ -215,6 +230,7 @@ describe('StartlistLinkPage', () => {
             status: 'success',
             eventId: 'event-1',
             raceId: 'race-1',
+            startlistId: 'SL-1',
             startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
             startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
             startlistPublicVersion: 3,
@@ -257,7 +273,10 @@ describe('StartlistLinkPage', () => {
             eventId: 'event-1',
             raceId: 'race-1',
             errorMessage: 'イベント連携に失敗しました。',
+            startlistId: 'SL-1',
             startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+            startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+            startlistPublicVersion: 3,
           },
         },
       },
@@ -275,11 +294,16 @@ describe('StartlistLinkPage', () => {
     await user.click(autoButton);
 
     await waitFor(() => {
-      expect(attachStartlistMock).toHaveBeenCalledWith({
-        eventId: 'event-1',
-        raceId: 'race-1',
-        startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
-      });
+      expect(attachStartlistMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'event-1',
+          raceId: 'race-1',
+          startlistId: 'SL-1',
+          startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+          startlistPublicVersion: 3,
+        }),
+      );
     });
   });
 });

@@ -9,9 +9,11 @@ import {
   useStartlistEventContext,
   useStartlistEventLinkStatus,
   useStartlistStartlistId,
+  useStartlistLatestVersion,
+  useStartlistSnapshot,
 } from '../state/StartlistContext';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
-import { useFinalizedStartlistLink } from '../utils/startlistLinks';
+import { buildStartlistPublicUrl, useFinalizedStartlistLink } from '../utils/startlistLinks';
 
 const ensureErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -53,6 +55,8 @@ const StartlistLinkContent = (): JSX.Element => {
   } = useEventManagement();
   const startlistId = useStartlistStartlistId();
   const finalizedStartlistLink = useFinalizedStartlistLink();
+  const latestVersion = useStartlistLatestVersion();
+  const snapshot = useStartlistSnapshot();
   const eventContext = useStartlistEventContext();
   const eventLinkStatus = useStartlistEventLinkStatus();
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -130,7 +134,18 @@ const StartlistLinkContent = (): JSX.Element => {
       }));
   }, [events]);
 
-  const defaultStartlistLink = eventLinkStatus.startlistLink ?? finalizedStartlistLink;
+  const normalizedStartlistId = startlistId?.trim() ? startlistId.trim() : undefined;
+  const defaultStartlistId = eventLinkStatus.startlistId ?? snapshot?.id ?? normalizedStartlistId;
+  const defaultStartlistPublicVersion =
+    eventLinkStatus.startlistPublicVersion ?? latestVersion?.version;
+  const defaultStartlistUpdatedAt =
+    eventLinkStatus.startlistUpdatedAt ?? latestVersion?.confirmedAt;
+  const derivedStartlistLink =
+    defaultStartlistId && defaultStartlistPublicVersion
+      ? buildStartlistPublicUrl(defaultStartlistId, defaultStartlistPublicVersion)
+      : undefined;
+  const defaultStartlistLink =
+    eventLinkStatus.startlistLink ?? finalizedStartlistLink ?? derivedStartlistLink;
   const defaultRaceId = eventLinkStatus.raceId ?? eventContext.raceId;
   const autoLinkedEventId = eventLinkStatus.status === 'success' ? eventLinkStatus.eventId : undefined;
   const isSelectedAutoLinkedEvent = Boolean(
@@ -147,7 +162,7 @@ const StartlistLinkContent = (): JSX.Element => {
           </p>
         </div>
         <p className="muted">
-          イベント管理機能を使って公開用 URL を登録すると、観客や選手に共有できます。
+          イベント管理機能を使ってスタートリスト ID を登録し、必要に応じて公開用 URL を共有できます。
         </p>
       </header>
 
@@ -158,7 +173,7 @@ const StartlistLinkContent = (): JSX.Element => {
             {isLoading && !isInitialLoadComplete ? <span>読み込み中…</span> : null}
           </div>
           <p className="muted">
-            イベントを選ぶと、そのイベントのレースにスタートリスト URL を登録できます。
+            イベントを選ぶと、そのイベントのレースにスタートリスト ID を登録できます。
           </p>
           <div className="startlist-link__controls">
             <label>
@@ -204,6 +219,8 @@ const StartlistLinkContent = (): JSX.Element => {
               />
               <p className="muted">
                 <Link to={`/events/${eventLinkStatus.eventId}`}>イベント詳細を開く</Link>
+                {' / スタートリスト ID: '}
+                <code>{eventLinkStatus.startlistId ?? defaultStartlistId ?? startlistId}</code>
                 {eventLinkStatus.startlistLink ? (
                   <>
                     {' / '}
@@ -236,7 +253,10 @@ const StartlistLinkContent = (): JSX.Element => {
                     void selectEvent(selectedEvent.id);
                     void refreshEvents();
                   }}
+                  defaultStartlistId={defaultStartlistId}
                   defaultStartlistLink={defaultStartlistLink}
+                  defaultStartlistUpdatedAt={defaultStartlistUpdatedAt}
+                  defaultStartlistPublicVersion={defaultStartlistPublicVersion}
                   defaultRaceId={defaultRaceId}
                 />
               )}
@@ -249,7 +269,7 @@ const StartlistLinkContent = (): JSX.Element => {
         <section className="startlist-link__new" aria-labelledby="startlist-link-create">
           <h2 id="startlist-link-create">新しいイベントを作成</h2>
           <p className="muted">
-            イベントを作成した後、そのイベントにレースを追加し、スタートリスト URL を登録できます。
+            イベントを作成した後、そのイベントにレースを追加し、スタートリスト ID を登録できます。
           </p>
           <EventCreateForm
             isSubmitting={isMutating}
