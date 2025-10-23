@@ -185,6 +185,7 @@ describe('startlistRoutes', () => {
     const createBody = createResponse.json();
     expect(createBody.startlistId).toBe(STARTLIST_ID);
     expect(createBody.created).toBe(true);
+    expect(createBody.status).toBe(createBody.snapshot.status);
     expect(createBody.snapshot.eventId).toBe(SETTINGS_PAYLOAD.eventId);
     expect(createBody.snapshot.raceId).toBe(STARTLIST_ID);
 
@@ -231,6 +232,7 @@ describe('startlistRoutes', () => {
     const body = secondResponse.json();
     expect(body.created).toBe(false);
     expect(body.startlistId).toBe(STARTLIST_ID);
+    expect(body.status).toBe(body.snapshot.status);
     expect(body.snapshot.eventId).toBe(SETTINGS_PAYLOAD.eventId);
     expect(body.snapshot.raceId).toBe(STARTLIST_ID);
   });

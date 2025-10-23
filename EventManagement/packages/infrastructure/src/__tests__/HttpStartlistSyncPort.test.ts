@@ -41,7 +41,13 @@ describe('HttpStartlistSyncPort', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 201,
-      text: async () => JSON.stringify({ id: 'startlist-777', status: 'draft' }),
+      text: async () =>
+        JSON.stringify({
+          startlistId: 'startlist-777',
+          created: true,
+          status: 'DRAFT',
+          snapshot: { status: 'DRAFT' },
+        }),
     });
 
     const port = new HttpStartlistSyncPort({
@@ -56,7 +62,7 @@ describe('HttpStartlistSyncPort', () => {
       updatedAt: new Date('2024-04-30T12:00:00.000Z'),
     });
 
-    expect(result).toEqual({ startlistId: 'startlist-777', status: 'draft' });
+    expect(result).toEqual({ startlistId: 'startlist-777', status: 'DRAFT' });
   });
 
   it('throws a StartlistSyncError when the upstream service responds with an error', async () => {
