@@ -15,20 +15,20 @@ import {
   StartlistVersionListQuerySchema,
   StartlistDiffQuerySchema,
   StartlistQueryOptionsSchema,
-  StartlistSyncBodySchema,
-  StartlistSyncResponseSchema,
+  StartlistCreateBodySchema,
+  StartlistCreateResponseSchema,
 } from './schemas.js';
 import { toEnterStartlistSettingsCommand, toStartlistHttpResponse } from './mappers.js';
 import {
   AssignLaneOrderUseCase,
   AssignPlayerOrderUseCase,
   AssignStartTimesUseCase,
+  CreateStartlistForRaceUseCase,
   EnterStartlistSettingsUseCase,
   FinalizeStartlistUseCase,
   InvalidateStartTimesUseCase,
   ManuallyFinalizeClassStartOrderUseCase,
   ManuallyReassignLaneOrderUseCase,
-  SyncRaceScheduleUseCase,
   StartlistQueryService,
   InvalidCommandError,
   PersistenceError,
@@ -47,7 +47,7 @@ export interface StartlistRoutesOptions {
     manuallyReassignLaneOrder: ManuallyReassignLaneOrderUseCase;
     manuallyFinalizeClassStartOrder: ManuallyFinalizeClassStartOrderUseCase;
     invalidateStartTimes: InvalidateStartTimesUseCase;
-    syncRaceSchedule: SyncRaceScheduleUseCase;
+    createStartlistForRace: CreateStartlistForRaceUseCase;
   };
   queryService: StartlistQueryService;
 }
@@ -63,7 +63,7 @@ type InvalidateStartTimesBody = Static<typeof InvalidateStartTimesBodySchema>;
 type StartlistQueryOptions = Static<typeof StartlistQueryOptionsSchema>;
 type StartlistVersionListQuery = Static<typeof StartlistVersionListQuerySchema>;
 type StartlistDiffQuery = Static<typeof StartlistDiffQuerySchema>;
-type StartlistSyncBody = Static<typeof StartlistSyncBodySchema>;
+type StartlistCreateBody = Static<typeof StartlistCreateBodySchema>;
 type JapanRankingParams = { categoryId: string; page: string };
 
 type ErrorPayload = {
@@ -125,26 +125,36 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
     reply.status(payload.statusCode).send(payload);
   });
 
-  fastify.post<{ Body: StartlistSyncBody }>(
+  fastify.post<{ Body: StartlistCreateBody }>(
     '/api/startlists',
     {
       schema: {
-        body: StartlistSyncBodySchema,
-        response: { 204: StartlistSyncResponseSchema },
+        body: StartlistCreateBodySchema,
+        response: {
+          200: StartlistCreateResponseSchema,
+          201: StartlistCreateResponseSchema,
+        },
       },
     },
     async (request, reply) => {
       const { eventId, raceId, schedule, updatedAt } = request.body;
-      await useCases.syncRaceSchedule.execute({
+      const result = await useCases.createStartlistForRace.execute({
+        startlistId: raceId,
         eventId,
         raceId,
         schedule: {
           start: new Date(schedule.start),
           end: schedule.end ? new Date(schedule.end) : undefined,
         },
-        updatedAt: new Date(updatedAt),
+        updatedAt: updatedAt ? new Date(updatedAt) : undefined,
       });
-      return reply.status(204).send();
+      const snapshot = toStartlistHttpResponse(result.snapshot);
+      const status = result.created ? 201 : 200;
+      return reply.status(status).send({
+        startlistId: result.startlistId,
+        created: result.created,
+        snapshot,
+      });
     },
   );
 

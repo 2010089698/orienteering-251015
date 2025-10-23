@@ -34,11 +34,23 @@ const clockStub = {
   now: () => fixedDate,
 };
 
+const createStartlist = (
+  startlistId: StartlistId,
+  eventId: string,
+  raceId?: string,
+) =>
+  Startlist.createNew(startlistId, clockStub, {
+    eventId,
+    raceId: raceId ?? `${startlistId.toString()}-race`,
+  });
+
 test('reconstitute clones provided state', () => {
   const startlistId = StartlistId.create('startlist-reconstitute');
   const interval = Duration.fromMinutes(1);
+  const eventId = 'event-reconstitute';
+  const raceId = 'race-reconstitute';
   const settings = StartlistSettings.create({
-    eventId: 'event-reconstitute',
+    eventId,
     startTime: fixedDate,
     laneClassInterval: interval,
     classPlayerInterval: interval,
@@ -63,6 +75,8 @@ test('reconstitute clones provided state', () => {
 
   const snapshotDto = toStartlistSnapshotDto({
     id: startlistId.toString(),
+    eventId,
+    raceId,
     settings,
     laneAssignments,
     classAssignments,
@@ -93,12 +107,16 @@ test('reconstitute clones provided state', () => {
   };
 
   assert.strictEqual(startlist.getStatus(), StartlistStatus.START_TIMES_ASSIGNED);
+  assert.strictEqual(startlist.getEventId(), eventId);
+  assert.strictEqual(startlist.getRaceId(), raceId);
   const snapshot = startlist.toSnapshot();
   assert.notStrictEqual(snapshot, snapshotDto);
   assert.deepStrictEqual(
     snapshot,
     toStartlistSnapshotDto({
       id: startlistId.toString(),
+      eventId,
+      raceId,
       settings,
       laneAssignments,
       classAssignments,
@@ -128,12 +146,19 @@ const expectSnapshot = (
     status: StartlistStatus;
   },
 ) => {
-  assert.deepStrictEqual(startlist.toSnapshot(), toStartlistSnapshotDto(params));
+  assert.deepStrictEqual(
+    startlist.toSnapshot(),
+    toStartlistSnapshotDto({
+      ...params,
+      eventId: startlist.getEventId(),
+      raceId: startlist.getRaceId(),
+    }),
+  );
 };
 
 test('pullDomainEvents returns a copy and clears the queue', () => {
   const startlistId = StartlistId.create('startlist-events');
-  const startlist = Startlist.createNew(startlistId, clockStub);
+  const startlist = createStartlist(startlistId, 'event-events');
   const interval = Duration.fromMinutes(1);
 
   const settings = StartlistSettings.create({
@@ -180,7 +205,7 @@ test('pullDomainEvents returns a copy and clears the queue', () => {
 describe('Startlist lifecycle scenarios', () => {
   test('successful flow from settings to finalization', () => {
     const startlistId = StartlistId.create('startlist-lifecycle-1');
-    const startlist = Startlist.createNew(startlistId, clockStub);
+    const startlist = createStartlist(startlistId, 'event-lifecycle-1');
     const interval = Duration.fromMinutes(1);
 
     assert.strictEqual(startlist.getStatus(), StartlistStatus.DRAFT);
@@ -301,6 +326,8 @@ describe('Startlist lifecycle scenarios', () => {
       finalizedSnapshot,
       toStartlistSnapshotDto({
         id: startlistId.toString(),
+        eventId: startlist.getEventId(),
+        raceId: startlist.getRaceId(),
         settings,
         laneAssignments,
         classAssignments,
@@ -323,7 +350,7 @@ describe('Startlist lifecycle scenarios', () => {
 
   test('manual lane reassignment and class order finalization invalidate start times', () => {
     const startlistId = StartlistId.create('startlist-lifecycle-2');
-    const startlist = Startlist.createNew(startlistId, clockStub);
+    const startlist = createStartlist(startlistId, 'event-lifecycle-2');
     const interval = Duration.fromMinutes(1);
 
     const settings = StartlistSettings.create({
@@ -482,7 +509,8 @@ describe('Startlist lifecycle scenarios', () => {
 
 describe('Startlist failure scenarios', () => {
   test('enterSettings rejects subsequent invocations', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-settings'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-settings');
+    const startlist = createStartlist(startlistId, 'event-failure-settings');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-settings',
@@ -511,7 +539,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignLaneOrderAndIntervals requires settings', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-lane-prereq'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-lane-prereq');
+    const startlist = createStartlist(startlistId, 'event-failure-lane-prereq');
     const interval = Duration.fromMinutes(1);
     const laneAssignment = LaneAssignment.create({
       laneNumber: 1,
@@ -537,7 +566,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignLaneOrderAndIntervals validates lane limits and uniqueness', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-lane-validation'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-lane-validation');
+    const startlist = createStartlist(startlistId, 'event-failure-lane-validation');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-lane-validation',
@@ -590,7 +620,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignLaneOrderAndIntervals reopens a finalized startlist and clears start times', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-lane-finalized'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-lane-finalized');
+    const startlist = createStartlist(startlistId, 'event-failure-lane-finalized');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-lane-finalized',
@@ -647,7 +678,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignPlayerOrderAndIntervals requires lane assignments', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-player-prereq'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-player-prereq');
+    const startlist = createStartlist(startlistId, 'event-failure-player-prereq');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-prereq',
@@ -679,7 +711,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignPlayerOrderAndIntervals validates class uniqueness and membership', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-player-validation'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-player-validation');
+    const startlist = createStartlist(startlistId, 'event-failure-player-validation');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-validation',
@@ -733,7 +766,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignPlayerOrderAndIntervals reopens a finalized startlist and clears start times', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-player-finalized'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-player-finalized');
+    const startlist = createStartlist(startlistId, 'event-failure-player-finalized');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-player-finalized',
@@ -790,7 +824,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('assignStartTimes reopens a finalized startlist and can finalize again', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-starttime-finalized'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-starttime-finalized');
+    const startlist = createStartlist(startlistId, 'event-failure-starttime-finalized');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-starttime-finalized',
@@ -852,7 +887,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('finalizeStartlist requires assigned start times', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-finalize-prereq'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-finalize-prereq');
+    const startlist = createStartlist(startlistId, 'event-failure-finalize-prereq');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-finalize-prereq',
@@ -889,7 +925,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('invalidateStartTimes requires existing assignments and reopens finalized startlist', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-invalidate'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-invalidate');
+    const startlist = createStartlist(startlistId, 'event-failure-invalidate');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-invalidate',
@@ -959,7 +996,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('manuallyReassignLaneOrder propagates reason and reopens finalized startlist', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-manual-lane'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-manual-lane');
+    const startlist = createStartlist(startlistId, 'event-failure-manual-lane');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-manual-lane',
@@ -1015,7 +1053,8 @@ describe('Startlist failure scenarios', () => {
   });
 
   test('manuallyFinalizeClassStartOrder propagates reason and reopens finalized startlist', () => {
-    const startlist = Startlist.createNew(StartlistId.create('startlist-failure-manual-class'), clockStub);
+    const startlistId = StartlistId.create('startlist-failure-manual-class');
+    const startlist = createStartlist(startlistId, 'event-failure-manual-class');
     const interval = Duration.fromMinutes(1);
     const settings = StartlistSettings.create({
       eventId: 'event-failure-manual-class',

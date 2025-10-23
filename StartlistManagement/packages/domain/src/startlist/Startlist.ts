@@ -29,6 +29,11 @@ import { StartlistFinalizedEvent } from './events/StartlistFinalizedEvent.js';
 import { StartlistSettingsEnteredEvent } from './events/StartlistSettingsEnteredEvent.js';
 import { StartlistVersionGeneratedEvent } from './events/StartlistVersionGeneratedEvent.js';
 
+export interface StartlistMetadata {
+  eventId: string;
+  raceId: string;
+}
+
 export class Startlist {
   private settings?: StartlistSettings;
   private laneAssignments: LaneAssignment[] = [];
@@ -37,10 +42,15 @@ export class Startlist {
   private status: StartlistStatus = StartlistStatus.DRAFT;
   private pendingEvents: DomainEvent[] = [];
 
-  private constructor(private readonly id: StartlistId, private readonly clock: DomainClock) {}
+  private constructor(
+    private readonly id: StartlistId,
+    private readonly clock: DomainClock,
+    private readonly metadata: StartlistMetadata,
+  ) {}
 
-  static createNew(id: StartlistId, clock: DomainClock): Startlist {
-    return new Startlist(id, clock);
+  static createNew(id: StartlistId, clock: DomainClock, metadata: StartlistMetadata): Startlist {
+    Startlist.ensureMetadata(metadata);
+    return new Startlist(id, clock, { ...metadata });
   }
 
   static reconstitute(params: {
@@ -48,9 +58,16 @@ export class Startlist {
     clock: DomainClock;
     snapshot: StartlistSnapshotDto;
   }): Startlist {
-    const startlist = new Startlist(params.id, params.clock);
-    const { settings, laneAssignments, classAssignments, startTimes, status } =
-      fromStartlistSnapshotDto(params.snapshot);
+    const {
+      settings,
+      laneAssignments,
+      classAssignments,
+      startTimes,
+      status,
+      metadata,
+    } = fromStartlistSnapshotDto(params.snapshot);
+    Startlist.ensureMetadata(metadata);
+    const startlist = new Startlist(params.id, params.clock, { ...metadata });
     if (settings) {
       startlist.settings = settings;
     }
@@ -63,6 +80,14 @@ export class Startlist {
 
   getId(): StartlistId {
     return this.id;
+  }
+
+  getEventId(): string {
+    return this.metadata.eventId;
+  }
+
+  getRaceId(): string {
+    return this.metadata.raceId;
   }
 
   getStatus(): StartlistStatus {
@@ -92,6 +117,8 @@ export class Startlist {
   toSnapshot(): StartlistSnapshot {
     return toStartlistSnapshotDto({
       id: this.id.toString(),
+      eventId: this.metadata.eventId,
+      raceId: this.metadata.raceId,
       settings: this.settings,
       laneAssignments: this.laneAssignments,
       classAssignments: this.classAssignments,
@@ -299,5 +326,14 @@ export class Startlist {
 
   private record(event: DomainEvent): void {
     this.pendingEvents.push(event);
+  }
+
+  private static ensureMetadata(metadata: StartlistMetadata): void {
+    if (!metadata.eventId || metadata.eventId.trim().length === 0) {
+      throw new DomainError('eventId is required to create a startlist.');
+    }
+    if (!metadata.raceId || metadata.raceId.trim().length === 0) {
+      throw new DomainError('raceId is required to create a startlist.');
+    }
   }
 }

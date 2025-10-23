@@ -2,6 +2,7 @@ import {
   DomainEvent,
   Startlist,
   StartlistFactory,
+  StartlistMetadata,
   StartlistId,
   StartlistRepository,
   StartlistSnapshot,
@@ -30,7 +31,7 @@ export abstract class StartlistCommandBase {
   protected async executeOnStartlist(
     startlistIdRaw: string,
     mutate: (startlist: Startlist) => Promise<void> | void,
-    options: { allowCreate?: boolean } = {},
+    options: { allowCreate?: boolean; createContext?: StartlistMetadata } = {},
   ): Promise<StartlistSnapshot> {
     try {
       const startlistId = StartlistId.create(startlistIdRaw);
@@ -43,7 +44,10 @@ export abstract class StartlistCommandBase {
         if (!this.factory) {
           throw new InvalidCommandError('Startlist factory is required to create a new startlist.');
         }
-        startlist = this.factory.create(startlistId);
+        if (!options.createContext) {
+          throw new InvalidCommandError('Startlist creation context is required to create a new startlist.');
+        }
+        startlist = this.factory.create(startlistId, options.createContext);
       }
 
       const { snapshot, events } = await this.transactionManager.execute(async () => {

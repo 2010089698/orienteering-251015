@@ -14,6 +14,8 @@ import { StartlistQueryServiceImpl } from '../queries/StartlistQueryService.js';
 
 const baseSnapshot: StartlistSnapshot = {
   id: 'startlist-1',
+  eventId: 'event-1',
+  raceId: 'race-1',
   status: StartlistStatus.LANE_ORDER_ASSIGNED,
   laneAssignments: [],
   classAssignments: [],

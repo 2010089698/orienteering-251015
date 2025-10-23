@@ -18,6 +18,8 @@ import { StartlistCommandBase } from '../commands/StartlistCommandBase.js';
 
 const snapshot: StartlistSnapshot = {
   id: 'startlist-1',
+  eventId: 'event-1',
+  raceId: 'race-1',
   settings: undefined,
   laneAssignments: [],
   classAssignments: [],
@@ -133,10 +135,14 @@ describe('StartlistCommandBase', () => {
     };
     const command = new TestCommand(repository, versionRepository, transaction, publisher, factory);
     const mutate = vi.fn();
+    const creationContext = { eventId: 'event-create', raceId: 'race-create' };
 
-    const result = await command.run('startlist-1', mutate, { allowCreate: true });
+    const result = await command.run('startlist-1', mutate, {
+      allowCreate: true,
+      createContext: creationContext,
+    });
 
-    expect(factory.create).toHaveBeenCalledWith(StartlistId.create('startlist-1'));
+    expect(factory.create).toHaveBeenCalledWith(StartlistId.create('startlist-1'), creationContext);
     expect(mutate).toHaveBeenCalledWith(createdStartlist);
     expect(repository.save).toHaveBeenCalledWith(createdStartlist);
     expect(createdStartlist.pullDomainEvents).toHaveBeenCalled();
@@ -155,9 +161,26 @@ describe('StartlistCommandBase', () => {
     const { repository, versionRepository, transaction, publisher } = createMocks({ startlist: undefined });
     const command = new TestCommand(repository, versionRepository, transaction, publisher);
 
-    await expect(command.run('missing', vi.fn(), { allowCreate: true })).rejects.toBeInstanceOf(
-      InvalidCommandError,
-    );
+    await expect(
+      command.run('missing', vi.fn(), {
+        allowCreate: true,
+        createContext: { eventId: 'event-missing-factory', raceId: 'race-missing-factory' },
+      }),
+    ).rejects.toBeInstanceOf(InvalidCommandError);
+  });
+
+  it('throws when allowCreate is true but creation context is missing', async () => {
+    const factory = {
+      create: vi.fn(),
+    } as unknown as StartlistFactory;
+    const { repository, versionRepository, transaction, publisher } = createMocks({ startlist: undefined });
+    const command = new TestCommand(repository, versionRepository, transaction, publisher, factory);
+
+    await expect(
+      command.run('missing', vi.fn(), {
+        allowCreate: true,
+      }),
+    ).rejects.toBeInstanceOf(InvalidCommandError);
   });
 
   it('wraps repository save errors into PersistenceError', async () => {

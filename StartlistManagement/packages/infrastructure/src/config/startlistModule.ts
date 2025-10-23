@@ -13,6 +13,8 @@ import {
   AssignPlayerOrderUseCase,
   AssignStartTimesService,
   AssignStartTimesUseCase,
+  CreateStartlistForRaceService,
+  CreateStartlistForRaceUseCase,
   EnterStartlistSettingsService,
   EnterStartlistSettingsUseCase,
   FinalizeStartlistService,
@@ -23,8 +25,6 @@ import {
   ManuallyFinalizeClassStartOrderUseCase,
   ManuallyReassignLaneOrderService,
   ManuallyReassignLaneOrderUseCase,
-  SyncRaceScheduleService,
-  SyncRaceScheduleUseCase,
   StartlistQueryService,
   StartlistQueryServiceImpl,
   StartlistReadRepository,
@@ -45,7 +45,7 @@ export interface StartlistUseCases {
   manuallyReassignLaneOrder: ManuallyReassignLaneOrderUseCase;
   manuallyFinalizeClassStartOrder: ManuallyFinalizeClassStartOrderUseCase;
   invalidateStartTimes: InvalidateStartTimesUseCase;
-  syncRaceSchedule: SyncRaceScheduleUseCase;
+  createStartlistForRace: CreateStartlistForRaceUseCase;
 }
 
 export interface StartlistModule {
@@ -73,6 +73,11 @@ export const createStartlistModule = (): StartlistModule => {
     transactionManager,
     eventPublisher,
     factory,
+  );
+  const createStartlistForRace = new CreateStartlistForRaceService(
+    repository,
+    factory,
+    transactionManager,
   );
   const assignLaneOrder = new AssignLaneOrderService(
     repository,
@@ -116,7 +121,6 @@ export const createStartlistModule = (): StartlistModule => {
     transactionManager,
     eventPublisher,
   );
-  const syncRaceSchedule = new SyncRaceScheduleService();
 
   const queryService = new StartlistQueryServiceImpl(readRepository, versionRepository);
 
@@ -135,7 +139,7 @@ export const createStartlistModule = (): StartlistModule => {
       manuallyReassignLaneOrder,
       manuallyFinalizeClassStartOrder,
       invalidateStartTimes,
-      syncRaceSchedule,
+      createStartlistForRace,
     },
     queryService,
   };

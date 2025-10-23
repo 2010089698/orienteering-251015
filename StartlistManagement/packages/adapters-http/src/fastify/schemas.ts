@@ -126,6 +126,8 @@ const StartlistDiffSchema = Type.Object({
 
 export const StartlistResponseSchema = Type.Object({
   id: Type.String(),
+  eventId: Type.String(),
+  raceId: Type.String(),
   status: Type.Enum(StartlistStatus),
   settings: Type.Optional(StartlistSettingsResponseSchema),
   laneAssignments: Type.Array(LaneAssignmentResponseSchema),
@@ -193,16 +195,20 @@ export const InvalidateStartTimesBodySchema = Type.Object({
   reason: Type.String({ minLength: 1 }),
 });
 
-const StartlistSyncScheduleSchema = Type.Object({
+const StartlistCreateScheduleSchema = Type.Object({
   start: Type.String({ format: 'date-time' }),
   end: Type.Optional(Type.String({ format: 'date-time' })),
 });
 
-export const StartlistSyncBodySchema = Type.Object({
+export const StartlistCreateBodySchema = Type.Object({
   eventId: Type.String({ minLength: 1 }),
   raceId: Type.String({ minLength: 1 }),
-  schedule: StartlistSyncScheduleSchema,
-  updatedAt: Type.String({ format: 'date-time' }),
+  schedule: StartlistCreateScheduleSchema,
+  updatedAt: Type.Optional(Type.String({ format: 'date-time' })),
 });
 
-export const StartlistSyncResponseSchema = Type.Null();
+export const StartlistCreateResponseSchema = Type.Object({
+  startlistId: Type.String(),
+  created: Type.Boolean(),
+  snapshot: StartlistResponseSchema,
+});
