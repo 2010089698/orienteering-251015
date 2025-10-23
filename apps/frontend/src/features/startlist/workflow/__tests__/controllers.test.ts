@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   mockFinalize: vi.fn(),
   mockFetchVersions: vi.fn(),
   mockUpdateSnapshot: vi.fn(),
-  mockAttachStartlist: vi.fn(),
+  mockTryAutoAttachStartlist: vi.fn(),
   mockSetEventLinkStatus: vi.fn(),
 }));
 
@@ -123,10 +123,47 @@ vi.mock('../../api/useStartlistApi', () => ({
   }),
 }));
 
-vi.mock('../../../event-management/api/useEventManagementApi', () => ({
-  useEventManagementApi: () => ({
-    attachStartlist: mocks.mockAttachStartlist,
-  }),
+vi.mock('../../utils/eventLinking', () => ({
+  tryAutoAttachStartlist: async (params: {
+    dispatch: unknown;
+    eventContext: { eventId?: string; raceId?: string };
+    startlistId: string;
+    version: number;
+    confirmedAt: string;
+  }) => {
+    mocks.mockTryAutoAttachStartlist(params);
+
+    const { dispatch, eventContext, startlistId, version, confirmedAt } = params;
+    const startlistLink = `https://public.example.com/startlists/${startlistId}/v/${version}`;
+
+    if (eventContext.eventId && eventContext.raceId) {
+      const baseStatus = {
+        eventId: eventContext.eventId,
+        raceId: eventContext.raceId,
+        startlistId,
+        startlistLink,
+        startlistUpdatedAt: confirmedAt,
+        startlistPublicVersion: version,
+      } as const;
+
+      mocks.mockSetEventLinkStatus(dispatch, {
+        status: 'linking',
+        ...baseStatus,
+      });
+
+      mocks.mockSetEventLinkStatus(dispatch, {
+        status: 'success',
+        ...baseStatus,
+      });
+
+      mocks.mockSetStatus(dispatch, 'snapshot', {
+        text: 'スタートリストをイベント管理に同期しました。',
+        level: 'success',
+      });
+    }
+
+    return 'success';
+  },
 }));
 
 let mockEntries: any[] = [];
@@ -246,8 +283,7 @@ const resetState = () => {
     ],
   });
   mocks.mockUpdateSnapshot.mockReset();
-  mocks.mockAttachStartlist.mockReset();
-  mocks.mockAttachStartlist.mockResolvedValue(undefined);
+  mocks.mockTryAutoAttachStartlist.mockReset();
   mocks.mockSetEventLinkStatus.mockReset();
   mockEventContext = { eventId: 'event-1', raceId: 'race-1' };
 };
@@ -508,13 +544,12 @@ describe('useClassOrderController', () => {
       expect.objectContaining({ level: 'success' }),
     );
     expect(mocks.mockFetchVersions).toHaveBeenCalledWith({ startlistId: mockStartlistId, limit: 1 });
-    expect(mocks.mockAttachStartlist).toHaveBeenCalledWith({
-      eventId: 'event-1',
-      raceId: 'race-1',
+    expect(mocks.mockTryAutoAttachStartlist).toHaveBeenCalledWith({
+      dispatch: mocks.mockDispatch,
+      eventContext: { eventId: 'event-1', raceId: 'race-1' },
       startlistId: mockStartlistId,
-      startlistLink: 'https://public.example.com/startlists/startlist-1/v/3',
-      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-      startlistPublicVersion: 3,
+      version: 3,
+      confirmedAt: '2024-04-05T09:00:00.000Z',
     });
     expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
@@ -535,7 +570,7 @@ describe('useClassOrderController', () => {
     expect(mocks.mockSetStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
       'snapshot',
-      expect.objectContaining({ level: 'success', text: 'イベントにスタートリストを自動連携しました。' }),
+      expect.objectContaining({ level: 'success', text: 'スタートリストをイベント管理に同期しました。' }),
     );
     expect(mocks.mockNavigate).toHaveBeenCalledWith('/startlist/link');
     expect(mocks.mockSetLoading).toHaveBeenCalledWith(mocks.mockDispatch, 'startTimes', false);

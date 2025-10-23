@@ -21,13 +21,6 @@ export const createEventManagementApiMock = (
   scheduleRace: vi.fn(async () => {
     throw new Error('scheduleRace mock not implemented');
   }),
-  attachStartlist: vi
-    .fn<
-      Parameters<EventManagementApiMock['attachStartlist']>,
-      ReturnType<EventManagementApiMock['attachStartlist']>
-    >(async () => {
-      throw new Error('attachStartlist mock not implemented');
-    }),
   ...overrides,
 });
 

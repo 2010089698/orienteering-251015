@@ -36,10 +36,7 @@ const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
         schedule: { start: '2024-04-01T01:00:00.000Z', end: undefined },
         duplicateDay: false,
         overlapsExisting: false,
-        startlistId: undefined,
-        startlistLink: undefined,
-        startlistUpdatedAt: undefined,
-        startlistPublicVersion: undefined,
+        startlist: undefined,
       },
     ],
     ...overrides,
@@ -54,6 +51,7 @@ const createStartlistSnapshot = (
   laneAssignments: [],
   classAssignments: [],
   startTimes: [],
+  versions: [],
   ...overrides,
 });
 
@@ -159,8 +157,19 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByText('指定されたイベントが見つかりません。')).toBeInTheDocument();
   });
 
-  it('renders the event detail, shows races, and updates after scheduling and attaching startlists', async () => {
-    const initialEvent = createEvent();
+  it('renders the event detail, shows races, and surfaces startlist metadata after scheduling', async () => {
+    const initialEvent = createEvent({
+      races: [
+        {
+          id: 'race-1',
+          name: 'Day 1',
+          schedule: { start: '2024-04-01T01:00:00.000Z', end: undefined },
+          duplicateDay: false,
+          overlapsExisting: false,
+          startlist: { id: 'SL-1', status: 'DRAFT' },
+        },
+      ],
+    });
     const scheduledEvent: EventDto = {
       ...initialEvent,
       races: [
@@ -171,34 +180,23 @@ describe('EventManagementLayout', () => {
           schedule: { start: '2024-04-02T01:00:00.000Z', end: undefined },
           duplicateDay: false,
           overlapsExisting: false,
-          startlistId: undefined,
-          startlistLink: undefined,
-          startlistUpdatedAt: undefined,
-          startlistPublicVersion: undefined,
+          startlist: { id: 'SL-2', status: 'FINALIZED' },
         },
       ],
     };
-    const attachedEvent: EventDto = {
-      ...scheduledEvent,
-      races: scheduledEvent.races.map((race) =>
-        race.id === 'race-1'
-          ? {
-              ...race,
-              startlistId: 'SL-1',
-              startlistLink: 'https://example.com/startlist',
-              startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-              startlistPublicVersion: 5,
-            }
-          : race,
-      ),
-    };
 
-    const fetchSnapshotMock = vi.fn(async () =>
+    const fetchSnapshotMock = vi.fn(async ({ startlistId }: { startlistId: string }) =>
       createStartlistSnapshot({
-        id: 'SL-1',
+        id: startlistId,
+        status: startlistId === 'SL-2' ? 'FINALIZED' : 'DRAFT',
+        versions: [
+          {
+            version: startlistId === 'SL-2' ? 5 : 1,
+            confirmedAt: '2024-04-05T09:00:00.000Z',
+          },
+        ],
         startTimes: [
           { playerId: 'P-1', laneNumber: 1, startTime: '2024-04-05T09:00:00.000Z' },
-          { playerId: 'P-2', laneNumber: 2, startTime: '2024-04-05T09:02:00.000Z' },
         ],
       }),
     );
@@ -210,17 +208,17 @@ describe('EventManagementLayout', () => {
       .fn<Parameters<EventManagementApiMock['getEvent']>, ReturnType<EventManagementApiMock['getEvent']>>()
       .mockResolvedValueOnce(initialEvent)
       .mockResolvedValueOnce(scheduledEvent)
-      .mockResolvedValueOnce(attachedEvent)
-      .mockResolvedValue(attachedEvent);
+      .mockResolvedValue(scheduledEvent);
 
-    const scheduleRaceMock = vi.fn(async () => scheduledEvent);
-    const attachStartlistMock = vi.fn(async () => ({ event: attachedEvent, startlistId: 'SL-1' }));
+    const scheduleRaceMock = vi.fn(async () => ({
+      event: scheduledEvent,
+      startlist: { raceId: 'race-2', raceName: 'Day 2', startlistId: 'SL-2', status: 'FINALIZED' },
+    }));
 
     const apiMock = createEventManagementApiMock({
       listEvents: vi.fn(async () => []),
       getEvent: getEventMock,
       scheduleRace: scheduleRaceMock,
-      attachStartlist: attachStartlistMock,
     });
 
     mockedUseEventManagementApi.mockReturnValue(apiMock);
@@ -231,40 +229,25 @@ describe('EventManagementLayout', () => {
 
     expect(await screen.findByRole('heading', { name: '春のミドル' })).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.queryByText('レースがまだスケジュールされていません。')).not.toBeInTheDocument();
-    const startlistCreationLinks = await screen.findAllByRole('link', { name: 'スタートリストを作成' });
-    const startlistCreationHrefs = startlistCreationLinks.map((link) => link.getAttribute('href'));
-    expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1');
-    expect(startlistCreationHrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
+    expect(await screen.findByText('ID: SL-1')).toBeInTheDocument();
+    expect(fetchSnapshotMock).toHaveBeenCalledWith({ startlistId: 'SL-1', includeVersions: true, versionLimit: 1 });
 
     await user.type(screen.getByLabelText('レース名'), 'Day 2');
     await user.type(screen.getByLabelText('レース日'), '2024-04-02');
     await user.click(screen.getByRole('button', { name: 'レースを登録' }));
 
-    expect(await screen.findByText('レースをスケジュールしました。')).toBeInTheDocument();
+    expect(
+      await screen.findByText('レースをスケジュールしました。スタートリスト SL-2（公開済み） を自動作成しました。'),
+    ).toBeInTheDocument();
     expect(await screen.findByRole('rowheader', { name: 'Day 2' })).toBeInTheDocument();
+    expect(fetchSnapshotMock).toHaveBeenCalledWith({ startlistId: 'SL-2', includeVersions: true, versionLimit: 1 });
     const schedulePayload = scheduleRaceMock.mock.calls.at(-1)?.[0];
     expect(schedulePayload).toMatchObject({ eventId: 'event-1', name: 'Day 2', date: '2024-04-02' });
 
-    await user.selectOptions(screen.getByLabelText('対象レース'), 'race-1');
-    await user.clear(screen.getByLabelText('スタートリストID'));
-    await user.type(screen.getByLabelText('スタートリストID'), 'SL-1');
-    await user.type(screen.getByLabelText('公開URL（任意）'), 'https://example.com/startlist');
-    await user.click(screen.getByRole('button', { name: 'スタートリストを設定' }));
-
-    expect(await screen.findByText('スタートリストを連携しました。')).toBeInTheDocument();
-    const startlistLink = await screen.findByRole('link', { name: 'スタートリストを表示' });
-    expect(startlistLink).toHaveAttribute('href', 'https://example.com/startlist');
-    expect(await screen.findByRole('table', { name: 'スタートリストのプレビュー' })).toBeInTheDocument();
-    expect(await screen.findByText(/更新:/)).toBeInTheDocument();
-    expect(await screen.findByText('公開バージョン v5')).toBeInTheDocument();
-    const attachPayload = attachStartlistMock.mock.calls.at(-1)?.[0];
-    expect(attachPayload).toMatchObject({
-      eventId: 'event-1',
-      raceId: 'race-1',
-      startlistId: 'SL-1',
-      startlistLink: 'https://example.com/startlist',
-    });
-    expect(fetchSnapshotMock).toHaveBeenCalledWith({ startlistId: 'SL-1' });
+    const managementLinks = await screen.findAllByRole('link', { name: 'スタートリストを編集' });
+    const hrefs = managementLinks.map((link) => link.getAttribute('href'));
+    expect(hrefs).toContain('/startlist?eventId=event-1');
+    expect(hrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
+    expect(hrefs).toContain('/startlist?eventId=event-1&raceId=race-2');
   });
 });

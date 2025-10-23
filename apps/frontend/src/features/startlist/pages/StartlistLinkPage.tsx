@@ -4,16 +4,14 @@ import { StatusMessage } from '@orienteering/shared-ui';
 
 import { EventManagementProvider, useEventManagement } from '../../event-management/state';
 import EventCreateForm from '../../event-management/components/EventCreateForm';
-import AttachStartlistForm from '../../event-management/components/AttachStartlistForm';
+import RaceList from '../../event-management/components/RaceList';
 import {
   useStartlistEventContext,
   useStartlistEventLinkStatus,
   useStartlistStartlistId,
-  useStartlistLatestVersion,
   useStartlistSnapshot,
 } from '../state/StartlistContext';
 import { useStartlistStepGuard } from '../hooks/useStartlistStepGuard';
-import { buildStartlistPublicUrl, useFinalizedStartlistLink } from '../utils/startlistLinks';
 
 const ensureErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -51,11 +49,8 @@ const StartlistLinkContent = (): JSX.Element => {
     refreshEvents,
     selectEvent,
     createEvent,
-    attachStartlist,
   } = useEventManagement();
   const startlistId = useStartlistStartlistId();
-  const finalizedStartlistLink = useFinalizedStartlistLink();
-  const latestVersion = useStartlistLatestVersion();
   const snapshot = useStartlistSnapshot();
   const eventContext = useStartlistEventContext();
   const eventLinkStatus = useStartlistEventLinkStatus();
@@ -136,33 +131,18 @@ const StartlistLinkContent = (): JSX.Element => {
 
   const normalizedStartlistId = startlistId?.trim() ? startlistId.trim() : undefined;
   const defaultStartlistId = eventLinkStatus.startlistId ?? snapshot?.id ?? normalizedStartlistId;
-  const defaultStartlistPublicVersion =
-    eventLinkStatus.startlistPublicVersion ?? latestVersion?.version;
-  const defaultStartlistUpdatedAt =
-    eventLinkStatus.startlistUpdatedAt ?? latestVersion?.confirmedAt;
-  const derivedStartlistLink =
-    defaultStartlistId && defaultStartlistPublicVersion
-      ? buildStartlistPublicUrl(defaultStartlistId, defaultStartlistPublicVersion)
-      : undefined;
-  const defaultStartlistLink =
-    eventLinkStatus.startlistLink ?? finalizedStartlistLink ?? derivedStartlistLink;
-  const defaultRaceId = eventLinkStatus.raceId ?? eventContext.raceId;
-  const autoLinkedEventId = eventLinkStatus.status === 'success' ? eventLinkStatus.eventId : undefined;
-  const isSelectedAutoLinkedEvent = Boolean(
-    autoLinkedEventId && selectedEvent && selectedEvent.id === autoLinkedEventId,
-  );
 
   return (
     <div className="startlist-link">
       <header className="startlist-link__header">
         <div>
-          <h1>スタートリストをイベントに連携</h1>
+          <h1>スタートリストのイベント連携状況</h1>
           <p className="muted">
             スタートリスト ID: <code>{startlistId}</code>
           </p>
         </div>
         <p className="muted">
-          イベント管理機能を使ってスタートリスト ID を登録し、必要に応じて公開用 URL を共有できます。
+          レースをイベント管理で登録すると、スタートリスト管理アプリに自動的に連携されます。進捗を確認し、必要に応じてイベント管理ページから詳細を確認してください。
         </p>
       </header>
 
@@ -173,7 +153,7 @@ const StartlistLinkContent = (): JSX.Element => {
             {isLoading && !isInitialLoadComplete ? <span>読み込み中…</span> : null}
           </div>
           <p className="muted">
-            イベントを選ぶと、そのイベントのレースにスタートリスト ID を登録できます。
+            イベントを選ぶと、自動的に連携されたスタートリストの状態が表示されます。
           </p>
           <div className="startlist-link__controls">
             <label>
@@ -241,35 +221,17 @@ const StartlistLinkContent = (): JSX.Element => {
               <p className="muted">
                 <Link to={`/events/${selectedEvent.id}`}>イベント詳細を開く</Link>
               </p>
-              {isSelectedAutoLinkedEvent ? (
-                <p className="muted">このイベントにはスタートリストが自動連携されています。</p>
-              ) : (
-                <AttachStartlistForm
-                  eventId={selectedEvent.id}
-                  races={selectedEvent.races ?? []}
-                  isSubmitting={isMutating}
-                  onAttach={attachStartlist}
-                  onAttached={() => {
-                    void selectEvent(selectedEvent.id);
-                    void refreshEvents();
-                  }}
-                  defaultStartlistId={defaultStartlistId}
-                  defaultStartlistLink={defaultStartlistLink}
-                  defaultStartlistUpdatedAt={defaultStartlistUpdatedAt}
-                  defaultStartlistPublicVersion={defaultStartlistPublicVersion}
-                  defaultRaceId={defaultRaceId}
-                />
-              )}
+              <RaceList races={selectedEvent.races ?? []} eventId={selectedEvent.id} />
             </div>
           ) : (
-            <p className="muted">イベントを選択すると紐づけフォームが表示されます。</p>
+            <p className="muted">イベントを選択すると連携状況が表示されます。</p>
           )}
         </section>
 
         <section className="startlist-link__new" aria-labelledby="startlist-link-create">
           <h2 id="startlist-link-create">新しいイベントを作成</h2>
           <p className="muted">
-            イベントを作成した後、そのイベントにレースを追加し、スタートリスト ID を登録できます。
+            イベントを作成した後、そのイベントにレースを追加するとスタートリストが自動生成されます。
           </p>
           <EventCreateForm
             isSubmitting={isMutating}

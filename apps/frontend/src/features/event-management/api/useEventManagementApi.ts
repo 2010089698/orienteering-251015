@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { resolveApiEndpoint } from '../../../config/api';
 import type {
-  AttachStartlistCommand,
   CreateEventCommand,
   EventDto,
+  RaceDto,
   ScheduleRaceCommand,
 } from '@event-management/application';
 
@@ -15,10 +15,61 @@ interface EventListResponse {
   events: EventDto[];
 }
 
-interface AttachStartlistResponse {
-  event: EventDto;
+export interface ScheduledRaceStartlist {
+  raceId: string;
+  raceName: string;
   startlistId: string;
+  status: string;
 }
+
+export interface ScheduleRaceResult {
+  event: EventDto;
+  startlist?: ScheduledRaceStartlist;
+}
+
+const toIsoString = (value?: string): string | null => {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return null;
+  }
+  return parsed.toISOString();
+};
+
+const extractScheduledRaceStartlist = (
+  event: EventDto,
+  command: ScheduleRaceCommand,
+): ScheduledRaceStartlist | undefined => {
+  const targetStart = toIsoString(command.date);
+  const candidates = [...event.races].reverse();
+  const matchingRace = candidates.find((race: RaceDto) => {
+    if (!race.startlist) {
+      return false;
+    }
+    if (race.name !== command.name) {
+      return false;
+    }
+    if (!targetStart) {
+      return true;
+    }
+    const raceStart = toIsoString(race.schedule.start);
+    return raceStart === targetStart;
+  });
+
+  if (!matchingRace?.startlist) {
+    return undefined;
+  }
+
+  const { id: raceId, name: raceName, startlist } = matchingRace;
+  return {
+    raceId,
+    raceName,
+    startlistId: startlist.id,
+    status: startlist.status,
+  };
+};
 
 const ensureOk = async (response: Response): Promise<unknown> => {
   if (!response.ok) {
@@ -94,22 +145,11 @@ export const useEventManagementApi = () => {
   );
 
   const scheduleRace = useCallback(
-    async (command: ScheduleRaceCommand): Promise<EventDto> => {
+    async (command: ScheduleRaceCommand): Promise<ScheduleRaceResult> => {
       const { eventId, name, date } = command;
       const { event } = (await postJson(`/${encodeURIComponent(eventId)}/races`, { name, date })) as EventResponse;
-      return event;
-    },
-    [postJson],
-  );
-
-  const attachStartlist = useCallback(
-    async (command: AttachStartlistCommand): Promise<AttachStartlistResponse> => {
-      const { eventId, raceId, ...payload } = command;
-      const { event, startlistId } = (await postJson(
-        `/${encodeURIComponent(eventId)}/races/${encodeURIComponent(raceId)}/startlist`,
-        payload,
-      )) as AttachStartlistResponse;
-      return { event, startlistId };
+      const startlist = extractScheduledRaceStartlist(event, command);
+      return { event, startlist };
     },
     [postJson],
   );
@@ -119,6 +159,5 @@ export const useEventManagementApi = () => {
     getEvent,
     createEvent,
     scheduleRace,
-    attachStartlist,
   };
 };

@@ -3,8 +3,7 @@ import { StatusMessage } from '@orienteering/shared-ui';
 import type { StartlistWithHistoryDto } from '@startlist-management/application';
 
 import { useStartlistApi } from '../../startlist/api/useStartlistApi';
-
-type StartlistStatus = StartlistWithHistoryDto['status'];
+import { getStartlistStatusLabel } from '../utils/startlistStatus';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
@@ -16,19 +15,9 @@ const timeFormatter = new Intl.DateTimeFormat('ja-JP', {
   minute: '2-digit',
 });
 
-const statusLabelMap: Record<StartlistStatus, string> = {
-  DRAFT: '下書き',
-  SETTINGS_ENTERED: '設定入力済み',
-  LANE_ORDER_ASSIGNED: 'レーン確定済み',
-  PLAYER_ORDER_ASSIGNED: 'クラス順確定',
-  START_TIMES_ASSIGNED: 'スタート時刻確定',
-  FINALIZED: '公開済み',
-};
-
 interface StartlistPreviewProps {
   startlistId: string;
-  version?: number;
-  updatedAt?: string;
+  initialStatus?: string;
 }
 
 const PREVIEW_LIMIT = 5;
@@ -46,7 +35,7 @@ const formatDateTime = (value?: string): string | null => {
   return dateTimeFormatter.format(parsed);
 };
 
-const StartlistPreview = ({ startlistId, version, updatedAt }: StartlistPreviewProps) => {
+const StartlistPreview = ({ startlistId, initialStatus }: StartlistPreviewProps) => {
   const { fetchSnapshot } = useStartlistApi();
   const [snapshot, setSnapshot] = useState<StartlistWithHistoryDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +48,7 @@ const StartlistPreview = ({ startlistId, version, updatedAt }: StartlistPreviewP
       setIsLoading(true);
       setError(null);
       try {
-        const latest = await fetchSnapshot({ startlistId });
+        const latest = await fetchSnapshot({ startlistId, includeVersions: true, versionLimit: 1 });
         if (cancelled) {
           return;
         }
@@ -82,7 +71,7 @@ const StartlistPreview = ({ startlistId, version, updatedAt }: StartlistPreviewP
     return () => {
       cancelled = true;
     };
-  }, [fetchSnapshot, startlistId, version]);
+  }, [fetchSnapshot, startlistId]);
 
   const previewStartTimes = useMemo(() => {
     if (!snapshot?.startTimes.length) {
@@ -100,10 +89,11 @@ const StartlistPreview = ({ startlistId, version, updatedAt }: StartlistPreviewP
   const totalStartTimes = snapshot?.startTimes.length ?? 0;
   const remainingCount = Math.max(0, totalStartTimes - previewStartTimes.length);
 
-  const formattedUpdatedAt = formatDateTime(updatedAt);
   const formattedStartTime = formatDateTime(snapshot?.settings?.startTime);
   const laneCount = snapshot?.settings?.laneCount;
-  const statusLabel = snapshot ? statusLabelMap[snapshot.status] ?? snapshot.status : undefined;
+  const statusLabel = getStartlistStatusLabel(snapshot?.status ?? initialStatus ?? undefined);
+  const latestVersion = snapshot?.versions?.slice().sort((a, b) => b.version - a.version)[0];
+  const formattedUpdatedAt = formatDateTime(latestVersion?.confirmedAt);
 
   return (
     <section className="startlist-preview" aria-label={`スタートリスト ${startlistId} のプレビュー`}>
@@ -112,12 +102,14 @@ const StartlistPreview = ({ startlistId, version, updatedAt }: StartlistPreviewP
         {statusLabel ? (
           <span className="startlist-preview__meta-item startlist-preview__meta-item--status">状態: {statusLabel}</span>
         ) : null}
-        {typeof version === 'number' ? (
-          <span className="startlist-preview__meta-item startlist-preview__meta-item--version">公開バージョン v{version}</span>
+        {typeof latestVersion?.version === 'number' ? (
+          <span className="startlist-preview__meta-item startlist-preview__meta-item--version">
+            公開バージョン v{latestVersion.version}
+          </span>
         ) : null}
         {formattedUpdatedAt ? (
           <span className="startlist-preview__meta-item startlist-preview__meta-item--updated">
-            更新: <time dateTime={updatedAt}>{formattedUpdatedAt}</time>
+            更新: <time dateTime={latestVersion?.confirmedAt}>{formattedUpdatedAt}</time>
           </span>
         ) : null}
       </header>

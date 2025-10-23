@@ -34,7 +34,6 @@ import { downloadStartlistCsv } from '../../utils/startlistExport';
 import { createClassOrderViewModel, parsePlayerItemId } from '../createClassOrderViewModel';
 import { sanitizeActiveTab } from '../utils';
 import { useStartlistApi } from '../../api/useStartlistApi';
-import { useEventManagementApi } from '../../../event-management/api/useEventManagementApi';
 import { tryAutoAttachStartlist } from '../../utils/eventLinking';
 
 export const useClassOrderController = () => {
@@ -54,7 +53,6 @@ export const useClassOrderController = () => {
   const startlistId = useStartlistStartlistId();
   const eventContext = useStartlistEventContext();
   const api = useStartlistApi();
-  const { attachStartlist } = useEventManagementApi();
 
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -247,7 +245,6 @@ export const useClassOrderController = () => {
             await tryAutoAttachStartlist({
               dispatch,
               eventContext,
-              attachStartlist,
               startlistId: finalizedSnapshot?.id ?? startlistId,
               version: latest.version,
               confirmedAt: latest.confirmedAt,
@@ -285,17 +282,7 @@ export const useClassOrderController = () => {
     } finally {
       setLoading(dispatch, 'startTimes', false);
     }
-  }, [
-    api,
-    attachStartlist,
-    classAssignments,
-    dispatch,
-    eventContext.eventId,
-    eventContext.raceId,
-    navigate,
-    startTimes,
-    startlistId,
-  ]);
+  }, [api, classAssignments, dispatch, eventContext.eventId, eventContext.raceId, navigate, startTimes, startlistId]);
 
   return {
     viewModel,

@@ -10,7 +10,7 @@ const finalizeMock = vi.fn();
 const invalidateStartTimesMock = vi.fn();
 const fetchVersionsMock = vi.fn();
 const fetchDiffMock = vi.fn();
-const attachStartlistMock = vi.fn();
+const tryAutoAttachStartlistMock = vi.fn();
 
 vi.mock('../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
@@ -22,10 +22,11 @@ vi.mock('../api/useStartlistApi', () => ({
   }),
 }));
 
-vi.mock('../../event-management/api/useEventManagementApi', () => ({
-  useEventManagementApi: () => ({
-    attachStartlist: attachStartlistMock,
-  }),
+vi.mock('../utils/eventLinking', () => ({
+  tryAutoAttachStartlist: (...args: unknown[]) => {
+    tryAutoAttachStartlistMock(...args);
+    return Promise.resolve('success');
+  },
 }));
 
 const env = import.meta.env as ImportMetaEnv & Record<string, string | undefined>;
@@ -84,7 +85,6 @@ describe('StartTimesPanel', () => {
     assignStartTimesMock.mockResolvedValue(undefined);
     finalizeMock.mockResolvedValue(undefined);
     invalidateStartTimesMock.mockResolvedValue(undefined);
-    attachStartlistMock.mockResolvedValue(undefined);
     fetchVersionsMock.mockImplementation(async (query: { startlistId: string; limit?: number; offset?: number }) => ({
       startlistId: query.startlistId,
       total: 0,
@@ -114,7 +114,7 @@ describe('StartTimesPanel', () => {
     invalidateStartTimesMock.mockReset();
     fetchVersionsMock.mockReset();
     fetchDiffMock.mockReset();
-    attachStartlistMock.mockReset();
+    tryAutoAttachStartlistMock.mockReset();
     env.VITE_STARTLIST_PUBLIC_BASE_URL = previousPublicBaseUrl;
     vi.restoreAllMocks();
   });
@@ -437,8 +437,6 @@ describe('StartTimesPanel', () => {
       startTimes: [],
     });
 
-    env.VITE_STARTLIST_PUBLIC_BASE_URL = 'https://public.example.com';
-
     renderWithStartlist(<StartTimesPanel />, {
       initialState: {
         startlistId: 'SL-1',
@@ -457,14 +455,12 @@ describe('StartTimesPanel', () => {
 
     await waitFor(() => expect(finalizeMock).toHaveBeenCalled());
     await waitFor(() => {
-      expect(attachStartlistMock).toHaveBeenCalledWith(
+      expect(tryAutoAttachStartlistMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventId: 'event-1',
-          raceId: 'race-1',
+          eventContext: { eventId: 'event-1', raceId: 'race-1' },
           startlistId: 'SL-1',
-          startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
-          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-          startlistPublicVersion: 3,
+          version: 3,
+          confirmedAt: '2024-04-05T09:00:00.000Z',
         }),
       );
     });

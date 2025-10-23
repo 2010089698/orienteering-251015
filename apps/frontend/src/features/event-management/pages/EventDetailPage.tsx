@@ -6,7 +6,6 @@ import { useEventManagement } from '../state';
 import EventSummaryCards from '../components/EventSummaryCards';
 import RaceList from '../components/RaceList';
 import ScheduleRaceForm from '../components/ScheduleRaceForm';
-import AttachStartlistForm from '../components/AttachStartlistForm';
 
 const isNotFoundError = (error: unknown): boolean => {
   if (!error) {
@@ -18,7 +17,7 @@ const isNotFoundError = (error: unknown): boolean => {
 
 const EventDetailPage = () => {
   const { eventId } = useParams<{ eventId: string }>();
-  const { selectedEvent, selectEvent, isLoading, isMutating, error, scheduleRace, attachStartlist } = useEventManagement();
+  const { selectedEvent, selectEvent, isLoading, isMutating, error, scheduleRace } = useEventManagement();
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -114,7 +113,7 @@ const EventDetailPage = () => {
           </p>
         </div>
         <Link to={`/startlist?eventId=${encodeURIComponent(event.id)}`} className="event-detail__startlist-link">
-          スタートリストを作成
+          スタートリスト管理を開く
         </Link>
       </header>
       {error ? <StatusMessage tone="critical" message={error} /> : null}
@@ -135,15 +134,14 @@ const EventDetailPage = () => {
             void selectEvent(event.id);
           }}
         />
-        <AttachStartlistForm
-          eventId={event.id}
-          races={event.races}
-          isSubmitting={isMutating}
-          onAttach={attachStartlist}
-          onAttached={() => {
-            void selectEvent(event.id);
-          }}
-        />
+        <section className="event-detail__startlist-guidance" aria-labelledby="startlist-guidance-heading">
+          <h2 id="startlist-guidance-heading">スタートリストの連携</h2>
+          <p>
+            レースを登録するとスタートリスト管理アプリに自動で初期データが作成されます。必要に応じて
+            <Link to={`/startlist?eventId=${encodeURIComponent(event.id)}`}>スタートリスト管理画面</Link>
+            を開いて設定や公開作業を進めてください。
+          </p>
+        </section>
       </div>
     </div>
   );

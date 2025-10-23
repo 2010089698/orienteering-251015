@@ -6,14 +6,9 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import type {
-  AttachStartlistCommand,
-  CreateEventCommand,
-  EventDto,
-  ScheduleRaceCommand,
-} from '@event-management/application';
+import type { CreateEventCommand, EventDto, ScheduleRaceCommand } from '@event-management/application';
 
-import { useEventManagementApi } from '../api/useEventManagementApi';
+import { useEventManagementApi, type ScheduleRaceResult } from '../api/useEventManagementApi';
 
 interface EventManagementState {
   events: EventDto[];
@@ -23,17 +18,11 @@ interface EventManagementState {
   error: string | null;
 }
 
-interface AttachStartlistResult {
-  event: EventDto;
-  startlistId: string;
-}
-
 interface EventManagementActions {
   refreshEvents: () => Promise<EventDto[]>;
   selectEvent: (eventId: string | null) => Promise<EventDto | null>;
   createEvent: (command: CreateEventCommand) => Promise<EventDto>;
-  scheduleRace: (command: ScheduleRaceCommand) => Promise<EventDto>;
-  attachStartlist: (command: AttachStartlistCommand) => Promise<AttachStartlistResult>;
+  scheduleRace: (command: ScheduleRaceCommand) => Promise<ScheduleRaceResult>;
 }
 
 interface EventManagementContextValue {
@@ -63,13 +52,7 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
     return <>{children}</>;
   }
 
-  const {
-    listEvents,
-    getEvent,
-    createEvent: createEventApi,
-    scheduleRace: scheduleRaceApi,
-    attachStartlist: attachStartlistApi,
-  } = useEventManagementApi();
+  const { listEvents, getEvent, createEvent: createEventApi, scheduleRace: scheduleRaceApi } = useEventManagementApi();
 
   const [events, setEvents] = useState<EventDto[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -157,14 +140,14 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
   );
 
   const scheduleRace = useCallback(
-    async (command: ScheduleRaceCommand): Promise<EventDto> => {
+    async (command: ScheduleRaceCommand): Promise<ScheduleRaceResult> => {
       setIsMutating(true);
       setError(null);
       try {
-        const event = await scheduleRaceApi(command);
+        const { event, startlist } = await scheduleRaceApi(command);
         upsertEvent(event);
         setSelectedEventId(event.id);
-        return event;
+        return { event, startlist };
       } catch (scheduleError) {
         const message = ensureErrorMessage(scheduleError);
         setError(message);
@@ -174,25 +157,6 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
       }
     },
     [scheduleRaceApi, upsertEvent],
-  );
-
-  const attachStartlist = useCallback(
-    async (command: AttachStartlistCommand): Promise<AttachStartlistResult> => {
-      setIsMutating(true);
-      setError(null);
-      try {
-        const { event, startlistId } = await attachStartlistApi(command);
-        upsertEvent(event);
-        return { event, startlistId };
-      } catch (attachError) {
-        const message = ensureErrorMessage(attachError);
-        setError(message);
-        throw attachError;
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [attachStartlistApi, upsertEvent],
   );
 
   const contextValue = useMemo<EventManagementContextValue>(() => {
@@ -209,10 +173,9 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
         selectEvent,
         createEvent,
         scheduleRace,
-        attachStartlist,
       },
     };
-  }, [events, selectedEventId, isLoading, isMutating, error, refreshEvents, selectEvent, createEvent, scheduleRace, attachStartlist]);
+  }, [events, selectedEventId, isLoading, isMutating, error, refreshEvents, selectEvent, createEvent, scheduleRace]);
 
   return <EventManagementContext.Provider value={contextValue}>{children}</EventManagementContext.Provider>;
 };
@@ -249,6 +212,5 @@ export const useEventManagement = () => {
     selectEvent: actions.selectEvent,
     createEvent: actions.createEvent,
     scheduleRace: actions.scheduleRace,
-    attachStartlist: actions.attachStartlist,
   };
 };

@@ -2,10 +2,13 @@ import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { ScheduleRaceCommand } from '@event-management/application';
 
+import type { ScheduleRaceResult } from '../api/useEventManagementApi';
+import { getStartlistStatusLabel } from '../utils/startlistStatus';
+
 interface ScheduleRaceFormProps {
   eventId: string;
   isSubmitting: boolean;
-  onSchedule: (command: ScheduleRaceCommand) => Promise<void>;
+  onSchedule: (command: ScheduleRaceCommand) => Promise<ScheduleRaceResult>;
   onScheduled?: () => void;
 }
 
@@ -44,8 +47,20 @@ const ScheduleRaceForm = ({ eventId, isSubmitting, onSchedule, onScheduled }: Sc
           name: form.name,
           date: form.date,
         };
-        await onSchedule(payload);
-        setStatus({ tone: 'success', message: 'レースをスケジュールしました。' });
+        const result = await onSchedule(payload);
+        const startlistMessage = result.startlist
+          ? (() => {
+              const statusLabel = getStartlistStatusLabel(result.startlist?.status ?? undefined);
+              const statusSuffix = statusLabel ? `（${statusLabel}）` : '';
+              return `スタートリスト ${result.startlist.startlistId}${statusSuffix} を自動作成しました。`;
+            })()
+          : null;
+        setStatus({
+          tone: 'success',
+          message: startlistMessage
+            ? `レースをスケジュールしました。${startlistMessage}`
+            : 'レースをスケジュールしました。',
+        });
         setForm(createInitialFormState());
         onScheduled?.();
       } catch (error) {
