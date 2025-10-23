@@ -273,6 +273,7 @@ const StartTimesPanel = (): JSX.Element => {
               status: 'error',
               eventId: eventContext.eventId,
               raceId: eventContext.raceId,
+              startlistId: snapshot?.id ?? startlistId,
               errorMessage: message,
             });
             setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
@@ -286,6 +287,7 @@ const StartTimesPanel = (): JSX.Element => {
             status: 'error',
             eventId: eventContext.eventId,
             raceId: eventContext.raceId,
+            startlistId: snapshot?.id ?? startlistId,
             errorMessage: message,
           });
           setStatus(dispatch, 'snapshot', createStatus(message, 'error'));

@@ -6,9 +6,12 @@ interface AttachStartlistFormProps {
   eventId: string;
   races: RaceDto[];
   isSubmitting: boolean;
-  onAttach: (command: AttachStartlistCommand) => Promise<void>;
+  onAttach: (command: AttachStartlistCommand) => Promise<unknown>;
   onAttached?: () => void;
+  defaultStartlistId?: string;
   defaultStartlistLink?: string;
+  defaultStartlistUpdatedAt?: string;
+  defaultStartlistPublicVersion?: number;
   defaultRaceId?: string;
 }
 
@@ -18,35 +21,53 @@ const AttachStartlistForm = ({
   isSubmitting,
   onAttach,
   onAttached,
+  defaultStartlistId,
   defaultStartlistLink,
+  defaultStartlistUpdatedAt,
+  defaultStartlistPublicVersion,
   defaultRaceId,
 }: AttachStartlistFormProps) => {
   const [raceId, setRaceId] = useState(defaultRaceId ?? '');
-  const [startlistLink, setStartlistLink] = useState('');
+  const [startlistIdInput, setStartlistIdInput] = useState('');
+  const [startlistLinkInput, setStartlistLinkInput] = useState('');
+  const [startlistPublicVersionInput, setStartlistPublicVersionInput] = useState('');
   const [status, setStatus] = useState<{ tone: 'success' | 'critical'; message: string } | null>(null);
 
   const isValid = useMemo(() => {
-    if (!raceId || !startlistLink) {
+    const trimmedId = startlistIdInput.trim();
+    if (!raceId || !trimmedId) {
       return false;
     }
-    try {
-      void new URL(startlistLink);
-      return true;
-    } catch {
-      return false;
+    const trimmedLink = startlistLinkInput.trim();
+    if (trimmedLink) {
+      try {
+        void new URL(trimmedLink);
+      } catch {
+        return false;
+      }
     }
-  }, [raceId, startlistLink]);
+    const trimmedVersion = startlistPublicVersionInput.trim();
+    if (trimmedVersion) {
+      const parsed = Number(trimmedVersion);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        return false;
+      }
+    }
+    return true;
+  }, [raceId, startlistIdInput, startlistLinkInput, startlistPublicVersionInput]);
 
-  const submitStartlistLink = useCallback(
-    async (link: string) => {
-      if (!raceId || !link || isSubmitting) {
+  const submitStartlistAttachment = useCallback(
+    async (payload: Omit<AttachStartlistCommand, 'eventId' | 'raceId'>) => {
+      if (!raceId || isSubmitting) {
         return;
       }
 
       try {
-        await onAttach({ eventId, raceId, startlistLink: link });
+        await onAttach({ eventId, raceId, ...payload });
         setStatus({ tone: 'success', message: 'スタートリストを連携しました。' });
-        setStartlistLink('');
+        setStartlistIdInput('');
+        setStartlistLinkInput('');
+        setStartlistPublicVersionInput('');
         onAttached?.();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'スタートリストの連携に失敗しました。';
@@ -63,18 +84,86 @@ const AttachStartlistForm = ({
         return;
       }
 
-      await submitStartlistLink(startlistLink);
+      const trimmedId = startlistIdInput.trim();
+      if (!trimmedId) {
+        return;
+      }
+      const trimmedLink = startlistLinkInput.trim();
+      const trimmedVersion = startlistPublicVersionInput.trim();
+      const version = trimmedVersion ? Number(trimmedVersion) : undefined;
+
+      const payload: Omit<AttachStartlistCommand, 'eventId' | 'raceId'> = {
+        startlistId: trimmedId,
+      };
+
+      if (trimmedLink) {
+        payload.startlistLink = trimmedLink;
+      }
+      if (version !== undefined) {
+        payload.startlistPublicVersion = version;
+      }
+
+      await submitStartlistAttachment(payload);
     },
-    [isSubmitting, isValid, startlistLink, submitStartlistLink],
+    [
+      isSubmitting,
+      isValid,
+      startlistIdInput,
+      startlistLinkInput,
+      startlistPublicVersionInput,
+      submitStartlistAttachment,
+    ],
   );
 
   const handleAttachDefault = useCallback(() => {
-    if (!defaultStartlistLink) {
+    if (!defaultStartlistId) {
       return;
     }
 
-    void submitStartlistLink(defaultStartlistLink);
-  }, [defaultStartlistLink, submitStartlistLink]);
+    const payload: Omit<AttachStartlistCommand, 'eventId' | 'raceId'> = {
+      startlistId: defaultStartlistId,
+    };
+    if (defaultStartlistLink) {
+      payload.startlistLink = defaultStartlistLink;
+    }
+    if (defaultStartlistUpdatedAt) {
+      payload.startlistUpdatedAt = defaultStartlistUpdatedAt;
+    }
+    if (defaultStartlistPublicVersion) {
+      payload.startlistPublicVersion = defaultStartlistPublicVersion;
+    }
+
+    void submitStartlistAttachment(payload);
+  }, [
+    defaultStartlistId,
+    defaultStartlistLink,
+    defaultStartlistPublicVersion,
+    defaultStartlistUpdatedAt,
+    submitStartlistAttachment,
+  ]);
+
+  useEffect(() => {
+    if (!defaultStartlistId) {
+      return;
+    }
+    setStartlistIdInput((current) => (current ? current : defaultStartlistId));
+  }, [defaultStartlistId]);
+
+  useEffect(() => {
+    if (!defaultStartlistLink) {
+      return;
+    }
+    setStartlistLinkInput((current) => (current ? current : defaultStartlistLink));
+  }, [defaultStartlistLink]);
+
+  useEffect(() => {
+    if (!defaultStartlistPublicVersion) {
+      return;
+    }
+    setStartlistPublicVersionInput((current) =>
+      current ? current : String(defaultStartlistPublicVersion),
+    );
+  }, [defaultStartlistPublicVersion]);
 
   useEffect(() => {
     if (!defaultRaceId) {
@@ -105,17 +194,37 @@ const AttachStartlistForm = ({
           </select>
         </label>
         <label className="attach-startlist__field">
-          <span>スタートリストURL</span>
+          <span>スタートリストID</span>
           <input
-            type="url"
-            value={startlistLink}
-            onChange={(event) => setStartlistLink(event.target.value)}
-            placeholder="https://example.com/startlist"
+            type="text"
+            value={startlistIdInput}
+            onChange={(event) => setStartlistIdInput(event.target.value)}
+            placeholder="SL-2024-01"
             required
           />
         </label>
+        <label className="attach-startlist__field">
+          <span>公開バージョン（任意）</span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={startlistPublicVersionInput}
+            onChange={(event) => setStartlistPublicVersionInput(event.target.value)}
+            placeholder="1"
+          />
+        </label>
+        <label className="attach-startlist__field">
+          <span>公開URL（任意）</span>
+          <input
+            type="url"
+            value={startlistLinkInput}
+            onChange={(event) => setStartlistLinkInput(event.target.value)}
+            placeholder="https://example.com/startlists/SL-2024-01/v/1"
+          />
+        </label>
         <div className="attach-startlist__actions">
-          {defaultStartlistLink ? (
+          {defaultStartlistId && defaultStartlistPublicVersion ? (
             <button
               type="button"
               className="secondary"

@@ -512,13 +512,14 @@ describe('useClassOrderController', () => {
     expect(mocks.mockAttachStartlist).toHaveBeenCalledWith({
       eventId: 'event-1',
       raceId: 'race-1',
+      startlistId: mockStartlistId,
       startlistLink: 'https://public.example.com/startlists/startlist-1/v/3',
       startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
       startlistPublicVersion: 3,
     });
     expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
-      expect.objectContaining({ status: 'linking' }),
+      expect.objectContaining({ status: 'linking', startlistId: mockStartlistId }),
     );
     expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
@@ -526,6 +527,7 @@ describe('useClassOrderController', () => {
         status: 'success',
         eventId: 'event-1',
         raceId: 'race-1',
+        startlistId: mockStartlistId,
         startlistLink: 'https://public.example.com/startlists/startlist-1/v/3',
         startlistPublicVersion: 3,
         startlistUpdatedAt: '2024-04-05T09:00:00.000Z',

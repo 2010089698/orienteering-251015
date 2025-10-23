@@ -177,7 +177,7 @@ describe('EventManagementLayout', () => {
       .mockResolvedValue(attachedEvent);
 
     const scheduleRaceMock = vi.fn(async () => scheduledEvent);
-    const attachStartlistMock = vi.fn(async () => attachedEvent);
+    const attachStartlistMock = vi.fn(async () => ({ event: attachedEvent, startlistId: 'SL-1' }));
 
     const apiMock = createEventManagementApiMock({
       listEvents: vi.fn(async () => []),
@@ -210,7 +210,9 @@ describe('EventManagementLayout', () => {
     expect(schedulePayload).toMatchObject({ eventId: 'event-1', name: 'Day 2', date: '2024-04-02' });
 
     await user.selectOptions(screen.getByLabelText('対象レース'), 'race-1');
-    await user.type(screen.getByLabelText('スタートリストURL'), 'https://example.com/startlist');
+    await user.clear(screen.getByLabelText('スタートリストID'));
+    await user.type(screen.getByLabelText('スタートリストID'), 'SL-1');
+    await user.type(screen.getByLabelText('公開URL（任意）'), 'https://example.com/startlist');
     await user.click(screen.getByRole('button', { name: 'スタートリストを設定' }));
 
     expect(await screen.findByText('スタートリストを連携しました。')).toBeInTheDocument();
@@ -219,6 +221,11 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByText(/更新: /)).toBeInTheDocument();
     expect(await screen.findByText('v5')).toBeInTheDocument();
     const attachPayload = attachStartlistMock.mock.calls.at(-1)?.[0];
-    expect(attachPayload).toMatchObject({ eventId: 'event-1', raceId: 'race-1', startlistLink: 'https://example.com/startlist' });
+    expect(attachPayload).toMatchObject({
+      eventId: 'event-1',
+      raceId: 'race-1',
+      startlistId: 'SL-1',
+      startlistLink: 'https://example.com/startlist',
+    });
   });
 });

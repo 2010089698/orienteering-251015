@@ -116,6 +116,7 @@ export interface EventLinkStatus {
   status: EventLinkStatusState;
   eventId?: string;
   raceId?: string;
+  startlistId?: string;
   startlistLink?: string;
   startlistUpdatedAt?: string;
   startlistPublicVersion?: number;

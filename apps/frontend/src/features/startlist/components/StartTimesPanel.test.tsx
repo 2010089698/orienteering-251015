@@ -457,13 +457,16 @@ describe('StartTimesPanel', () => {
 
     await waitFor(() => expect(finalizeMock).toHaveBeenCalled());
     await waitFor(() => {
-      expect(attachStartlistMock).toHaveBeenCalledWith({
-        eventId: 'event-1',
-        raceId: 'race-1',
-        startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
-        startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-        startlistPublicVersion: 3,
-      });
+      expect(attachStartlistMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: 'event-1',
+          raceId: 'race-1',
+          startlistId: 'SL-1',
+          startlistLink: 'https://public.example.com/startlists/SL-1/v/3',
+          startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
+          startlistPublicVersion: 3,
+        }),
+      );
     });
     const [firstCall] = fetchVersionsMock.mock.calls;
     expect(firstCall[0]).toEqual({ startlistId: 'SL-1', limit: 1 });

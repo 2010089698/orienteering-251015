@@ -23,12 +23,17 @@ interface EventManagementState {
   error: string | null;
 }
 
+interface AttachStartlistResult {
+  event: EventDto;
+  startlistId: string;
+}
+
 interface EventManagementActions {
   refreshEvents: () => Promise<EventDto[]>;
   selectEvent: (eventId: string | null) => Promise<EventDto | null>;
   createEvent: (command: CreateEventCommand) => Promise<EventDto>;
   scheduleRace: (command: ScheduleRaceCommand) => Promise<EventDto>;
-  attachStartlist: (command: AttachStartlistCommand) => Promise<EventDto>;
+  attachStartlist: (command: AttachStartlistCommand) => Promise<AttachStartlistResult>;
 }
 
 interface EventManagementContextValue {
@@ -172,13 +177,13 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
   );
 
   const attachStartlist = useCallback(
-    async (command: AttachStartlistCommand): Promise<EventDto> => {
+    async (command: AttachStartlistCommand): Promise<AttachStartlistResult> => {
       setIsMutating(true);
       setError(null);
       try {
-        const event = await attachStartlistApi(command);
+        const { event, startlistId } = await attachStartlistApi(command);
         upsertEvent(event);
-        return event;
+        return { event, startlistId };
       } catch (attachError) {
         const message = ensureErrorMessage(attachError);
         setError(message);

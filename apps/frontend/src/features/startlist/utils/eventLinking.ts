@@ -45,45 +45,33 @@ export const tryAutoAttachStartlist = async ({
   }
 
   const startlistLink = buildStartlistPublicUrl(startlistId, version);
-  if (!startlistLink) {
-    const message = '公開用URLの設定がされていないため、自動連携できませんでした。';
-    setEventLinkStatus(dispatch, {
-      status: 'error',
-      eventId,
-      raceId,
-      startlistUpdatedAt: confirmedAt,
-      startlistPublicVersion: version,
-      errorMessage: message,
-    });
-    setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
-    return 'error';
-  }
-
-  setEventLinkStatus(dispatch, {
-    status: 'linking',
+  const baseStatus = {
     eventId,
     raceId,
+    startlistId,
     startlistLink,
     startlistUpdatedAt: confirmedAt,
     startlistPublicVersion: version,
+  } as const;
+
+  setEventLinkStatus(dispatch, {
+    status: 'linking',
+    ...baseStatus,
   });
 
   try {
     await attachStartlist({
       eventId,
       raceId,
-      startlistLink,
+      startlistId,
+      ...(startlistLink ? { startlistLink } : {}),
       startlistUpdatedAt: confirmedAt,
       startlistPublicVersion: version,
     });
 
     setEventLinkStatus(dispatch, {
       status: 'success',
-      eventId,
-      raceId,
-      startlistLink,
-      startlistUpdatedAt: confirmedAt,
-      startlistPublicVersion: version,
+      ...baseStatus,
     });
     setStatus(dispatch, 'snapshot', createStatus('イベントにスタートリストを自動連携しました。', 'success'));
     return 'success';
@@ -91,11 +79,7 @@ export const tryAutoAttachStartlist = async ({
     const message = ensureErrorMessage(error);
     setEventLinkStatus(dispatch, {
       status: 'error',
-      eventId,
-      raceId,
-      startlistLink,
-      startlistUpdatedAt: confirmedAt,
-      startlistPublicVersion: version,
+      ...baseStatus,
       errorMessage: message,
     });
     setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
