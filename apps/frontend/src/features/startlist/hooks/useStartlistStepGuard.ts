@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useStartlistClassAssignments,
@@ -25,16 +25,7 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
   const classStatusLevel = statuses.classes.level;
   const startTimesStatusLevel = statuses.startTimes.level;
   const snapshotStatusLevel = statuses.snapshot.level;
-  const [isGuardInitialized, setIsGuardInitialized] = useState(false);
-
   useEffect(() => {
-    setIsGuardInitialized(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isGuardInitialized) {
-      return;
-    }
     if (step === 'lanes') {
       const isLaneStepReady = laneAssignments.length > 0 || laneStatusLevel === 'success';
       if (!isLaneStepReady && location.pathname !== STARTLIST_STEP_PATHS.input) {
@@ -63,7 +54,6 @@ export const useStartlistStepGuard = (step: StartlistStepKey): void => {
     classStatusLevel,
     laneAssignments.length,
     laneStatusLevel,
-    isGuardInitialized,
     location.pathname,
     navigate,
     snapshotStatusLevel,
