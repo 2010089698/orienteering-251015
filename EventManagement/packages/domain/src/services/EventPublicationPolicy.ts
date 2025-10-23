@@ -9,7 +9,7 @@ export class EventPublicationPolicy {
       throw new Error('Event must contain at least one race before publication.');
     }
 
-    const raceWithoutStartlist = races.find((race) => !race.hasPublishedStartlist());
+    const raceWithoutStartlist = races.find((race) => !race.hasStartlistReference());
     if (raceWithoutStartlist) {
       throw new Error('All races must have an associated startlist before publication.');
     }

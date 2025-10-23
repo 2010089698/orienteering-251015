@@ -12,7 +12,6 @@ const start = async () => {
     events: {
       createEventService: eventModule.createEventService,
       scheduleRaceService: eventModule.scheduleRaceService,
-      attachStartlistService: eventModule.attachStartlistService,
       eventQueryService: eventModule.eventQueryService,
     },
     logger: true,

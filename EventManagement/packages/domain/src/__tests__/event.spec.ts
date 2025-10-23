@@ -10,7 +10,7 @@ import {
   RaceSchedule,
   RaceSchedulingService,
   RaceScheduled,
-  StartlistAttachment
+  StartlistReference
 } from '../index.js';
 
 describe('Event aggregate', () => {
@@ -124,21 +124,16 @@ describe('Event aggregate', () => {
       schedulingService
     );
 
-    const updatedAt = new Date('2024-04-05T10:15:00.000Z');
-    const attachment = StartlistAttachment.create({
+    const attachment = StartlistReference.create({
       startlistId: 'startlist-1',
-      publicUrl: 'https://example.com/startlist',
-      updatedAt,
-      publicVersion: 3,
+      status: 'draft',
     });
-    event.linkStartlist(race.getId(), attachment);
+    event.attachStartlistReference(race.getId(), attachment);
 
     const storedRace = event.getRace(race.getId());
     expect(storedRace?.getStartlistId()).toBe('startlist-1');
-    expect(storedRace?.getStartlistPublicUrl()).toBe('https://example.com/startlist');
-    expect(storedRace?.getStartlistUpdatedAt()?.toISOString()).toBe(updatedAt.toISOString());
-    expect(storedRace?.getStartlistPublicVersion()).toBe(3);
-    expect(storedRace?.hasPublishedStartlist()).toBe(true);
+    expect(storedRace?.getStartlistStatus()).toBe('draft');
+    expect(storedRace?.hasStartlistReference()).toBe(true);
 
     const publicationPolicy = new EventPublicationPolicy();
     expect(() => event.assertCanBePublished(publicationPolicy)).not.toThrow();

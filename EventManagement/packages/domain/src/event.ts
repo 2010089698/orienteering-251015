@@ -6,7 +6,7 @@ import { EventDateRange } from './valueObjects/EventDateRange.js';
 import { EventId } from './valueObjects/EventId.js';
 import { RaceId } from './valueObjects/RaceId.js';
 import { RaceSchedule } from './valueObjects/RaceSchedule.js';
-import { StartlistAttachment } from './valueObjects/StartlistAttachment.js';
+import { StartlistReference } from './valueObjects/StartlistReference.js';
 
 export interface EventProps {
   id: EventId;
@@ -113,9 +113,9 @@ export class Event {
     return race;
   }
 
-  public linkStartlist(raceId: RaceId, attachment: StartlistAttachment): void {
+  public attachStartlistReference(raceId: RaceId, reference: StartlistReference): void {
     const race = this.findRace(raceId);
-    race.attachStartlist(attachment);
+    race.attachStartlistReference(reference);
   }
 
   public getRaces(): readonly Race[] {

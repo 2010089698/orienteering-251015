@@ -1,5 +1,4 @@
 import {
-  AttachStartlistService,
   CreateEventService,
   EventQueryService,
   type EventRepository,
@@ -45,7 +44,6 @@ export interface EventModule {
   startlistSyncPort?: StartlistSyncPort;
   createEventService: CreateEventService;
   scheduleRaceService: ScheduleRaceService;
-  attachStartlistService: AttachStartlistService;
   eventQueryService: EventQueryService;
 }
 
@@ -63,12 +61,13 @@ export const createEventModule = (options: CreateEventModuleOptions = {}): Event
     eventPublisher: domainEventBus,
   };
 
+  const startlistSyncPort = resolveStartlistSyncPort(options.startlistSync);
+
   const scheduleRaceDependencies: ScheduleRaceServiceDependencies = {
     ...baseDependencies,
     raceSchedulingService,
+    ...(startlistSyncPort ? { startlistSyncPort } : {}),
   };
-
-  const startlistSyncPort = resolveStartlistSyncPort(options.startlistSync);
 
   if (startlistSyncPort) {
     domainEventBus.subscribe(async (event) => {
@@ -99,7 +98,6 @@ export const createEventModule = (options: CreateEventModuleOptions = {}): Event
     startlistSyncPort,
     createEventService: new CreateEventService(baseDependencies),
     scheduleRaceService: new ScheduleRaceService(scheduleRaceDependencies),
-    attachStartlistService: new AttachStartlistService(baseDependencies),
     eventQueryService: new EventQueryService(queryRepository),
   };
 };

@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  AttachStartlistService,
-  CreateEventService,
-  EventQueryService,
-  ScheduleRaceService,
-} from '@event-management/application';
+import { CreateEventService, EventQueryService, ScheduleRaceService } from '@event-management/application';
 import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
 
 import { createEventModule } from '../config/eventModule.js';
@@ -30,7 +25,6 @@ describe('createEventModule', () => {
     expect(module.domainEventBus).toBeDefined();
     expect(module.createEventService).toBeInstanceOf(CreateEventService);
     expect(module.scheduleRaceService).toBeInstanceOf(ScheduleRaceService);
-    expect(module.attachStartlistService).toBeInstanceOf(AttachStartlistService);
     expect(module.eventQueryService).toBeInstanceOf(EventQueryService);
 
     const createPayload = buildCreateEventPayload();
@@ -45,10 +39,13 @@ describe('createEventModule', () => {
     generateSpy.mockRestore();
   });
 
-  it('subscribes startlist sync ports to race scheduled events', async () => {
+  it('creates startlists when scheduling races and notifies sync subscribers', async () => {
     const notifyRaceScheduled = vi.fn().mockResolvedValue(undefined);
+    const createStartlist = vi
+      .fn()
+      .mockResolvedValue({ startlistId: 'startlist-1', status: 'draft' });
     const module = createEventModule({
-      startlistSync: { port: { notifyRaceScheduled } },
+      startlistSync: { port: { notifyRaceScheduled, createStartlist } },
     });
 
     const generatedId = EventId.from(EVENT_ID);
@@ -59,18 +56,28 @@ describe('createEventModule', () => {
     const generatedRaceId = RaceId.from('race-1');
     const raceIdSpy = vi.spyOn(RaceId, 'generate').mockReturnValue(generatedRaceId);
 
-    await module.scheduleRaceService.execute({
+    const event = await module.scheduleRaceService.execute({
       eventId: EVENT_ID,
       name: 'Sprint Qualifier',
       date: '2024-04-01',
     });
 
+    expect(createStartlist).toHaveBeenCalledTimes(1);
+    const createCall = createStartlist.mock.calls[0]?.[0];
+    expect(createCall?.eventId).toBeInstanceOf(EventId);
+    expect(createCall?.raceId).toBeInstanceOf(RaceId);
+    expect(createCall?.schedule).toBeInstanceOf(RaceSchedule);
+    expect(createCall?.updatedAt).toBeInstanceOf(Date);
+
+    expect(event.races[0]?.startlist).toEqual({ id: 'startlist-1', status: 'draft' });
+
     expect(notifyRaceScheduled).toHaveBeenCalledTimes(1);
-    const call = notifyRaceScheduled.mock.calls[0]?.[0];
-    expect(call?.eventId).toBeInstanceOf(EventId);
-    expect(call?.raceId).toBeInstanceOf(RaceId);
-    expect(call?.schedule).toBeInstanceOf(RaceSchedule);
-    expect(call?.updatedAt).toBeInstanceOf(Date);
+    const notifyCall = notifyRaceScheduled.mock.calls[0]?.[0];
+    expect(notifyCall?.eventId).toBeInstanceOf(EventId);
+    expect(notifyCall?.raceId).toBeInstanceOf(RaceId);
+    expect(notifyCall?.schedule).toBeInstanceOf(RaceSchedule);
+    expect(notifyCall?.updatedAt).toBeInstanceOf(Date);
+
     raceIdSpy.mockRestore();
     generateSpy.mockRestore();
   });

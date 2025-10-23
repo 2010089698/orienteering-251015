@@ -1,6 +1,6 @@
 import { RaceId } from './valueObjects/RaceId.js';
 import { RaceSchedule } from './valueObjects/RaceSchedule.js';
-import { StartlistAttachment } from './valueObjects/StartlistAttachment.js';
+import { StartlistReference } from './valueObjects/StartlistReference.js';
 
 export interface RaceProps {
   id: RaceId;
@@ -8,11 +8,11 @@ export interface RaceProps {
   schedule: RaceSchedule;
   isDuplicateDay?: boolean;
   overlapsExisting?: boolean;
-  startlistAttachment?: StartlistAttachment;
+  startlistReference?: StartlistReference;
 }
 
 export class Race {
-  private startlistAttachment?: StartlistAttachment;
+  private startlistReference?: StartlistReference;
 
   private constructor(
     private readonly id: RaceId,
@@ -20,9 +20,9 @@ export class Race {
     private readonly schedule: RaceSchedule,
     private readonly isDuplicateDay: boolean,
     private readonly overlapsExisting: boolean,
-    startlistAttachment?: StartlistAttachment,
+    startlistReference?: StartlistReference,
   ) {
-    this.startlistAttachment = startlistAttachment;
+    this.startlistReference = startlistReference;
   }
 
   public static create(props: RaceProps): Race {
@@ -37,7 +37,7 @@ export class Race {
       props.schedule,
       Boolean(props.isDuplicateDay),
       Boolean(props.overlapsExisting),
-      props.startlistAttachment,
+      props.startlistReference,
     );
   }
 
@@ -61,31 +61,23 @@ export class Race {
     return this.overlapsExisting;
   }
 
-  public getStartlistAttachment(): StartlistAttachment | undefined {
-    return this.startlistAttachment;
+  public getStartlistReference(): StartlistReference | undefined {
+    return this.startlistReference;
   }
 
   public getStartlistId(): string | undefined {
-    return this.startlistAttachment?.getId();
+    return this.startlistReference?.getId();
   }
 
-  public getStartlistPublicUrl(): string | undefined {
-    return this.startlistAttachment?.getPublicUrl();
+  public getStartlistStatus(): string | undefined {
+    return this.startlistReference?.getStatus();
   }
 
-  public getStartlistUpdatedAt(): Date | undefined {
-    return this.startlistAttachment?.getUpdatedAt();
+  public hasStartlistReference(): boolean {
+    return Boolean(this.startlistReference);
   }
 
-  public getStartlistPublicVersion(): number | undefined {
-    return this.startlistAttachment?.getPublicVersion();
-  }
-
-  public hasPublishedStartlist(): boolean {
-    return Boolean(this.startlistAttachment);
-  }
-
-  public attachStartlist(attachment: StartlistAttachment): void {
-    this.startlistAttachment = attachment;
+  public attachStartlistReference(reference: StartlistReference): void {
+    this.startlistReference = reference;
   }
 }
