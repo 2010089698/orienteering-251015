@@ -304,7 +304,6 @@ describe('useInputStepController', () => {
       60000,
       expect.objectContaining({
         splitRules: mockClassSplitRules,
-        previousSplitResult: mockClassSplitResult,
         startOrderRules: mockStartOrderRules,
         worldRankingByClass: mockWorldRankingByClass,
       }),

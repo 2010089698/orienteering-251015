@@ -316,7 +316,6 @@ export interface ClassSplitPreparation {
 
 export interface ClassSplitOptions {
   splitRules?: ClassSplitRules;
-  previousSplitResult?: ClassSplitResult;
   startOrderRules?: StartOrderRules;
   worldRankingByClass?: WorldRankingByClass;
 }
@@ -596,7 +595,6 @@ export interface CreateDefaultClassAssignmentsOptions {
   startOrderRules?: StartOrderRules;
   worldRankingByClass?: WorldRankingByClass;
   splitRules?: ClassSplitRules;
-  previousSplitResult?: ClassSplitResult;
 }
 
 export interface CreateDefaultClassAssignmentsResult {
@@ -617,11 +615,9 @@ export const createDefaultClassAssignments = ({
   startOrderRules,
   worldRankingByClass,
   splitRules,
-  previousSplitResult,
 }: CreateDefaultClassAssignmentsOptions): CreateDefaultClassAssignmentsResult => {
   const preparation = prepareClassSplits(entries, {
     splitRules,
-    previousSplitResult,
     startOrderRules,
     worldRankingByClass,
   });
@@ -719,7 +715,6 @@ export const calculateStartTimes = ({
   const classMap = new Map(classAssignments.map((assignment) => [assignment.classId, assignment]));
   const preparation = prepareClassSplits(entries, {
     splitRules,
-    previousSplitResult: splitResult,
     startOrderRules,
     worldRankingByClass,
   });

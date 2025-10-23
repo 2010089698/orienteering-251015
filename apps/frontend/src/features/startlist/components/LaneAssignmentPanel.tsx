@@ -50,7 +50,6 @@ const LaneAssignmentPanel = (): JSX.Element => {
     const interval = settings.intervals?.laneClass?.milliseconds ?? 0;
     const { assignments, splitResult } = generateLaneAssignments(entries, settings.laneCount, interval, {
       splitRules: classSplitRules,
-      previousSplitResult: classSplitResult,
     });
     updateLaneAssignments(dispatch, assignments, splitResult);
     if (assignments.length === 0) {

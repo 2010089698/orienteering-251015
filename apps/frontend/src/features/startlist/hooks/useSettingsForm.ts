@@ -169,7 +169,6 @@ export const useSettingsForm = () => {
         if (nextValue) {
           const warnings = deriveClassOrderWarnings(classAssignments, entries, {
             splitRules: classSplitRules,
-            previousSplitResult: classSplitResult,
           });
           updateClassAssignments(dispatch, classAssignments, undefined, warnings, classSplitResult);
         } else {

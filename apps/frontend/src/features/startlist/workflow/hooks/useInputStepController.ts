@@ -9,7 +9,6 @@ import {
   setStatus,
   updateLaneAssignments,
   updateSnapshot,
-  useStartlistClassSplitResult,
   useStartlistClassSplitRules,
   useStartlistDispatch,
   useStartlistEntries,
@@ -29,7 +28,6 @@ export const useInputStepController = () => {
   const entries = useStartlistEntries();
   const statuses = useStartlistStatuses();
   const classSplitRules = useStartlistClassSplitRules();
-  const classSplitResult = useStartlistClassSplitResult();
   const startOrderRules = useStartlistStartOrderRules();
   const worldRankingByClass = useStartlistWorldRankingByClass();
   const dispatch = useStartlistDispatch();
@@ -96,7 +94,6 @@ export const useInputStepController = () => {
 
     const { assignments, splitResult } = generateLaneAssignments(entries as Entry[], laneCount, intervalMs, {
       splitRules: classSplitRules,
-      previousSplitResult: classSplitResult,
       startOrderRules,
       worldRankingByClass,
     });
@@ -114,7 +111,6 @@ export const useInputStepController = () => {
     navigate(STARTLIST_STEP_PATHS.lanes);
   }, [
     api,
-    classSplitResult,
     classSplitRules,
     dispatch,
     entries,

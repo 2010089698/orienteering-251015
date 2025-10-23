@@ -112,7 +112,6 @@ const ClassOrderPanel = ({
       startOrderRules,
       worldRankingByClass,
       splitRules: classSplitRules,
-      previousSplitResult: classSplitResult,
     });
     updateClassAssignments(dispatch, assignments, seed, warnings, splitResult);
     if (assignments.length === 0) {
@@ -165,7 +164,7 @@ const ClassOrderPanel = ({
     }
     const updated = updateClassPlayerOrder(classAssignments, assignment.classId, index, nextIndex);
     const warnings = classOrderPreferences.avoidConsecutiveClubs
-      ? deriveClassOrderWarnings(updated, entries, { splitRules: classSplitRules, previousSplitResult: classSplitResult })
+      ? deriveClassOrderWarnings(updated, entries, { splitRules: classSplitRules })
       : [];
     updateClassAssignments(dispatch, updated, undefined, warnings, classSplitResult);
     setStatus(dispatch, 'classes', createStatus('クラス内順序を更新しました。', 'info'));

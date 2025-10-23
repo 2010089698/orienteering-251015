@@ -113,7 +113,6 @@ export const useClassOrderController = () => {
       const warnings = classOrderPreferences.avoidConsecutiveClubs
         ? deriveClassOrderWarnings(nextAssignments, entries, {
             splitRules: classSplitRules,
-            previousSplitResult: classSplitResult,
           })
         : [];
       updateClassAssignments(dispatch, nextAssignments, undefined, warnings, classSplitResult);
