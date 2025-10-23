@@ -259,7 +259,6 @@ export const useLaneAssignmentController = () => {
         startOrderRules,
         worldRankingByClass,
         splitRules: classSplitRules,
-        previousSplitResult: classSplitResult,
       });
       nextClassAssignments = assignments;
       nextSplitResult = splitResult ?? nextSplitResult;
