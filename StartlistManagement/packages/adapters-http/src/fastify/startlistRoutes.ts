@@ -153,6 +153,7 @@ const startlistRoutes: FastifyPluginAsyncTypebox<StartlistRoutesOptions> = async
       return reply.status(status).send({
         startlistId: result.startlistId,
         created: result.created,
+        status: snapshot.status,
         snapshot,
       });
     },

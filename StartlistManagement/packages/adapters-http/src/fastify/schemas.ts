@@ -210,5 +210,6 @@ export const StartlistCreateBodySchema = Type.Object({
 export const StartlistCreateResponseSchema = Type.Object({
   startlistId: Type.String(),
   created: Type.Boolean(),
+  status: Type.Enum(StartlistStatus),
   snapshot: StartlistResponseSchema,
 });
