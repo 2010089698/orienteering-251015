@@ -25,6 +25,19 @@ export const ScheduleRaceCommandSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const AttachStartlistCommandSchema = Type.Object(
+  {
+    eventId: EventIdSchema,
+    raceId: RaceIdSchema,
+    startlistId: NonEmptyString,
+    confirmedAt: DateTimeString,
+    version: Type.Integer({ minimum: 1 }),
+    publicUrl: NonEmptyString,
+    status: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
 export const RaceDtoSchema = Type.Object(
   {
     id: RaceIdSchema,
@@ -43,6 +56,9 @@ export const RaceDtoSchema = Type.Object(
         {
           id: Type.String({ minLength: 1 }),
           status: NonEmptyString,
+          confirmedAt: Type.Optional(DateTimeString),
+          publicVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+          publicUrl: Type.Optional(NonEmptyString),
         },
         { additionalProperties: false },
       ),

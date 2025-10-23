@@ -8,6 +8,7 @@ import {
   type TransactionManager,
   type EventQueryRepository,
   type StartlistSyncPort,
+  AttachStartlistService,
 } from '@event-management/application';
 import {
   Event,
@@ -45,6 +46,7 @@ export interface EventModule {
   createEventService: CreateEventService;
   scheduleRaceService: ScheduleRaceService;
   eventQueryService: EventQueryService;
+  attachStartlistService: AttachStartlistService;
 }
 
 export const createEventModule = (options: CreateEventModuleOptions = {}): EventModule => {
@@ -99,6 +101,7 @@ export const createEventModule = (options: CreateEventModuleOptions = {}): Event
     createEventService: new CreateEventService(baseDependencies),
     scheduleRaceService: new ScheduleRaceService(scheduleRaceDependencies),
     eventQueryService: new EventQueryService(queryRepository),
+    attachStartlistService: new AttachStartlistService(baseDependencies),
   };
 };
 

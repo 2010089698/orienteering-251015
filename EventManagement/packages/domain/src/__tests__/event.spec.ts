@@ -138,4 +138,33 @@ describe('Event aggregate', () => {
     const publicationPolicy = new EventPublicationPolicy();
     expect(() => event.assertCanBePublished(publicationPolicy)).not.toThrow();
   });
+
+  it('records startlist publication metadata when provided', () => {
+    const event = createEvent();
+    const schedulingService = new RaceSchedulingService();
+    const race = event.scheduleRace(
+      {
+        id: RaceId.from('race-2'),
+        name: 'Evening Sprint',
+        schedule: RaceSchedule.from(new Date('2024-04-05T09:00:00Z'))
+      },
+      schedulingService
+    );
+
+    const confirmedAt = new Date('2024-04-05T12:34:56Z');
+    const reference = StartlistReference.create({
+      startlistId: 'startlist-777',
+      status: 'FINALIZED',
+      confirmedAt,
+      publicVersion: 5,
+      publicUrl: 'https://startlists.test/startlist-777',
+    });
+
+    event.attachStartlistReference(race.getId(), reference);
+
+    const storedRace = event.getRace(race.getId());
+    expect(storedRace?.getStartlistConfirmedAt()?.toISOString()).toBe(confirmedAt.toISOString());
+    expect(storedRace?.getStartlistPublicVersion()).toBe(5);
+    expect(storedRace?.getStartlistPublicUrl()).toBe('https://startlists.test/startlist-777');
+  });
 });

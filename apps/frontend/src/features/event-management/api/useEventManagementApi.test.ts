@@ -140,6 +140,59 @@ describe('useEventManagementApi', () => {
     });
   });
 
+  it('attaches finalized startlists to races via the dedicated endpoint', async () => {
+    const { result } = renderHook(() => useEventManagementApi());
+    const event = {
+      id: 'EV-4',
+      name: 'Relay',
+      startDate: '2024-07-01',
+      endDate: '2024-07-02',
+      venue: 'Sapporo',
+      races: [
+        {
+          id: 'race-5',
+          name: 'Relay Final',
+          schedule: { start: '2024-07-01T12:00:00.000Z', end: undefined },
+          duplicateDay: false,
+          overlapsExisting: false,
+          startlist: {
+            id: 'SL-200',
+            status: 'FINALIZED',
+            confirmedAt: '2024-07-01T15:00:00.000Z',
+            publicVersion: 4,
+            publicUrl: 'https://public/startlists/SL-200',
+          },
+        },
+      ],
+    };
+
+    fetchMock.mockResolvedValue(createJsonResponse({ event }));
+
+    const response = await result.current.attachStartlist({
+      eventId: 'EV-4',
+      raceId: 'race-5',
+      startlistId: 'SL-200',
+      confirmedAt: '2024-07-01T15:00:00.000Z',
+      version: 4,
+      publicUrl: 'https://public/startlists/SL-200',
+      status: 'FINALIZED',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/events/EV-4/races/race-5/startlist',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect(JSON.parse(init?.body as string)).toEqual({
+      startlistId: 'SL-200',
+      confirmedAt: '2024-07-01T15:00:00.000Z',
+      version: 4,
+      publicUrl: 'https://public/startlists/SL-200',
+      status: 'FINALIZED',
+    });
+    expect(response).toEqual(event);
+  });
+
   it('throws with the response text when the request fails', async () => {
     const { result } = renderHook(() => useEventManagementApi());
     fetchMock.mockResolvedValue(new Response('失敗しました', { status: 500 }));

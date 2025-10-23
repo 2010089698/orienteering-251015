@@ -11,13 +11,16 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  AttachStartlistService,
   CreateEventService,
   EventNotFoundError,
   type EventRepository,
   type EventServiceDependencies,
   PersistenceError,
+  RaceNotFoundError,
   ScheduleRaceService,
   type ScheduleRaceServiceDependencies,
+  ValidationError,
 } from '../index.js';
 
 function createDateRange(): EventDateRange {
@@ -144,14 +147,14 @@ describe('Event application services', () => {
         raceSchedulingService: new RaceSchedulingService(),
       });
 
-    await expect(
-      service.execute({
-        eventId: 'missing',
-        name: 'Qualifier',
-        date: '2024-04-02',
-      }),
-    ).rejects.toBeInstanceOf(EventNotFoundError);
-  });
+      await expect(
+        service.execute({
+          eventId: 'missing',
+          name: 'Qualifier',
+          date: '2024-04-02',
+        }),
+      ).rejects.toBeInstanceOf(EventNotFoundError);
+    });
 
     it('creates startlists when a sync port is provided', async () => {
       const dependencies = createDependencies() as ScheduleRaceServiceDependencies;
@@ -187,4 +190,87 @@ describe('Event application services', () => {
     });
   });
 
+  describe('AttachStartlistService', () => {
+    it('attaches finalized startlists to races and returns the updated event', async () => {
+      const dependencies = createDependencies();
+      const event = createEvent();
+      const race = event.scheduleRace(
+        {
+          id: RaceId.from('race-attach'),
+          name: 'Sprint Final',
+          schedule: RaceSchedule.from(new Date('2024-04-05T09:00:00Z')),
+        },
+        new RaceSchedulingService(),
+      );
+      const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValue(event);
+      const service = new AttachStartlistService(dependencies);
+
+      const result = await service.execute({
+        eventId: event.getId().toString(),
+        raceId: race.getId().toString(),
+        startlistId: 'startlist-final',
+        confirmedAt: '2024-04-05T10:00:00.000Z',
+        version: 3,
+        publicUrl: 'https://startlists.example.com/startlist-final',
+        status: 'FINALIZED',
+      });
+
+      expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
+      expect(result.races).toHaveLength(1);
+      expect(result.races[0]?.startlist).toMatchObject({
+        id: 'startlist-final',
+        status: 'FINALIZED',
+        confirmedAt: '2024-04-05T10:00:00.000Z',
+        publicVersion: 3,
+        publicUrl: 'https://startlists.example.com/startlist-final',
+      });
+    });
+
+    it('throws RaceNotFoundError when the race does not exist', async () => {
+      const dependencies = createDependencies();
+      const event = createEvent();
+      const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValue(event);
+      const service = new AttachStartlistService(dependencies);
+
+      await expect(
+        service.execute({
+          eventId: event.getId().toString(),
+          raceId: 'missing',
+          startlistId: 'startlist-final',
+          confirmedAt: '2024-04-05T10:00:00.000Z',
+          version: 2,
+          publicUrl: 'https://startlists.example.com/startlist-final',
+        }),
+      ).rejects.toBeInstanceOf(RaceNotFoundError);
+    });
+
+    it('validates URLs before attaching startlists', async () => {
+      const dependencies = createDependencies();
+      const event = createEvent();
+      const race = event.scheduleRace(
+        {
+          id: RaceId.from('race-invalid'),
+          name: 'Sprint Final',
+          schedule: RaceSchedule.from(new Date('2024-04-05T09:00:00Z')),
+        },
+        new RaceSchedulingService(),
+      );
+      const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValue(event);
+      const service = new AttachStartlistService(dependencies);
+
+      await expect(
+        service.execute({
+          eventId: event.getId().toString(),
+          raceId: race.getId().toString(),
+          startlistId: 'startlist-final',
+          confirmedAt: '2024-04-05T10:00:00.000Z',
+          version: 1,
+          publicUrl: 'not-a-url',
+        }),
+      ).rejects.toBeInstanceOf(ValidationError);
+    });
+  });
 });

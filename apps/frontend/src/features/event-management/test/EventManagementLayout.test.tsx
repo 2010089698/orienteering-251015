@@ -228,8 +228,9 @@ describe('EventManagementLayout', () => {
     renderLayout(['/events/event-1']);
 
     expect(await screen.findByRole('heading', { name: '春のミドル' })).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(await screen.findByText('ID: SL-1')).toBeInTheDocument();
+    expect(await screen.findByRole('rowheader', { name: 'Day 1' })).toBeInTheDocument();
+    const startlistIdLabels = await screen.findAllByText('ID: SL-1');
+    expect(startlistIdLabels.length).toBeGreaterThan(0);
     expect(fetchSnapshotMock).toHaveBeenCalledWith({ startlistId: 'SL-1', includeVersions: true, versionLimit: 1 });
 
     await user.type(screen.getByLabelText('レース名'), 'Day 2');
@@ -244,9 +245,13 @@ describe('EventManagementLayout', () => {
     const schedulePayload = scheduleRaceMock.mock.calls.at(-1)?.[0];
     expect(schedulePayload).toMatchObject({ eventId: 'event-1', name: 'Day 2', date: '2024-04-02' });
 
+    expect(screen.getByRole('link', { name: 'スタートリスト管理を開く' })).toHaveAttribute(
+      'href',
+      '/startlist?eventId=event-1',
+    );
+
     const managementLinks = await screen.findAllByRole('link', { name: 'スタートリストを編集' });
     const hrefs = managementLinks.map((link) => link.getAttribute('href'));
-    expect(hrefs).toContain('/startlist?eventId=event-1');
     expect(hrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
     expect(hrefs).toContain('/startlist?eventId=event-1&raceId=race-2');
   });

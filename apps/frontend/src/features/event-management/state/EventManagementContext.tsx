@@ -8,7 +8,11 @@ import {
 } from 'react';
 import type { CreateEventCommand, EventDto, ScheduleRaceCommand } from '@event-management/application';
 
-import { useEventManagementApi, type ScheduleRaceResult } from '../api/useEventManagementApi';
+import {
+  useEventManagementApi,
+  type ScheduleRaceResult,
+  type AttachStartlistCommand,
+} from '../api/useEventManagementApi';
 
 interface EventManagementState {
   events: EventDto[];
@@ -23,6 +27,7 @@ interface EventManagementActions {
   selectEvent: (eventId: string | null) => Promise<EventDto | null>;
   createEvent: (command: CreateEventCommand) => Promise<EventDto>;
   scheduleRace: (command: ScheduleRaceCommand) => Promise<ScheduleRaceResult>;
+  attachStartlist: (command: AttachStartlistCommand) => Promise<EventDto>;
 }
 
 interface EventManagementContextValue {
@@ -52,7 +57,13 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
     return <>{children}</>;
   }
 
-  const { listEvents, getEvent, createEvent: createEventApi, scheduleRace: scheduleRaceApi } = useEventManagementApi();
+  const {
+    listEvents,
+    getEvent,
+    createEvent: createEventApi,
+    scheduleRace: scheduleRaceApi,
+    attachStartlist: attachStartlistApi,
+  } = useEventManagementApi();
 
   const [events, setEvents] = useState<EventDto[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -159,6 +170,26 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
     [scheduleRaceApi, upsertEvent],
   );
 
+  const attachStartlist = useCallback(
+    async (command: AttachStartlistCommand): Promise<EventDto> => {
+      setIsMutating(true);
+      setError(null);
+      try {
+        const event = await attachStartlistApi(command);
+        upsertEvent(event);
+        setSelectedEventId(event.id);
+        return event;
+      } catch (attachError) {
+        const message = ensureErrorMessage(attachError);
+        setError(message);
+        throw attachError;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [attachStartlistApi, upsertEvent],
+  );
+
   const contextValue = useMemo<EventManagementContextValue>(() => {
     return {
       state: {
@@ -173,9 +204,10 @@ export const EventManagementProvider = ({ children }: PropsWithChildren) => {
         selectEvent,
         createEvent,
         scheduleRace,
+        attachStartlist,
       },
     };
-  }, [events, selectedEventId, isLoading, isMutating, error, refreshEvents, selectEvent, createEvent, scheduleRace]);
+  }, [events, selectedEventId, isLoading, isMutating, error, refreshEvents, selectEvent, createEvent, scheduleRace, attachStartlist]);
 
   return <EventManagementContext.Provider value={contextValue}>{children}</EventManagementContext.Provider>;
 };
@@ -212,5 +244,6 @@ export const useEventManagement = () => {
     selectEvent: actions.selectEvent,
     createEvent: actions.createEvent,
     scheduleRace: actions.scheduleRace,
+    attachStartlist: actions.attachStartlist,
   };
 };

@@ -67,6 +67,15 @@ export function mapRaceToDto(race: Race): RaceDto {
           startlist: {
             id: startlistReference.getId(),
             status: startlistReference.getStatus(),
+            ...(startlistReference.getConfirmedAt()
+              ? { confirmedAt: startlistReference.getConfirmedAt()?.toISOString() }
+              : {}),
+            ...(startlistReference.getPublicVersion()
+              ? { publicVersion: startlistReference.getPublicVersion() }
+              : {}),
+            ...(startlistReference.getPublicUrl()
+              ? { publicUrl: startlistReference.getPublicUrl() }
+              : {}),
           },
         }
       : {}),

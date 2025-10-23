@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { Static } from '@sinclair/typebox';
 import {
+  AttachStartlistService,
   CreateEventService,
   EventNotFoundError,
   EventQueryService,
@@ -14,10 +15,12 @@ import {
 } from '@event-management/application';
 
 import {
+  AttachStartlistBodySchema,
   CreateEventBodySchema,
   ErrorResponseSchema,
   EventIdParamsSchema,
   EventListResponseSchema,
+  EventRaceParamsSchema,
   EventResponseSchema,
   ScheduleRaceBodySchema,
 } from './schemas.js';
@@ -26,11 +29,14 @@ export interface EventRoutesOptions {
   createEventService: CreateEventService;
   scheduleRaceService: ScheduleRaceService;
   eventQueryService: EventQueryService;
+  attachStartlistService: AttachStartlistService;
 }
 
 type CreateEventBody = Static<typeof CreateEventBodySchema>;
 type ScheduleRaceBody = Static<typeof ScheduleRaceBodySchema>;
 type EventParams = Static<typeof EventIdParamsSchema>;
+type EventRaceParams = Static<typeof EventRaceParamsSchema>;
+type AttachStartlistBody = Static<typeof AttachStartlistBodySchema>;
 
 type EventResponse = Static<typeof EventResponseSchema>;
 type EventListResponse = Static<typeof EventListResponseSchema>;
@@ -122,6 +128,35 @@ const eventRoutes: FastifyPluginAsyncTypebox<EventRoutesOptions> = async (
           eventId: request.params.eventId,
         };
         const event = await options.scheduleRaceService.execute(command);
+        reply.code(200);
+        return { event } satisfies EventResponse;
+      } catch (error) {
+        return handleServiceError(error, reply, fastify.log);
+      }
+    },
+  );
+
+  fastify.post<{
+    Params: EventRaceParams;
+    Body: AttachStartlistBody;
+    Reply: EventResponse | ErrorResponse;
+  }>(
+    '/api/events/:eventId/races/:raceId/startlist',
+    {
+      schema: {
+        params: EventRaceParamsSchema,
+        body: AttachStartlistBodySchema,
+        response: { 200: EventResponseSchema, ...errorResponses },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const command = {
+          ...request.body,
+          eventId: request.params.eventId,
+          raceId: request.params.raceId,
+        };
+        const event = await options.attachStartlistService.execute(command);
         reply.code(200);
         return { event } satisfies EventResponse;
       } catch (error) {

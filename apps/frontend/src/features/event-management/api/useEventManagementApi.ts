@@ -27,6 +27,16 @@ export interface ScheduleRaceResult {
   startlist?: ScheduledRaceStartlist;
 }
 
+export interface AttachStartlistCommand {
+  eventId: string;
+  raceId: string;
+  startlistId: string;
+  confirmedAt: string;
+  version: number;
+  publicUrl: string;
+  status?: string;
+}
+
 const toIsoString = (value?: string): string | null => {
   if (!value) {
     return null;
@@ -154,10 +164,32 @@ export const useEventManagementApi = () => {
     [postJson],
   );
 
+  const attachStartlist = useCallback(
+    async (command: AttachStartlistCommand): Promise<EventDto> => {
+      const { eventId, raceId, startlistId, confirmedAt, version, publicUrl, status } = command;
+      const body: Record<string, unknown> = {
+        startlistId,
+        confirmedAt,
+        version,
+        publicUrl,
+      };
+      if (status) {
+        body.status = status;
+      }
+      const { event } = (await postJson(
+        `/${encodeURIComponent(eventId)}/races/${encodeURIComponent(raceId)}/startlist`,
+        body,
+      )) as EventResponse;
+      return event;
+    },
+    [postJson],
+  );
+
   return {
     listEvents,
     getEvent,
     createEvent,
     scheduleRace,
+    attachStartlist,
   };
 };

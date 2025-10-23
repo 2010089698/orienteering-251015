@@ -461,6 +461,8 @@ describe('StartTimesPanel', () => {
           startlistId: 'SL-1',
           version: 3,
           confirmedAt: '2024-04-05T09:00:00.000Z',
+          startlistStatus: 'FINALIZED',
+          attachStartlist: expect.any(Function),
         }),
       );
     });

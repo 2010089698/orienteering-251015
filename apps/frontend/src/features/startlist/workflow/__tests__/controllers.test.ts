@@ -130,6 +130,8 @@ vi.mock('../../utils/eventLinking', () => ({
     startlistId: string;
     version: number;
     confirmedAt: string;
+    startlistStatus?: string;
+    attachStartlist: (command: unknown) => unknown;
   }) => {
     mocks.mockTryAutoAttachStartlist(params);
 
@@ -550,6 +552,8 @@ describe('useClassOrderController', () => {
       startlistId: mockStartlistId,
       version: 3,
       confirmedAt: '2024-04-05T09:00:00.000Z',
+      startlistStatus: 'FINALIZED',
+      attachStartlist: expect.any(Function),
     });
     expect(mocks.mockSetEventLinkStatus).toHaveBeenCalledWith(
       mocks.mockDispatch,
