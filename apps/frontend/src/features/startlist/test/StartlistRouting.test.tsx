@@ -243,7 +243,9 @@ describe('Startlist workflow routing', () => {
       },
     });
 
-    expect(await screen.findByRole('heading', { name: 'スタートリストをイベントに連携' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'スタートリストのイベント連携状況' }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.link);
   });
 });
@@ -253,7 +255,6 @@ vi.mock('../../event-management/api/useEventManagementApi', () => ({
     getEvent: vi.fn().mockResolvedValue({ id: 'event-1', name: 'Dummy', races: [] }),
     createEvent: vi.fn(),
     scheduleRace: vi.fn(),
-    attachStartlist: vi.fn(),
   }),
 }));
 

@@ -3,6 +3,7 @@ import { Tag } from '@orienteering/shared-ui';
 import type { RaceDto } from '@event-management/application';
 
 import StartlistPreview from './StartlistPreview';
+import { getStartlistStatusLabel } from '../utils/startlistStatus';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
@@ -38,7 +39,8 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
           const startlistCreationLink = eventId
             ? `/startlist?eventId=${encodeURIComponent(eventId)}&raceId=${encodeURIComponent(race.id)}`
             : undefined;
-          const startlistId = race.startlistId ?? null;
+          const startlistId = race.startlist?.id ?? null;
+          const startlistStatus = getStartlistStatusLabel(race.startlist?.status);
           return (
             <tr key={race.id}>
               <th scope="row">{race.name}</th>
@@ -53,29 +55,24 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
               <td>
                 {startlistId ? (
                   <div className="race-list__startlist">
-                    {race.startlistLink ? (
-                      <a href={race.startlistLink} target="_blank" rel="noreferrer">
-                        スタートリストを表示
-                      </a>
-                    ) : (
-                      <span className="race-list__startlist-note">公開リンクはまだ設定されていません。</span>
-                    )}
-                    <StartlistPreview
-                      startlistId={startlistId}
-                      version={race.startlistPublicVersion}
-                      updatedAt={race.startlistUpdatedAt}
-                    />
+                    <div className="race-list__startlist-meta">
+                      <span className="race-list__startlist-id">ID: {startlistId}</span>
+                      {startlistStatus ? (
+                        <span className="race-list__startlist-status">状態: {startlistStatus}</span>
+                      ) : null}
+                    </div>
+                    <StartlistPreview startlistId={startlistId} initialStatus={race.startlist?.status} />
                   </div>
                 ) : (
                   <div className="race-list__startlist race-list__startlist--empty">
-                    <span className="race-list__startlist-status">未公開</span>
-                    <span className="race-list__startlist-note">スタートリストはまだ公開されていません。</span>
+                    <span className="race-list__startlist-status">準備中</span>
+                    <span className="race-list__startlist-note">スタートリストを自動生成しています。</span>
                   </div>
                 )}
               </td>
               <td>
                 {startlistCreationLink ? (
-                  <Link to={startlistCreationLink}>スタートリストを作成</Link>
+                  <Link to={startlistCreationLink}>スタートリストを編集</Link>
                 ) : (
                   '—'
                 )}

@@ -31,6 +31,10 @@ const createSnapshot = (overrides: Partial<StartlistWithHistoryDto> = {}): Start
     { playerId: 'P-5', laneNumber: 2, startTime: '2024-04-05T09:08:00.000Z' },
     { playerId: 'P-6', laneNumber: 3, startTime: '2024-04-05T09:10:00.000Z' },
   ],
+  versions: [
+    { version: 5, confirmedAt: '2024-04-05T09:12:00.000Z' },
+    { version: 4, confirmedAt: '2024-04-04T09:12:00.000Z' },
+  ],
   ...overrides,
 });
 
@@ -46,17 +50,11 @@ describe('StartlistPreview', () => {
       fetchSnapshot,
     } as unknown as ReturnType<typeof useStartlistApi>);
 
-    render(
-      <StartlistPreview
-        startlistId="SL-1"
-        version={5}
-        updatedAt="2024-04-05T09:12:00.000Z"
-      />,
-    );
+    render(<StartlistPreview startlistId="SL-1" initialStatus="FINALIZED" />);
 
     const table = await screen.findByRole('table', { name: 'スタートリストのプレビュー' });
     expect(table).toBeInTheDocument();
-    expect(fetchSnapshot).toHaveBeenCalledWith({ startlistId: 'SL-1' });
+    expect(fetchSnapshot).toHaveBeenCalledWith({ startlistId: 'SL-1', includeVersions: true, versionLimit: 1 });
     expect(screen.getByText('ID: SL-1')).toBeInTheDocument();
     expect(screen.getByText('公開バージョン v5')).toBeInTheDocument();
     expect(screen.getByText('レーン数: 3')).toBeInTheDocument();
@@ -80,36 +78,28 @@ describe('StartlistPreview', () => {
     expect(alert).toHaveTextContent('取得に失敗しました');
   });
 
-  it('re-fetches the snapshot when the published version changes', async () => {
+  it('re-fetches the snapshot when the startlist identifier changes', async () => {
     const snapshot = createSnapshot();
     const fetchSnapshot = vi.fn(async () => snapshot);
     mockedUseStartlistApi.mockReturnValue({
       fetchSnapshot,
     } as unknown as ReturnType<typeof useStartlistApi>);
 
-    const { rerender } = render(
-      <StartlistPreview
-        startlistId="SL-1"
-        version={1}
-        updatedAt="2024-04-05T09:12:00.000Z"
-      />,
-    );
+    const { rerender } = render(<StartlistPreview startlistId="SL-1" />);
 
     await screen.findByRole('table', { name: 'スタートリストのプレビュー' });
     expect(fetchSnapshot).toHaveBeenCalledTimes(1);
 
     fetchSnapshot.mockClear();
 
-    rerender(
-      <StartlistPreview
-        startlistId="SL-1"
-        version={2}
-        updatedAt="2024-04-05T09:15:00.000Z"
-      />,
-    );
+    rerender(<StartlistPreview startlistId="SL-2" />);
 
     await waitFor(() => {
-      expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+      expect(fetchSnapshot).toHaveBeenCalledWith({
+        startlistId: 'SL-2',
+        includeVersions: true,
+        versionLimit: 1,
+      });
     });
   });
 });

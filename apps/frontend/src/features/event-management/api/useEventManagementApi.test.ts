@@ -88,7 +88,7 @@ describe('useEventManagementApi', () => {
     expect(response).toEqual(event);
   });
 
-  it('submits race scheduling payloads to the race endpoint', async () => {
+  it('submits race scheduling payloads to the race endpoint and extracts startlist metadata', async () => {
     const { result } = renderHook(() => useEventManagementApi());
     const event = {
       id: 'EV-3',
@@ -103,7 +103,14 @@ describe('useEventManagementApi', () => {
           schedule: { start: '2024-05-01T10:00:00.000Z', end: undefined },
           duplicateDay: false,
           overlapsExisting: false,
-          startlistLink: undefined,
+        },
+        {
+          id: 'race-2',
+          name: 'Final',
+          schedule: { start: '2024-05-02T00:00:00.000Z', end: undefined },
+          duplicateDay: false,
+          overlapsExisting: false,
+          startlist: { id: 'SL-99', status: 'DRAFT' },
         },
       ],
     };
@@ -124,42 +131,13 @@ describe('useEventManagementApi', () => {
       name: 'Final',
       date: '2024-05-02',
     });
-    expect(response).toEqual(event);
-  });
-
-  it('posts startlist attachments to the nested startlist endpoint', async () => {
-    const { result } = renderHook(() => useEventManagementApi());
-    const event = {
-      id: 'EV-4',
-      name: 'Relay',
-      startDate: '2024-06-01',
-      endDate: '2024-06-01',
-      venue: 'Sapporo',
-      races: [],
-    };
-    fetchMock.mockResolvedValue(createJsonResponse({ event, startlistId: 'SL-4' }));
-
-    const response = await result.current.attachStartlist({
-      eventId: 'EV-4',
-      raceId: 'race-1',
-      startlistId: 'SL-4',
-      startlistLink: 'https://example.com/startlist',
-      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-      startlistPublicVersion: 7,
+    expect(response.event).toEqual(event);
+    expect(response.startlist).toEqual({
+      raceId: 'race-2',
+      raceName: 'Final',
+      startlistId: 'SL-99',
+      status: 'DRAFT',
     });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/events/EV-4/races/race-1/startlist',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    const [, init] = fetchMock.mock.calls[0];
-    expect(JSON.parse(init?.body as string)).toEqual({
-      startlistId: 'SL-4',
-      startlistLink: 'https://example.com/startlist',
-      startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
-      startlistPublicVersion: 7,
-    });
-    expect(response).toEqual({ event, startlistId: 'SL-4' });
   });
 
   it('throws with the response text when the request fails', async () => {

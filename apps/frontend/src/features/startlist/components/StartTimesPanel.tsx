@@ -31,7 +31,6 @@ import {
 } from '../state/StartlistContext';
 import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
-import { useEventManagementApi } from '../../event-management/api/useEventManagementApi';
 import { tryAutoAttachStartlist } from '../utils/eventLinking';
 
 const formatDateTime = (iso: string): string => {
@@ -69,7 +68,6 @@ const StartTimesPanel = (): JSX.Element => {
   const previousVersion = useStartlistPreviousVersion();
   const diff = useStartlistDiff();
   const eventContext = useStartlistEventContext();
-  const { attachStartlist } = useEventManagementApi();
   const [diffError, setDiffError] = useState<string>();
   const [diffLoading, setDiffLoading] = useState(false);
 
@@ -262,7 +260,6 @@ const StartTimesPanel = (): JSX.Element => {
             await tryAutoAttachStartlist({
               dispatch,
               eventContext,
-              attachStartlist,
               startlistId: snapshot?.id ?? startlistId,
               version: latest.version,
               confirmedAt: latest.confirmedAt,
