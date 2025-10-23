@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { Tag } from '@orienteering/shared-ui';
 import type { RaceDto } from '@event-management/application';
 
+import StartlistPreview from './StartlistPreview';
+
 const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
   timeStyle: 'short',
@@ -33,12 +35,10 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
         {races.map((race) => {
           const start = dateTimeFormatter.format(new Date(race.schedule.start));
           const end = race.schedule.end ? dateTimeFormatter.format(new Date(race.schedule.end)) : '-';
-          const formattedUpdatedAt = race.startlistUpdatedAt
-            ? dateTimeFormatter.format(new Date(race.startlistUpdatedAt))
-            : null;
           const startlistCreationLink = eventId
             ? `/startlist?eventId=${encodeURIComponent(eventId)}&raceId=${encodeURIComponent(race.id)}`
             : undefined;
+          const startlistId = race.startlistId ?? null;
           return (
             <tr key={race.id}>
               <th scope="row">{race.name}</th>
@@ -51,21 +51,20 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
                 {race.overlapsExisting ? <Tag tone="critical">時間重複</Tag> : <Tag tone="success">重複なし</Tag>}
               </td>
               <td>
-                {race.startlistLink ? (
+                {startlistId ? (
                   <div className="race-list__startlist">
-                    <a href={race.startlistLink} target="_blank" rel="noreferrer">
-                      スタートリストを表示
-                    </a>
-                    {formattedUpdatedAt || race.startlistPublicVersion ? (
-                      <div className="race-list__startlist-meta">
-                        {formattedUpdatedAt ? (
-                          <span className="race-list__startlist-updated">更新: {formattedUpdatedAt}</span>
-                        ) : null}
-                        {race.startlistPublicVersion ? (
-                          <span className="race-list__startlist-version">v{race.startlistPublicVersion}</span>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    {race.startlistLink ? (
+                      <a href={race.startlistLink} target="_blank" rel="noreferrer">
+                        スタートリストを表示
+                      </a>
+                    ) : (
+                      <span className="race-list__startlist-note">公開リンクはまだ設定されていません。</span>
+                    )}
+                    <StartlistPreview
+                      startlistId={startlistId}
+                      version={race.startlistPublicVersion}
+                      updatedAt={race.startlistUpdatedAt}
+                    />
                   </div>
                 ) : (
                   <div className="race-list__startlist race-list__startlist--empty">

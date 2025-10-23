@@ -10,11 +10,15 @@ import {
   renderWithEventManagementRouter,
 } from './test-utils';
 import type { EventDto } from '@event-management/application';
+import type { StartlistWithHistoryDto } from '@startlist-management/application';
 import { useEventManagementApi } from '../api/useEventManagementApi';
+import { useStartlistApi } from '../../startlist/api/useStartlistApi';
 
 vi.mock('../api/useEventManagementApi');
+vi.mock('../../startlist/api/useStartlistApi');
 
 const mockedUseEventManagementApi = vi.mocked(useEventManagementApi);
+const mockedUseStartlistApi = vi.mocked(useStartlistApi);
 
 const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
   ({
@@ -32,6 +36,7 @@ const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
         schedule: { start: '2024-04-01T01:00:00.000Z', end: undefined },
         duplicateDay: false,
         overlapsExisting: false,
+        startlistId: undefined,
         startlistLink: undefined,
         startlistUpdatedAt: undefined,
         startlistPublicVersion: undefined,
@@ -39,6 +44,18 @@ const createEvent = (overrides: Partial<EventDto> = {}): EventDto =>
     ],
     ...overrides,
   }) as EventDto;
+
+const createStartlistSnapshot = (
+  overrides: Partial<StartlistWithHistoryDto> = {},
+): StartlistWithHistoryDto => ({
+  id: 'SL-1',
+  status: 'FINALIZED',
+  settings: undefined,
+  laneAssignments: [],
+  classAssignments: [],
+  startTimes: [],
+  ...overrides,
+});
 
 const renderLayout = (initialEntries: string[]) => {
   return renderWithEventManagementRouter(
@@ -52,6 +69,11 @@ const renderLayout = (initialEntries: string[]) => {
 describe('EventManagementLayout', () => {
   beforeEach(() => {
     mockedUseEventManagementApi.mockReset();
+    mockedUseStartlistApi.mockReset();
+    const defaultSnapshot = createStartlistSnapshot();
+    mockedUseStartlistApi.mockReturnValue({
+      fetchSnapshot: vi.fn(async () => defaultSnapshot),
+    } as unknown as ReturnType<typeof useStartlistApi>);
   });
 
   it('displays the event list, allows creating events, and navigates to the detail view', async () => {
@@ -149,6 +171,7 @@ describe('EventManagementLayout', () => {
           schedule: { start: '2024-04-02T01:00:00.000Z', end: undefined },
           duplicateDay: false,
           overlapsExisting: false,
+          startlistId: undefined,
           startlistLink: undefined,
           startlistUpdatedAt: undefined,
           startlistPublicVersion: undefined,
@@ -161,6 +184,7 @@ describe('EventManagementLayout', () => {
         race.id === 'race-1'
           ? {
               ...race,
+              startlistId: 'SL-1',
               startlistLink: 'https://example.com/startlist',
               startlistUpdatedAt: '2024-04-05T09:00:00.000Z',
               startlistPublicVersion: 5,
@@ -168,6 +192,19 @@ describe('EventManagementLayout', () => {
           : race,
       ),
     };
+
+    const fetchSnapshotMock = vi.fn(async () =>
+      createStartlistSnapshot({
+        id: 'SL-1',
+        startTimes: [
+          { playerId: 'P-1', laneNumber: 1, startTime: '2024-04-05T09:00:00.000Z' },
+          { playerId: 'P-2', laneNumber: 2, startTime: '2024-04-05T09:02:00.000Z' },
+        ],
+      }),
+    );
+    mockedUseStartlistApi.mockReturnValue({
+      fetchSnapshot: fetchSnapshotMock,
+    } as unknown as ReturnType<typeof useStartlistApi>);
 
     const getEventMock = vi
       .fn<Parameters<EventManagementApiMock['getEvent']>, ReturnType<EventManagementApiMock['getEvent']>>()
@@ -218,8 +255,9 @@ describe('EventManagementLayout', () => {
     expect(await screen.findByText('スタートリストを連携しました。')).toBeInTheDocument();
     const startlistLink = await screen.findByRole('link', { name: 'スタートリストを表示' });
     expect(startlistLink).toHaveAttribute('href', 'https://example.com/startlist');
-    expect(await screen.findByText(/更新: /)).toBeInTheDocument();
-    expect(await screen.findByText('v5')).toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: 'スタートリストのプレビュー' })).toBeInTheDocument();
+    expect(await screen.findByText(/更新:/)).toBeInTheDocument();
+    expect(await screen.findByText('公開バージョン v5')).toBeInTheDocument();
     const attachPayload = attachStartlistMock.mock.calls.at(-1)?.[0];
     expect(attachPayload).toMatchObject({
       eventId: 'event-1',
@@ -227,5 +265,6 @@ describe('EventManagementLayout', () => {
       startlistId: 'SL-1',
       startlistLink: 'https://example.com/startlist',
     });
+    expect(fetchSnapshotMock).toHaveBeenCalledWith({ startlistId: 'SL-1' });
   });
 });
