@@ -30,6 +30,8 @@ const createBaseDeps = (startlist: Partial<Startlist> = {}) => {
     }),
     toSnapshot: vi.fn(() => ({
       id: 'startlist-1',
+      eventId: 'event-1',
+      raceId: 'race-1',
       settings: undefined,
       laneAssignments: [],
       classAssignments: [],
@@ -72,6 +74,8 @@ describe('Startlist application use cases', () => {
       enterSettings: vi.fn(),
       toSnapshot: vi.fn(() => ({
         id: 'startlist-1',
+        eventId: 'event-1',
+        raceId: 'race-1',
         settings: undefined,
         laneAssignments: [],
         classAssignments: [],
@@ -324,6 +328,8 @@ describe('Startlist application use cases', () => {
     const confirmedAt = new Date('2024-02-02T00:00:00Z');
     const snapshot: StartlistSnapshot = {
       id: 'startlist-1',
+      eventId: 'event-1',
+      raceId: 'race-1',
       settings: undefined,
       laneAssignments: [],
       classAssignments: [],

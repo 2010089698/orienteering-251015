@@ -6,6 +6,12 @@ import { createStartlistModule } from '@startlist-management/infrastructure';
 import { createServer, StartlistServer } from '../server.js';
 
 const STARTLIST_ID = 'startlist-1';
+type StartlistCreatePayload = {
+  eventId: string;
+  raceId: string;
+  schedule: { start: string; end?: string };
+  updatedAt?: string;
+};
 const SETTINGS_PAYLOAD = {
   eventId: 'event-1',
   startTime: '2024-01-01T10:00:00.000Z',
@@ -81,6 +87,19 @@ describe('startlistRoutes', () => {
     });
   };
 
+  const createStartlist = async (overrides: Partial<StartlistCreatePayload> = {}) => {
+    const payload = {
+      eventId: SETTINGS_PAYLOAD.eventId,
+      raceId: STARTLIST_ID,
+      schedule: {
+        start: '2024-01-01T08:00:00.000Z',
+      },
+      updatedAt: '2024-01-01T07:30:00.000Z',
+      ...overrides,
+    } as StartlistCreatePayload;
+    return server.inject({ method: 'POST', url: '/api/startlists', payload });
+  };
+
   const assignLaneOrder = async () => {
     return server.inject({
       method: 'POST',
@@ -106,7 +125,7 @@ describe('startlistRoutes', () => {
   };
 
   it('accepts race schedule sync payloads from the EventManagement HTTP port', async () => {
-    const syncSpy = vi.spyOn(module.useCases.syncRaceSchedule, 'execute').mockResolvedValue(undefined);
+    const syncSpy = vi.spyOn(module.useCases.createStartlistForRace, 'execute');
 
     const port = new HttpStartlistSyncPort({
       baseUrl: 'http://startlists.local',
@@ -142,12 +161,13 @@ describe('startlistRoutes', () => {
     expect(syncSpy).toHaveBeenCalledTimes(1);
     const call = syncSpy.mock.calls[0]?.[0];
     expect(call).toMatchObject({
+      startlistId: 'race-sync',
       eventId: 'event-sync',
       raceId: 'race-sync',
     });
-    expect(call?.updatedAt.toISOString()).toBe(updatedAt.toISOString());
-    expect(call?.schedule.start.toISOString()).toBe(schedule.getStart().toISOString());
-    expect(call?.schedule.end?.toISOString()).toBe(schedule.getEnd()?.toISOString());
+    expect(call?.updatedAt?.toISOString()).toBe(updatedAt.toISOString());
+    expect(call?.schedule?.start.toISOString()).toBe(schedule.getStart().toISOString());
+    expect(call?.schedule?.end?.toISOString()).toBe(schedule.getEnd()?.toISOString());
 
     syncSpy.mockRestore();
   });
@@ -160,6 +180,14 @@ describe('startlistRoutes', () => {
   });
 
   it('creates a startlist and returns the snapshot state', async () => {
+    const createResponse = await createStartlist();
+    expect(createResponse.statusCode).toBe(201);
+    const createBody = createResponse.json();
+    expect(createBody.startlistId).toBe(STARTLIST_ID);
+    expect(createBody.created).toBe(true);
+    expect(createBody.snapshot.eventId).toBe(SETTINGS_PAYLOAD.eventId);
+    expect(createBody.snapshot.raceId).toBe(STARTLIST_ID);
+
     const settingsResponse = await enterSettings();
     expect(settingsResponse.statusCode).toBe(200);
 
@@ -180,6 +208,8 @@ describe('startlistRoutes', () => {
     expect(getResponse.statusCode).toBe(200);
     const body = getResponse.json();
     expect(body.id).toBe(STARTLIST_ID);
+    expect(body.eventId).toBe(SETTINGS_PAYLOAD.eventId);
+    expect(body.raceId).toBe(STARTLIST_ID);
     expect(body.status).toBe('START_TIMES_ASSIGNED');
     expect(body.startTimes).toHaveLength(START_TIMES.length);
     expect(body.settings.eventId).toBe(SETTINGS_PAYLOAD.eventId);
@@ -187,6 +217,22 @@ describe('startlistRoutes', () => {
     expect(body.settings.intervals.classPlayer).toEqual(SETTINGS_PAYLOAD.intervals.classPlayer);
     expect(body.versions).toBeUndefined();
     expect(body.diff).toBeUndefined();
+  });
+
+  it('returns the existing startlist when creation is repeated', async () => {
+    await createStartlist();
+
+    const secondResponse = await createStartlist({
+      schedule: { start: '2024-01-02T08:00:00.000Z', end: '2024-01-02T09:00:00.000Z' },
+      updatedAt: '2024-01-02T07:30:00.000Z',
+    });
+
+    expect(secondResponse.statusCode).toBe(200);
+    const body = secondResponse.json();
+    expect(body.created).toBe(false);
+    expect(body.startlistId).toBe(STARTLIST_ID);
+    expect(body.snapshot.eventId).toBe(SETTINGS_PAYLOAD.eventId);
+    expect(body.snapshot.raceId).toBe(STARTLIST_ID);
   });
 
   it('accepts legacy interval payloads and returns the expanded structure', async () => {
@@ -313,7 +359,10 @@ describe('startlistRoutes', () => {
   });
 
   it('returns 400 when assigning lane order before entering settings', async () => {
-    const startlist = Startlist.createNew(StartlistId.create(STARTLIST_ID), SystemClock);
+    const startlist = Startlist.createNew(StartlistId.create(STARTLIST_ID), SystemClock, {
+      eventId: 'event-lane-order-precondition',
+      raceId: STARTLIST_ID,
+    });
     await module.repository.save(startlist);
 
     const response = await assignLaneOrder();

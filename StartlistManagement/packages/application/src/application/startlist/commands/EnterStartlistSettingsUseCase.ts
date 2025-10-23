@@ -35,7 +35,13 @@ export class EnterStartlistSettingsService
         const settings = toStartlistSettings(command.settings);
         startlist.enterSettings(settings);
       },
-      { allowCreate: true },
+      {
+        allowCreate: true,
+        createContext: {
+          eventId: command.settings.eventId,
+          raceId: command.startlistId,
+        },
+      },
     );
   }
 }

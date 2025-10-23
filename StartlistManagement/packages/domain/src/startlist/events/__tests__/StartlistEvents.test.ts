@@ -162,6 +162,8 @@ test('StartlistFinalizedEvent copies the provided snapshot, arrays, and date', (
   const occurrence = new Date(baseDate);
   const snapshot: StartlistSnapshot = toStartlistSnapshotDto({
     id: 'startlist-immutable',
+    eventId: 'event-immutable',
+    raceId: 'race-immutable',
     settings: baseSettings,
     laneAssignments: baseLaneAssignments,
     classAssignments: baseClassAssignments,

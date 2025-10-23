@@ -41,6 +41,8 @@ export interface StartTimeDto {
 
 export interface StartlistSnapshotDto {
   id: string;
+  eventId: string;
+  raceId: string;
   settings?: StartlistSettingsDto;
   laneAssignments: LaneAssignmentDto[];
   classAssignments: ClassAssignmentDto[];
@@ -141,6 +143,8 @@ export const fromStartTimeDtos = (dtos: StartTimeDto[]): StartTime[] =>
 
 export const toStartlistSnapshotDto = (params: {
   id: string;
+  eventId: string;
+  raceId: string;
   settings?: StartlistSettings;
   laneAssignments: ReadonlyArray<LaneAssignment>;
   classAssignments: ReadonlyArray<ClassAssignment>;
@@ -148,6 +152,8 @@ export const toStartlistSnapshotDto = (params: {
   status: StartlistStatus;
 }): StartlistSnapshotDto => ({
   id: params.id,
+  eventId: params.eventId,
+  raceId: params.raceId,
   settings: params.settings ? toStartlistSettingsDto(params.settings) : undefined,
   laneAssignments: params.laneAssignments.map(toLaneAssignmentDto),
   classAssignments: params.classAssignments.map(toClassAssignmentDto),
@@ -158,6 +164,7 @@ export const toStartlistSnapshotDto = (params: {
 export const fromStartlistSnapshotDto = (
   snapshot: StartlistSnapshotDto,
 ): {
+  metadata: { eventId: string; raceId: string };
   settings?: StartlistSettings;
   laneAssignments: LaneAssignment[];
   classAssignments: ClassAssignment[];
@@ -169,6 +176,10 @@ export const fromStartlistSnapshotDto = (
   const classAssignments = fromClassAssignmentDtos(snapshot.classAssignments);
   const startTimes = fromStartTimeDtos(snapshot.startTimes);
   return {
+    metadata: {
+      eventId: snapshot.eventId,
+      raceId: snapshot.raceId,
+    },
     settings,
     laneAssignments,
     classAssignments,
@@ -179,6 +190,8 @@ export const fromStartlistSnapshotDto = (
 
 export const cloneStartlistSnapshotDto = (snapshot: StartlistSnapshotDto): StartlistSnapshotDto => ({
   id: snapshot.id,
+  eventId: snapshot.eventId,
+  raceId: snapshot.raceId,
   status: snapshot.status,
   settings: snapshot.settings
     ? {
