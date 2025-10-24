@@ -227,6 +227,40 @@ describe('Event application services', () => {
       });
     });
 
+    it('attaches startlists without a public URL', async () => {
+      const dependencies = createDependencies();
+      const event = createEvent();
+      const race = event.scheduleRace(
+        {
+          id: RaceId.from('race-attach-no-url'),
+          name: 'Sprint Final',
+          schedule: RaceSchedule.from(new Date('2024-04-05T09:00:00Z')),
+        },
+        new RaceSchedulingService(),
+      );
+      const findMock = dependencies.repository.findById as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValue(event);
+      const service = new AttachStartlistService(dependencies);
+
+      const result = await service.execute({
+        eventId: event.getId().toString(),
+        raceId: race.getId().toString(),
+        startlistId: 'startlist-without-public',
+        confirmedAt: '2024-04-05T10:00:00.000Z',
+        version: 2,
+        status: 'FINALIZED',
+      });
+
+      expect(dependencies.repository.save).toHaveBeenCalledTimes(1);
+      expect(result.races[0]?.startlist).toMatchObject({
+        id: 'startlist-without-public',
+        status: 'FINALIZED',
+        confirmedAt: '2024-04-05T10:00:00.000Z',
+        publicVersion: 2,
+      });
+      expect(result.races[0]?.startlist?.publicUrl).toBeUndefined();
+    });
+
     it('throws RaceNotFoundError when the race does not exist', async () => {
       const dependencies = createDependencies();
       const event = createEvent();

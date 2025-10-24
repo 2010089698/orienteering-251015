@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../startlistLinks', () => ({
   buildStartlistPublicUrl: vi.fn(),
+  buildStartlistViewerPath: vi.fn(),
 }));
 
 import { tryAutoAttachStartlist } from '../eventLinking';
-import { buildStartlistPublicUrl } from '../startlistLinks';
+import { buildStartlistPublicUrl, buildStartlistViewerPath } from '../startlistLinks';
 
 const buildStartlistPublicUrlMock = vi.mocked(buildStartlistPublicUrl);
+const buildStartlistViewerPathMock = vi.mocked(buildStartlistViewerPath);
 
 describe('tryAutoAttachStartlist', () => {
   afterEach(() => {
@@ -16,6 +18,7 @@ describe('tryAutoAttachStartlist', () => {
 
   it('attaches startlists and updates status on success', async () => {
     buildStartlistPublicUrlMock.mockReturnValue('https://public/startlists/SL-1');
+    buildStartlistViewerPathMock.mockReturnValue('/startlists/SL-1?version=3');
     const dispatch = vi.fn();
     const attachStartlist = vi.fn().mockResolvedValue(undefined);
 
@@ -65,6 +68,7 @@ describe('tryAutoAttachStartlist', () => {
 
   it('surfaces errors when the attachment fails', async () => {
     buildStartlistPublicUrlMock.mockReturnValue('https://public/startlists/SL-1');
+    buildStartlistViewerPathMock.mockReturnValue('/startlists/SL-1?version=2');
     const dispatch = vi.fn();
     const attachStartlist = vi.fn().mockRejectedValue(new Error('network down'));
 
@@ -82,7 +86,11 @@ describe('tryAutoAttachStartlist', () => {
       2,
       expect.objectContaining({
         type: 'context/setEventLinkStatus',
-        payload: expect.objectContaining({ status: 'error', errorMessage: 'network down' }),
+        payload: expect.objectContaining({
+          status: 'error',
+          errorMessage: 'network down',
+          startlistLink: 'https://public/startlists/SL-1',
+        }),
       }),
     );
     expect(dispatch).toHaveBeenNthCalledWith(
@@ -90,6 +98,48 @@ describe('tryAutoAttachStartlist', () => {
       expect.objectContaining({
         type: 'status/setStatus',
         payload: expect.objectContaining({ key: 'snapshot' }),
+      }),
+    );
+  });
+
+  it('falls back to the viewer path when the public URL is unavailable', async () => {
+    buildStartlistPublicUrlMock.mockReturnValue(undefined);
+    buildStartlistViewerPathMock.mockReturnValue('/startlists/SL-1?version=3');
+    const dispatch = vi.fn();
+    const attachStartlist = vi.fn().mockResolvedValue(undefined);
+
+    const result = await tryAutoAttachStartlist({
+      dispatch,
+      eventContext: { eventId: 'event-1', raceId: 'race-1' },
+      startlistId: 'SL-1',
+      version: 3,
+      confirmedAt: '2024-04-05T09:00:00.000Z',
+      startlistStatus: 'FINALIZED',
+      attachStartlist,
+    });
+
+    expect(result).toBe('success');
+    expect(buildStartlistViewerPathMock).toHaveBeenCalledWith('SL-1', 3);
+    expect(attachStartlist).toHaveBeenCalledWith({
+      eventId: 'event-1',
+      raceId: 'race-1',
+      startlistId: 'SL-1',
+      confirmedAt: '2024-04-05T09:00:00.000Z',
+      version: 3,
+      status: 'FINALIZED',
+    });
+    expect(dispatch).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        type: 'context/setEventLinkStatus',
+        payload: expect.objectContaining({ status: 'linking', startlistLink: '/startlists/SL-1?version=3' }),
+      }),
+    );
+    expect(dispatch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        type: 'context/setEventLinkStatus',
+        payload: expect.objectContaining({ status: 'success', startlistLink: '/startlists/SL-1?version=3' }),
       }),
     );
   });

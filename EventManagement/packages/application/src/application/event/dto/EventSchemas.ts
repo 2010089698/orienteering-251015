@@ -32,7 +32,7 @@ export const AttachStartlistCommandSchema = Type.Object(
     startlistId: NonEmptyString,
     confirmedAt: DateTimeString,
     version: Type.Integer({ minimum: 1 }),
-    publicUrl: NonEmptyString,
+    publicUrl: Type.Optional(NonEmptyString),
     status: Type.Optional(NonEmptyString),
   },
   { additionalProperties: false },
