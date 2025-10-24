@@ -27,9 +27,18 @@ const StartlistWorkflowPage = (): JSX.Element => {
   const isFinalized = statuses.snapshot.level === 'success';
 
   useEffect(() => {
-    if (eventContext.eventId !== eventIdParam || eventContext.raceId !== raceIdParam) {
-      setEventContext(dispatch, { eventId: eventIdParam, raceId: raceIdParam });
+    const nextEventId = eventIdParam ?? eventContext.eventId;
+    const nextRaceId = raceIdParam ?? eventContext.raceId;
+
+    if (nextEventId === undefined && nextRaceId === undefined) {
+      return;
     }
+
+    if (eventContext.eventId === nextEventId && eventContext.raceId === nextRaceId) {
+      return;
+    }
+
+    setEventContext(dispatch, { eventId: nextEventId, raceId: nextRaceId });
   }, [dispatch, eventContext.eventId, eventContext.raceId, eventIdParam, raceIdParam]);
 
   const steps = STARTLIST_STEP_SEQUENCE.map((step, index) => {
