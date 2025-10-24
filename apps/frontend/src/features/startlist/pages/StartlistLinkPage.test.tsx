@@ -74,6 +74,9 @@ describe('StartlistLinkPage', () => {
     const links = await screen.findAllByRole('link', { name: 'スタートリストを編集' });
     const hrefs = links.map((link) => link.getAttribute('href')).filter((href): href is string => href !== null);
     expect(hrefs).toEqual(expect.arrayContaining(['/startlist?eventId=event-1&raceId=race-1']));
+
+    const viewerLink = await screen.findByRole('link', { name: 'ビューアーを開く' });
+    expect(viewerLink).toHaveAttribute('href', '/startlists/SL-1');
   });
 
   it('shows success status when the startlist was linked automatically', async () => {
@@ -100,7 +103,36 @@ describe('StartlistLinkPage', () => {
     const statusWithin = within(statusContainer);
     const eventLink = statusWithin.getByRole('link', { name: 'イベント詳細を開く' });
     expect(eventLink).toHaveAttribute('href', '/events/event-1');
+    const viewerLink = statusWithin.getByRole('link', { name: 'ビューアーを開く' });
+    expect(viewerLink).toHaveAttribute('href', '/startlists/SL-1');
     const publicLink = statusWithin.getByRole('link', { name: '公開URLを確認' });
     expect(publicLink).toHaveAttribute('href', '/startlists/SL-1?version=3');
+  });
+
+  it('falls back to the internal viewer when the public URL is missing', async () => {
+    renderWithStartlistRouter(<StartlistLinkPage />, {
+      routerProps: { initialEntries: ['/startlist/link'] },
+      initialState: {
+        startlistId: 'SL-1',
+        eventContext: { eventId: 'event-1', raceId: 'race-1' },
+        eventLinkStatus: {
+          status: 'success',
+          eventId: 'event-1',
+          raceId: 'race-1',
+          startlistId: 'SL-1',
+        },
+      },
+    });
+
+    const statusText = await screen.findByText('イベント「春の大会」にスタートリストを自動連携しました。');
+    const statusContainer = statusText.closest('.startlist-link__status');
+    if (!statusContainer) {
+      throw new Error('status container not found');
+    }
+    const statusWithin = within(statusContainer);
+    const viewerLink = statusWithin.getByRole('link', { name: 'ビューアーを開く' });
+    expect(viewerLink).toHaveAttribute('href', '/startlists/SL-1');
+    const publicLink = statusWithin.getByRole('link', { name: '公開URLを確認' });
+    expect(publicLink).toHaveAttribute('href', '/startlists/SL-1');
   });
 });

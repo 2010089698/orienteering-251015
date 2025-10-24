@@ -41,6 +41,9 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
             : undefined;
           const startlistId = race.startlist?.id ?? null;
           const startlistStatus = getStartlistStatusLabel(race.startlist?.status);
+          const startlistViewerPath = startlistId
+            ? `/startlists/${encodeURIComponent(startlistId)}`
+            : null;
           return (
             <tr key={race.id}>
               <th scope="row">{race.name}</th>
@@ -62,6 +65,11 @@ const RaceList = ({ races, eventId }: RaceListProps) => {
                       ) : null}
                     </div>
                     <StartlistPreview startlistId={startlistId} initialStatus={race.startlist?.status} />
+                    {startlistViewerPath ? (
+                      <div className="race-list__startlist-actions">
+                        <Link to={startlistViewerPath}>ビューアーを開く</Link>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="race-list__startlist race-list__startlist--empty">
