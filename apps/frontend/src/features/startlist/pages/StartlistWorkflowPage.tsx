@@ -28,7 +28,15 @@ const StartlistWorkflowPage = (): JSX.Element => {
 
   useEffect(() => {
     const nextEventId = eventIdParam ?? eventContext.eventId;
-    const nextRaceId = raceIdParam ?? eventContext.raceId;
+    let nextRaceId = raceIdParam ?? eventContext.raceId;
+
+    if (
+      raceIdParam === undefined &&
+      eventIdParam !== undefined &&
+      eventIdParam !== eventContext.eventId
+    ) {
+      nextRaceId = undefined;
+    }
 
     if (nextEventId === undefined && nextRaceId === undefined) {
       return;
