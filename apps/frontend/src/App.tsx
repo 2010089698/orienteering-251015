@@ -6,6 +6,7 @@ import InputStepPage from './features/startlist/pages/InputStepPage';
 import LaneAssignmentStepPage from './features/startlist/pages/LaneAssignmentStepPage';
 import ClassOrderStepPage from './features/startlist/pages/ClassOrderStepPage';
 import StartlistLinkPage from './features/startlist/pages/StartlistLinkPage';
+import StartlistViewerPage from './features/startlist/pages/StartlistViewerPage';
 import './styles.css';
 
 const capabilityModules = getBusinessCapabilities();
@@ -27,6 +28,8 @@ const App = (): JSX.Element => {
   if (!capabilityModules.length) {
     return <div>Business capabilities are not registered.</div>;
   }
+
+  const startlistModule = capabilityModules.find((module) => module.id === 'startlist');
 
   return (
     <BrowserRouter>
@@ -63,6 +66,12 @@ const App = (): JSX.Element => {
               }
               return <Route key={module.id} path={`${module.routePath}/*`} element={<ModuleRoute module={module} />} />;
             })}
+            {startlistModule ? (
+              <Route
+                path="/startlists/:startlistId"
+                element={applyProviders(startlistModule.providers, <StartlistViewerPage />)}
+              />
+            ) : null}
             <Route path="*" element={<Navigate to={defaultCapabilityPath} replace />} />
           </Routes>
         </main>

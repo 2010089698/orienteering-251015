@@ -1,4 +1,10 @@
 export const STARTLIST_BASE_PATH = '/startlist';
+export const STARTLIST_VIEWER_BASE_PATH = '/startlists';
+
+export const getStartlistViewerPath = (startlistId: string): string => {
+  const encodedId = encodeURIComponent(startlistId);
+  return `${STARTLIST_VIEWER_BASE_PATH}/${encodedId}`;
+};
 
 export const STARTLIST_STEP_PATHS = {
   input: `${STARTLIST_BASE_PATH}/input`,
