@@ -49,7 +49,8 @@ export class AttachStartlistService extends EventServiceBase {
       }
 
       const confirmedAt = parseDateTime(command.confirmedAt, 'Startlist confirmation time');
-      const publicUrl = normalizeUrl(command.publicUrl);
+      const publicUrl =
+        command.publicUrl !== undefined ? normalizeUrl(command.publicUrl) : undefined;
       const status = resolveStatus(command, race.getStartlistStatus());
 
       const reference = StartlistReference.create({

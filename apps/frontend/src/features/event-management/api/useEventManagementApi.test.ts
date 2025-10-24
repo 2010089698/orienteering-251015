@@ -193,6 +193,36 @@ describe('useEventManagementApi', () => {
     expect(response).toEqual(event);
   });
 
+  it('omits the publicUrl field when it is undefined', async () => {
+    const { result } = renderHook(() => useEventManagementApi());
+    const event = {
+      id: 'EV-5',
+      name: 'Night Relay',
+      startDate: '2024-08-01',
+      endDate: '2024-08-02',
+      venue: 'Tokyo',
+      races: [],
+    };
+
+    fetchMock.mockResolvedValue(createJsonResponse({ event }));
+
+    const response = await result.current.attachStartlist({
+      eventId: 'EV-5',
+      raceId: 'race-7',
+      startlistId: 'SL-300',
+      confirmedAt: '2024-08-01T15:00:00.000Z',
+      version: 1,
+    });
+
+    const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect(JSON.parse(init?.body as string)).toEqual({
+      startlistId: 'SL-300',
+      confirmedAt: '2024-08-01T15:00:00.000Z',
+      version: 1,
+    });
+    expect(response).toEqual(event);
+  });
+
   it('throws with the response text when the request fails', async () => {
     const { result } = renderHook(() => useEventManagementApi());
     fetchMock.mockResolvedValue(new Response('失敗しました', { status: 500 }));

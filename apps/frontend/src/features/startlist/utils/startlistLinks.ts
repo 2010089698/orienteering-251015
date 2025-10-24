@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useStartlistLatestVersion, useStartlistSnapshot } from '../state/StartlistContext';
+import { getStartlistViewerPath } from '../routes';
 
 type ImportMetaEnvWithRecord = ImportMetaEnv & Record<string, string | undefined>;
 
@@ -34,6 +35,20 @@ export const buildStartlistPublicUrl = (
     return undefined;
   }
   return `${baseUrl}${buildStartlistSpectatorPath(startlistId, version)}`;
+};
+
+export const buildStartlistViewerPath = (
+  startlistId: string,
+  version?: number,
+): string | undefined => {
+  if (!startlistId) {
+    return undefined;
+  }
+  const basePath = getStartlistViewerPath(startlistId);
+  if (typeof version === 'number' && Number.isInteger(version)) {
+    return `${basePath}?version=${version}`;
+  }
+  return basePath;
 };
 
 export const useFinalizedStartlistLink = (): string | undefined => {

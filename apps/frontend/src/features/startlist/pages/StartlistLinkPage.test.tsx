@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,12 +68,12 @@ describe('StartlistLinkPage', () => {
       expect(getEventMock).toHaveBeenCalledWith('event-1');
     });
 
-    expect(await screen.findByText('ID: SL-1')).toBeInTheDocument();
+    const startlistIds = await screen.findAllByText('ID: SL-1');
+    expect(startlistIds.length).toBeGreaterThan(0);
     expect(screen.getByText('状態: 下書き')).toBeInTheDocument();
     const links = await screen.findAllByRole('link', { name: 'スタートリストを編集' });
-    const hrefs = links.map((link) => link.getAttribute('href'));
-    expect(hrefs).toContain('/startlist?eventId=event-1');
-    expect(hrefs).toContain('/startlist?eventId=event-1&raceId=race-1');
+    const hrefs = links.map((link) => link.getAttribute('href')).filter((href): href is string => href !== null);
+    expect(hrefs).toEqual(expect.arrayContaining(['/startlist?eventId=event-1&raceId=race-1']));
   });
 
   it('shows success status when the startlist was linked automatically', async () => {
@@ -87,15 +87,20 @@ describe('StartlistLinkPage', () => {
           eventId: 'event-1',
           raceId: 'race-1',
           startlistId: 'SL-1',
-          startlistLink: 'https://example.com/startlists/SL-1',
+          startlistLink: '/startlists/SL-1?version=3',
         },
       },
     });
 
-    expect(
-      await screen.findByText('イベント「春の大会」にスタートリストを自動連携しました。'),
-    ).toBeInTheDocument();
-    const eventLink = screen.getByRole('link', { name: 'イベント詳細を開く' });
+    const statusText = await screen.findByText('イベント「春の大会」にスタートリストを自動連携しました。');
+    const statusContainer = statusText.closest('.startlist-link__status');
+    if (!statusContainer) {
+      throw new Error('status container not found');
+    }
+    const statusWithin = within(statusContainer);
+    const eventLink = statusWithin.getByRole('link', { name: 'イベント詳細を開く' });
     expect(eventLink).toHaveAttribute('href', '/events/event-1');
+    const publicLink = statusWithin.getByRole('link', { name: '公開URLを確認' });
+    expect(publicLink).toHaveAttribute('href', '/startlists/SL-1?version=3');
   });
 });

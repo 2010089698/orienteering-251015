@@ -201,7 +201,7 @@ describe('StartlistContext', () => {
         eventId: 'event',
         raceId: 'race-42',
         startlistId: 'SL-1',
-        startlistLink: 'https://example.com/startlists/SL-1/v/2',
+        startlistLink: '/startlists/SL-1?version=2',
         startlistUpdatedAt: '2024-04-02T00:00:00.000Z',
         startlistPublicVersion: 2,
       });
@@ -239,7 +239,7 @@ describe('StartlistContext', () => {
       eventId: 'event',
       raceId: 'race-42',
       startlistId: 'SL-1',
-      startlistLink: 'https://example.com/startlists/SL-1/v/2',
+      startlistLink: '/startlists/SL-1?version=2',
       startlistUpdatedAt: '2024-04-02T00:00:00.000Z',
       startlistPublicVersion: 2,
     });

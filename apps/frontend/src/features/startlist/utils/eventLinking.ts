@@ -3,7 +3,7 @@ import type { Dispatch } from 'react';
 import { createStatus, setEventLinkStatus, setStatus } from '../state/StartlistContext';
 import type { StartlistAction } from '../state/store/createStartlistStore';
 import type { EventContext } from '../state/types';
-import { buildStartlistPublicUrl } from './startlistLinks';
+import { buildStartlistPublicUrl, buildStartlistViewerPath } from './startlistLinks';
 import type { AttachStartlistCommand } from '../../event-management/api/useEventManagementApi';
 
 export type AutoAttachResult = 'skipped' | 'success' | 'error';
@@ -32,29 +32,16 @@ export const tryAutoAttachStartlist = async ({
     return 'skipped';
   }
 
-  const startlistLink = buildStartlistPublicUrl(startlistId, version);
-  if (!startlistLink) {
-    const message = 'スタートリストの公開URLを生成できませんでした。';
-    setEventLinkStatus(dispatch, {
-      status: 'error',
-      eventId,
-      raceId,
-      startlistId,
-      errorMessage: message,
-      startlistUpdatedAt: confirmedAt,
-      startlistPublicVersion: version,
-    });
-    setStatus(dispatch, 'snapshot', createStatus(message, 'error'));
-    return 'error';
-  }
+  const publicUrl = buildStartlistPublicUrl(startlistId, version);
+  const startlistLink = publicUrl ?? buildStartlistViewerPath(startlistId, version);
 
   const baseStatus = {
     eventId,
     raceId,
     startlistId,
-    startlistLink,
     startlistUpdatedAt: confirmedAt,
     startlistPublicVersion: version,
+    ...(startlistLink ? { startlistLink } : {}),
   } as const;
 
   setEventLinkStatus(dispatch, {
@@ -63,15 +50,18 @@ export const tryAutoAttachStartlist = async ({
   });
 
   try {
-    await attachStartlist({
+    const attachCommand: AttachStartlistCommand = {
       eventId,
       raceId,
       startlistId,
       confirmedAt,
       version,
-      publicUrl: startlistLink,
       status: startlistStatus,
-    });
+    };
+    if (publicUrl !== undefined) {
+      attachCommand.publicUrl = publicUrl;
+    }
+    await attachStartlist(attachCommand);
     setEventLinkStatus(dispatch, {
       status: 'success',
       ...baseStatus,

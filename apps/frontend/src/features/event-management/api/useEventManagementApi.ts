@@ -33,7 +33,7 @@ export interface AttachStartlistCommand {
   startlistId: string;
   confirmedAt: string;
   version: number;
-  publicUrl: string;
+  publicUrl?: string;
   status?: string;
 }
 
@@ -171,8 +171,10 @@ export const useEventManagementApi = () => {
         startlistId,
         confirmedAt,
         version,
-        publicUrl,
       };
+      if (publicUrl !== undefined) {
+        body.publicUrl = publicUrl;
+      }
       if (status) {
         body.status = status;
       }

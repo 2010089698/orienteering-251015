@@ -198,6 +198,36 @@ describe('eventRoutes', () => {
     });
   });
 
+  it('attaches startlists when no public URL is provided', async () => {
+    await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
+    await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races`,
+      payload: SCHEDULE_RACE_PAYLOAD,
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/events/${EVENT_ID}/races/${RACE_ID}/startlist`,
+      payload: {
+        startlistId: 'startlist-without-public',
+        confirmedAt: '2024-06-01T12:00:00.000Z',
+        version: 2,
+        status: 'FINALIZED',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.event.races[0]?.startlist).toMatchObject({
+      id: 'startlist-without-public',
+      status: 'FINALIZED',
+      confirmedAt: '2024-06-01T12:00:00.000Z',
+      publicVersion: 2,
+    });
+    expect(body.event.races[0]?.startlist?.publicUrl).toBeUndefined();
+  });
+
   it('returns 400 when attaching startlists with invalid URLs', async () => {
     await server.inject({ method: 'POST', url: '/api/events', payload: CREATE_EVENT_PAYLOAD });
     await server.inject({
