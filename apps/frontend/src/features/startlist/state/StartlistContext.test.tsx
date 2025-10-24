@@ -1,6 +1,7 @@
-import { act, render, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import {
   StartlistProvider,
   useStartlistState,
@@ -34,6 +35,8 @@ import {
 } from './StartlistContext';
 import type { ClassSplitResult, ClassSplitRule, StartlistState } from './types';
 import type { StartlistDiffDto, StartlistVersionSummaryDto } from '@startlist-management/application';
+import StartlistWorkflowPage from '../pages/StartlistWorkflowPage';
+import { EventManagementProvider } from '../../event-management';
 
 describe('StartlistContext', () => {
   it('throws when hooks used outside provider', () => {
@@ -437,6 +440,46 @@ describe('StartlistContext', () => {
 
     expect(result.current.state.laneAssignments).toHaveLength(1);
     expect(result.current.state.classSplitResult?.signature).toBe('sig-constant');
+  });
+
+  it('retains event context when navigating without search params', async () => {
+    const EventContextViewer = () => {
+      const context = useStartlistEventContext();
+      return <div data-testid="event-context">{JSON.stringify(context)}</div>;
+    };
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/startlist',
+          element: (
+            <EventManagementProvider>
+              <StartlistProvider>
+                <StartlistWorkflowPage />
+              </StartlistProvider>
+            </EventManagementProvider>
+          ),
+          children: [
+            { index: true, element: <EventContextViewer /> },
+            { path: 'lanes', element: <EventContextViewer /> },
+          ],
+        },
+      ],
+      { initialEntries: ['/startlist?eventId=event-123&raceId=race-456'] },
+    );
+
+    render(<RouterProvider router={router} />);
+
+    const eventContextElement = await screen.findByTestId('event-context');
+    expect(eventContextElement.textContent).toContain('event-123');
+    expect(eventContextElement.textContent).toContain('race-456');
+
+    await act(async () => {
+      await router.navigate('/startlist/lanes');
+    });
+
+    expect(eventContextElement.textContent).toContain('event-123');
+    expect(eventContextElement.textContent).toContain('race-456');
   });
 });
 
