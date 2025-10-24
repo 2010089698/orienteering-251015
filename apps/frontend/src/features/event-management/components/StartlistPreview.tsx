@@ -3,17 +3,9 @@ import { StatusMessage } from '@orienteering/shared-ui';
 import type { StartlistWithHistoryDto } from '@startlist-management/application';
 
 import { useStartlistApi } from '../../startlist/api/useStartlistApi';
+import StartTimesTable from '../../startlist/components/StartTimesTable';
+import { formatDateTime, sortStartTimes } from '../../startlist/utils/startlistFormatting';
 import { getStartlistStatusLabel } from '../utils/startlistStatus';
-
-const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('ja-JP', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
 
 interface StartlistPreviewProps {
   startlistId: string;
@@ -23,17 +15,6 @@ interface StartlistPreviewProps {
 const PREVIEW_LIMIT = 5;
 
 const defaultErrorMessage = 'スタートリストの取得に失敗しました。';
-
-const formatDateTime = (value?: string): string | null => {
-  if (!value) {
-    return null;
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return dateTimeFormatter.format(parsed);
-};
 
 const StartlistPreview = ({ startlistId, initialStatus }: StartlistPreviewProps) => {
   const { fetchSnapshot } = useStartlistApi();
@@ -77,13 +58,7 @@ const StartlistPreview = ({ startlistId, initialStatus }: StartlistPreviewProps)
     if (!snapshot?.startTimes.length) {
       return [] as StartlistWithHistoryDto['startTimes'];
     }
-    return [...snapshot.startTimes]
-      .sort((left, right) => {
-        const leftTime = new Date(left.startTime).getTime();
-        const rightTime = new Date(right.startTime).getTime();
-        return leftTime - rightTime;
-      })
-      .slice(0, PREVIEW_LIMIT);
+    return sortStartTimes(snapshot.startTimes).slice(0, PREVIEW_LIMIT);
   }, [snapshot]);
 
   const totalStartTimes = snapshot?.startTimes.length ?? 0;
@@ -130,39 +105,11 @@ const StartlistPreview = ({ startlistId, initialStatus }: StartlistPreviewProps)
         <StatusMessage tone="error" message={error} />
       ) : previewStartTimes.length ? (
         <>
-          <table className="startlist-preview__table" aria-label="スタートリストのプレビュー">
-            <thead>
-              <tr>
-                <th scope="col">順番</th>
-                <th scope="col">選手ID</th>
-                <th scope="col">レーン</th>
-                <th scope="col">スタート</th>
-              </tr>
-            </thead>
-            <tbody>
-              {previewStartTimes.map((startTime, index) => {
-                const displayOrder = index + 1;
-                const parsedStartTime = new Date(startTime.startTime);
-                const formattedTime = Number.isNaN(parsedStartTime.getTime())
-                  ? ''
-                  : timeFormatter.format(parsedStartTime);
-                return (
-                  <tr key={`${startTime.playerId}-${startTime.startTime}-${index}`}>
-                    <th scope="row">{displayOrder}</th>
-                    <td>{startTime.playerId}</td>
-                    <td>{startTime.laneNumber}</td>
-                    <td>
-                      {formattedTime ? (
-                        <time dateTime={startTime.startTime}>{formattedTime}</time>
-                      ) : (
-                        <span aria-label="未定">-</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <StartTimesTable
+            startTimes={previewStartTimes}
+            className="startlist-preview__table"
+            ariaLabel="スタートリストのプレビュー"
+          />
           {remainingCount > 0 ? (
             <p className="startlist-preview__more">ほか {remainingCount} 件のスタートがあります。</p>
           ) : null}
