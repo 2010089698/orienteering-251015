@@ -131,6 +131,9 @@ const StartlistLinkContent = (): JSX.Element => {
 
   const normalizedStartlistId = startlistId?.trim() ? startlistId.trim() : undefined;
   const defaultStartlistId = eventLinkStatus.startlistId ?? snapshot?.id ?? normalizedStartlistId;
+  const startlistViewerPath = defaultStartlistId
+    ? `/startlists/${encodeURIComponent(defaultStartlistId)}`
+    : null;
 
   return (
     <div className="startlist-link">
@@ -201,10 +204,20 @@ const StartlistLinkContent = (): JSX.Element => {
                 <Link to={`/events/${eventLinkStatus.eventId}`}>イベント詳細を開く</Link>
                 {' / スタートリスト ID: '}
                 <code>{eventLinkStatus.startlistId ?? defaultStartlistId ?? startlistId}</code>
-                {eventLinkStatus.startlistLink ? (
+                {startlistViewerPath ? (
                   <>
                     {' / '}
-                    <a href={eventLinkStatus.startlistLink} target="_blank" rel="noreferrer">
+                    <Link to={startlistViewerPath}>ビューアーを開く</Link>
+                  </>
+                ) : null}
+                {(eventLinkStatus.startlistLink ?? startlistViewerPath) ? (
+                  <>
+                    {' / '}
+                    <a
+                      href={eventLinkStatus.startlistLink ?? startlistViewerPath ?? '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       公開URLを確認
                     </a>
                   </>
