@@ -35,7 +35,7 @@ import { createClassOrderViewModel, parsePlayerItemId } from '../createClassOrde
 import { sanitizeActiveTab } from '../utils';
 import { useStartlistApi } from '../../api/useStartlistApi';
 import { tryAutoAttachStartlist } from '../../utils/eventLinking';
-import { useEventManagementActions } from '../../event-management/state';
+import { useEventManagementActions } from '../../../event-management/state';
 
 export const useClassOrderController = () => {
   const navigate = useNavigate();
