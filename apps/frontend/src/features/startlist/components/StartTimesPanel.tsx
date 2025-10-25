@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatusMessage } from '@orienteering/shared-ui';
 import type { StartTimeDto } from '@startlist-management/application';
 import { useStartlistApi } from '../api/useStartlistApi';
@@ -33,6 +34,7 @@ import { calculateStartTimes } from '../utils/startlistUtils';
 import { downloadStartlistCsv } from '../utils/startlistExport';
 import { tryAutoAttachStartlist } from '../utils/eventLinking';
 import { useEventManagementActions } from '../../event-management/state';
+import { STARTLIST_STEP_PATHS } from '../routes';
 
 const formatDateTime = (iso: string): string => {
   const date = new Date(iso);
@@ -51,6 +53,7 @@ const formatDateTime = (iso: string): string => {
 };
 
 const StartTimesPanel = (): JSX.Element => {
+  const navigate = useNavigate();
   const settings = useStartlistSettings();
   const entries = useStartlistEntries();
   const laneAssignments = useStartlistLaneAssignments();
@@ -295,6 +298,7 @@ const StartTimesPanel = (): JSX.Element => {
         }
       }
       await refreshDiff();
+      navigate(STARTLIST_STEP_PATHS.link);
     } catch (error) {
       const message = error instanceof Error ? error.message : '確定処理に失敗しました。';
       setStatus(dispatch, 'startTimes', createStatus(message, 'error'));
