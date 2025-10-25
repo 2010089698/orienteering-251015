@@ -4,6 +4,7 @@ import StartTimesPanel from './StartTimesPanel';
 import { renderWithStartlist } from '../test/test-utils';
 import type { Entry } from '../state/types';
 import type { ClassAssignmentDto, StartTimeDto } from '@startlist-management/application';
+import { STARTLIST_STEP_PATHS } from '../routes';
 
 const assignStartTimesMock = vi.fn();
 const finalizeMock = vi.fn();
@@ -11,6 +12,15 @@ const invalidateStartTimesMock = vi.fn();
 const fetchVersionsMock = vi.fn();
 const fetchDiffMock = vi.fn();
 const tryAutoAttachStartlistMock = vi.fn();
+const navigateMock = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 vi.mock('../api/useStartlistApi', () => ({
   useStartlistApi: () => ({
@@ -98,6 +108,7 @@ describe('StartTimesPanel', () => {
         : {}),
       changes: {},
     }));
+    navigateMock.mockReset();
   });
 
   afterEach(() => {
@@ -468,5 +479,28 @@ describe('StartTimesPanel', () => {
     });
     const [firstCall] = fetchVersionsMock.mock.calls;
     expect(firstCall[0]).toEqual({ startlistId: 'SL-1', limit: 1 });
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith(STARTLIST_STEP_PATHS.link));
+  });
+
+  it('does not navigate away when finalize fails', async () => {
+    finalizeMock.mockRejectedValue(new Error('finalize failed'));
+
+    renderWithStartlist(<StartTimesPanel />, {
+      initialState: {
+        startlistId: 'SL-1',
+        settings,
+        startTimes,
+        classAssignments,
+        statuses: {
+          startTimes: { level: 'idle', text: '' },
+        },
+      },
+    });
+
+    const finalizeButton = screen.getByRole('button', { name: 'スタートリストを確定' });
+    fireEvent.click(finalizeButton);
+
+    await flushAsync();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });
