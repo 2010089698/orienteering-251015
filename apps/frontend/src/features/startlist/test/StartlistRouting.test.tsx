@@ -19,14 +19,26 @@ import LaneAssignmentStepPage from '../pages/LaneAssignmentStepPage';
 import ClassOrderStepPage from '../pages/ClassOrderStepPage';
 import StartlistLinkPage from '../pages/StartlistLinkPage';
 import { STARTLIST_STEP_PATHS } from '../routes';
+import { useStartlistEventContext } from '../state/StartlistContext';
 
 const LocationProbe = () => {
   const location = useLocation();
-  return <div data-testid="current-path">{location.pathname}</div>;
+  return (
+    <>
+      <div data-testid="current-path">{location.pathname}</div>
+      <div data-testid="current-search">{location.search}</div>
+    </>
+  );
+};
+
+const QueryPreservingNavigate = ({ to }: { to: string }) => {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
 };
 
 const LayoutWithLocation = ({ onNavigateReady }: { onNavigateReady?: (navigate: NavigateFunction) => void }): JSX.Element => {
   const navigate = useNavigate();
+  const eventContext = useStartlistEventContext();
 
   useEffect(() => {
     onNavigateReady?.(navigate);
@@ -35,6 +47,7 @@ const LayoutWithLocation = ({ onNavigateReady }: { onNavigateReady?: (navigate: 
   return (
     <>
       <LocationProbe />
+      <div data-testid="event-context">{JSON.stringify(eventContext)}</div>
       <Outlet />
     </>
   );
@@ -52,15 +65,15 @@ const renderWorkflow = (initialEntries: string[], options?: RenderWorkflowOption
       <Routes>
         <Route path="/startlist" element={<StartlistWorkflowPage />}>
           <Route element={<LayoutWithLocation onNavigateReady={onNavigateReady} />}>
-            <Route index element={<Navigate to="input" replace />} />
+            <Route index element={<QueryPreservingNavigate to="input" />} />
             <Route path="input" element={<InputStepPage />} />
             <Route path="lanes" element={<LaneAssignmentStepPage />} />
             <Route path="order" element={<ClassOrderStepPage />} />
             <Route path="link" element={<StartlistLinkPage />} />
-            <Route path="*" element={<Navigate to="input" replace />} />
+            <Route path="*" element={<QueryPreservingNavigate to="input" />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to={STARTLIST_STEP_PATHS.input} replace />} />
+        <Route path="*" element={<QueryPreservingNavigate to={STARTLIST_STEP_PATHS.input} />} />
       </Routes>
     </MemoryRouter>,
     renderOptions,
@@ -247,6 +260,22 @@ describe('Startlist workflow routing', () => {
       await screen.findByRole('heading', { name: 'スタートリストのイベント連携状況' }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.link);
+  });
+
+  it('preserves query parameters when redirecting to the input step and initializes event context', async () => {
+    renderWorkflow(['/startlist?eventId=event-123&raceId=race-456']);
+
+    expect(await screen.findByRole('heading', { name: 'STEP 1 入力内容の整理' })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent(STARTLIST_STEP_PATHS.input);
+    expect(await screen.findByTestId('current-search')).toHaveTextContent(
+      '?eventId=event-123&raceId=race-456',
+    );
+
+    const eventContextElement = await screen.findByTestId('event-context');
+    await waitFor(() => {
+      expect(eventContextElement.textContent).toContain('event-123');
+      expect(eventContextElement.textContent).toContain('race-456');
+    });
   });
 });
 vi.mock('../../event-management/api/useEventManagementApi', () => ({

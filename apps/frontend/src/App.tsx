@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { getBusinessCapabilities, getNavigationItems } from './contexts/registry';
 import type { BusinessCapabilityModule, CapabilityProvider } from './contexts/types';
 import InputStepPage from './features/startlist/pages/InputStepPage';
@@ -22,6 +22,11 @@ const applyProviders = (providers: CapabilityProvider[] | undefined, node: React
 const ModuleRoute = ({ module }: { module: BusinessCapabilityModule }) => {
   const Component = module.component;
   return <>{applyProviders(module.providers, <Component />)}</>;
+};
+
+const QueryPreservingNavigate = ({ to }: { to: string }) => {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
 };
 
 const App = (): JSX.Element => {
@@ -50,17 +55,17 @@ const App = (): JSX.Element => {
         </aside>
         <main className="app-main">
           <Routes>
-            <Route index element={<Navigate to={defaultCapabilityPath} replace />} />
+            <Route index element={<QueryPreservingNavigate to={defaultCapabilityPath} />} />
             {capabilityModules.map((module) => {
               if (module.id === 'startlist') {
                 return (
                   <Route key={module.id} path={`${module.routePath}/*`} element={<ModuleRoute module={module} />}>
-                    <Route index element={<Navigate to="input" replace />} />
+                    <Route index element={<QueryPreservingNavigate to="input" />} />
                     <Route path="input" element={<InputStepPage />} />
                     <Route path="lanes" element={<LaneAssignmentStepPage />} />
                     <Route path="order" element={<ClassOrderStepPage />} />
                     <Route path="link" element={<StartlistLinkPage />} />
-                    <Route path="*" element={<Navigate to="input" replace />} />
+                    <Route path="*" element={<QueryPreservingNavigate to="input" />} />
                   </Route>
                 );
               }
@@ -72,7 +77,7 @@ const App = (): JSX.Element => {
                 element={applyProviders(startlistModule.providers, <StartlistViewerPage />)}
               />
             ) : null}
-            <Route path="*" element={<Navigate to={defaultCapabilityPath} replace />} />
+            <Route path="*" element={<QueryPreservingNavigate to={defaultCapabilityPath} />} />
           </Routes>
         </main>
       </div>
