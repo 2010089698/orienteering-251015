@@ -54,6 +54,7 @@ export interface StartlistModule {
   readRepository: StartlistReadRepository;
   transactionManager: TransactionManager;
   eventPublisher: ApplicationEventPublisher;
+  domainEventBus: DomainEventBus;
   useCases: StartlistUseCases;
   queryService: StartlistQueryService;
 }
@@ -64,7 +65,8 @@ export const createStartlistModule = (): StartlistModule => {
   const versionRepository = new InMemoryStartlistVersionRepository();
   const readRepository = new InMemoryStartlistReadRepository(store);
   const transactionManager = new SimpleTransactionManager();
-  const eventPublisher = new DomainEventBus();
+  const domainEventBus = new DomainEventBus();
+  const eventPublisher = domainEventBus;
   const factory = new StartlistFactory(SystemClock);
 
   const enterStartlistSettings = new EnterStartlistSettingsService(
@@ -130,6 +132,7 @@ export const createStartlistModule = (): StartlistModule => {
     readRepository,
     transactionManager,
     eventPublisher,
+    domainEventBus,
     useCases: {
       enterStartlistSettings,
       assignLaneOrder,
