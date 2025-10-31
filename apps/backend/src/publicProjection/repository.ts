@@ -13,6 +13,7 @@ export interface PublicProjectionRepository {
   upsertRace(record: PublicRaceRecord): Promise<void>;
   upsertStartlist(record: PublicStartlistRecord): Promise<void>;
   appendStartlistVersion(record: NewPublicStartlistVersion): Promise<PublicStartlistVersionRecord>;
+  clearAll(): Promise<void>;
   listEvents(): Promise<PublicEventView[]>;
   findEventById(eventId: string): Promise<PublicEventView | undefined>;
   findStartlistByRace(eventId: string, raceId: string): Promise<PublicStartlistDetails | undefined>;

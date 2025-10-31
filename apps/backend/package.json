@@ -5,7 +5,9 @@
   "type": "module",
   "main": "src/start.ts",
   "scripts": {
-    "start": "tsx src/start.ts"
+    "start": "tsx src/start.ts",
+    "rebuild:public-projection": "tsx src/publicProjection/rebuildAll.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@entry-management/adapters-http": "file:../../EntryManagement/packages/adapters-http",

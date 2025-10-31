@@ -72,6 +72,13 @@ export class InMemoryPublicProjectionRepository implements PublicProjectionRepos
     return clone(stored);
   }
 
+  async clearAll(): Promise<void> {
+    this.state.events.clear();
+    this.state.races.clear();
+    this.state.startlists.clear();
+    this.state.history.clear();
+  }
+
   async listEvents(): Promise<PublicEventView[]> {
     const racesByEvent = new Map<string, PublicRaceView[]>();
     for (const race of this.state.races.values()) {
