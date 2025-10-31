@@ -5,7 +5,8 @@
     "dev:frontend": "npm run dev --workspace @orienteering/startlist-frontend",
     "dev:startlist-backend": "npm run dev:backend --workspace startlist-management",
     "dev:entry-backend": "npm run start --workspace @entry-management/backend",
-    "dev:event-backend": "npm run start --workspace @event-management/backend"
+    "dev:event-backend": "npm run start --workspace @event-management/backend",
+    "rebuild:public-projection": "npm run rebuild:public-projection --workspace @entry-management/backend"
   },
   "workspaces": [
     "StartlistManagement",

@@ -198,6 +198,15 @@ export class SqlPublicProjectionRepository implements PublicProjectionRepository
     };
   }
 
+  async clearAll(): Promise<void> {
+    await this.db.exec(`
+      DELETE FROM public_startlist_versions;
+      DELETE FROM public_startlists;
+      DELETE FROM public_races;
+      DELETE FROM public_events;
+    `);
+  }
+
   async listEvents(): Promise<PublicEventView[]> {
     const rows = await this.db.all<EventRow[]>(
       `SELECT
