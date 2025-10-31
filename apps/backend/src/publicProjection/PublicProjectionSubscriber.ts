@@ -14,22 +14,33 @@ import type {
   PublicStartlistRecord,
 } from './models.js';
 import type { PublicProjectionRepository } from './repository.js';
+import type {
+  PublicProjectionCache,
+  PublicProjectionCacheKey,
+} from './cache/PublicProjectionCache.js';
+import type { PublicProjectionCdnClient } from './cdn/HttpPublicProjectionCdnClient.js';
 
 export interface PublicProjectionSubscriberOptions {
   repository: PublicProjectionRepository;
   eventQueryService: EventQueryService;
   startlistQueryService: StartlistQueryService;
+  cache?: PublicProjectionCache;
+  cdnClient?: PublicProjectionCdnClient;
 }
 
 export class PublicProjectionSubscriber {
   private readonly repository: PublicProjectionRepository;
   private readonly eventQueryService: EventQueryService;
   private readonly startlistQueryService: StartlistQueryService;
+  private readonly cache?: PublicProjectionCache;
+  private readonly cdnClient?: PublicProjectionCdnClient;
 
   constructor(options: PublicProjectionSubscriberOptions) {
     this.repository = options.repository;
     this.eventQueryService = options.eventQueryService;
     this.startlistQueryService = options.startlistQueryService;
+    this.cache = options.cache;
+    this.cdnClient = options.cdnClient;
   }
 
   async handle(event: unknown): Promise<void> {
@@ -67,6 +78,7 @@ export class PublicProjectionSubscriber {
 
     const record = this.mapEventDtoToRecord(dto, event.occurredAt.toISOString());
     await this.repository.upsertEvent(record);
+    await this.invalidateCache([{ type: 'event', eventId }]);
   }
 
   private async handleRaceScheduled(event: RaceScheduled): Promise<void> {
@@ -84,6 +96,7 @@ export class PublicProjectionSubscriber {
     const timestamp = event.occurredAt.toISOString();
     await this.repository.upsertEvent(this.mapEventDtoToRecord(dto, timestamp));
     await this.repository.upsertRace(this.mapRaceDtoToRecord(dto.id, raceDto, timestamp));
+    await this.invalidateCache([{ type: 'event', eventId }]);
   }
 
   private async handleStartlistSettingsEntered(event: StartlistSettingsEnteredEvent): Promise<void> {
@@ -106,9 +119,16 @@ export class PublicProjectionSubscriber {
       confirmedAt: timestamp,
       createdAt: timestamp,
     });
+    await this.invalidateCache([
+      { type: 'startlist', eventId: event.snapshot.eventId, raceId: event.snapshot.raceId },
+    ]);
   }
 
-  private async syncStartlist(snapshot: PublicStartlistRecord['snapshot'], timestamp: string, confirmedAt?: string): Promise<void> {
+  private async syncStartlist(
+    snapshot: PublicStartlistRecord['snapshot'],
+    timestamp: string,
+    confirmedAt?: string,
+  ): Promise<void> {
     const startlistRecord: PublicStartlistRecord = {
       id: snapshot.id,
       eventId: snapshot.eventId,
@@ -125,6 +145,10 @@ export class PublicProjectionSubscriber {
     await this.repository.upsertStartlist({ ...startlistRecord, createdAt });
 
     await this.syncRaceForStartlist(snapshot.eventId, snapshot.raceId, snapshot.id, timestamp);
+    await this.invalidateCache([
+      { type: 'event', eventId: snapshot.eventId },
+      { type: 'startlist', eventId: snapshot.eventId, raceId: snapshot.raceId },
+    ]);
   }
 
   private async syncRaceForStartlist(
@@ -192,5 +216,38 @@ export class PublicProjectionSubscriber {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
+  }
+
+  private async invalidateCache(keys: PublicProjectionCacheKey[]): Promise<void> {
+    if (!keys.length) {
+      return;
+    }
+
+    if (this.cache) {
+      await this.cache.invalidate(keys);
+    }
+
+    if (!this.cdnClient) {
+      return;
+    }
+
+    const paths = new Set<string>();
+    for (const key of keys) {
+      if (key.type === 'event') {
+        paths.add(`/api/public/events/${key.eventId}`);
+      } else {
+        paths.add(`/api/public/events/${key.eventId}/races/${key.raceId}/startlist`);
+      }
+    }
+
+    if (!paths.size) {
+      return;
+    }
+
+    void this.cdnClient
+      .purgePaths([...paths])
+      .catch(() => {
+        /* ignore CDN purge errors */
+      });
   }
 }
