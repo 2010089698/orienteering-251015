@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 
 import type { PublicProjectionRepository } from './repository.js';
+import type { PublicProjectionCache } from './cache/PublicProjectionCache.js';
 
 const StartlistSnapshotSchema = Type.Unknown();
 
@@ -122,12 +123,15 @@ type PublicStartlistResponse = Static<typeof PublicStartlistResponseSchema>;
 
 export interface PublicProjectionRoutesOptions {
   repository: PublicProjectionRepository;
+  cache?: PublicProjectionCache;
 }
 
 export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionRoutesOptions> = async (
   fastify,
   options,
 ) => {
+  const { repository, cache } = options;
+
   fastify.get<{ Reply: PublicEventListResponse }>(
     '/api/public/events',
     {
@@ -138,7 +142,7 @@ export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionR
       },
     },
     async () => {
-      const events = await options.repository.listEvents();
+      const events = await repository.listEvents();
       return { events } satisfies PublicEventListResponse;
     },
   );
@@ -155,11 +159,17 @@ export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionR
       },
     },
     async (request, reply) => {
-      const event = await options.repository.findEventById(request.params.eventId);
+      const cached = await cache?.getEvent(request.params.eventId);
+      if (cached) {
+        return { event: cached } satisfies PublicEventResponse;
+      }
+
+      const event = await repository.findEventById(request.params.eventId);
       if (!event) {
         reply.code(404);
         return { message: `Event ${request.params.eventId} was not found.` } satisfies ErrorResponse;
       }
+      await cache?.setEvent(event);
       return { event } satisfies PublicEventResponse;
     },
   );
@@ -176,7 +186,12 @@ export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionR
       },
     },
     async (request, reply) => {
-      const result = await options.repository.findStartlistByRace(
+      const cached = await cache?.getStartlist(request.params.eventId, request.params.raceId);
+      if (cached) {
+        return cached satisfies PublicStartlistResponse;
+      }
+
+      const result = await repository.findStartlistByRace(
         request.params.eventId,
         request.params.raceId,
       );
@@ -186,6 +201,7 @@ export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionR
           message: `Startlist for event ${request.params.eventId} and race ${request.params.raceId} was not found.`,
         } satisfies ErrorResponse;
       }
+      await cache?.setStartlist(request.params.eventId, request.params.raceId, result);
       return result satisfies PublicStartlistResponse;
     },
   );

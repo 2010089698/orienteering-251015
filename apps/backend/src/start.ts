@@ -10,9 +10,16 @@ import { createEventModule } from '@event-management/infrastructure';
 import { startlistRoutes } from '@startlist-management/adapters-http';
 import { createStartlistModule } from '@startlist-management/infrastructure';
 
+import { createClient, type RedisClientType } from 'redis';
+
 import { publicProjectionRoutes } from './publicProjection/routes.js';
 import { SqlPublicProjectionRepository } from './publicProjection/SqlPublicProjectionRepository.js';
 import { PublicProjectionSubscriber } from './publicProjection/PublicProjectionSubscriber.js';
+import { PublicProjectionCache } from './publicProjection/cache/PublicProjectionCache.js';
+import {
+  HttpPublicProjectionCdnClient,
+  type PublicProjectionCdnClient,
+} from './publicProjection/cdn/HttpPublicProjectionCdnClient.js';
 
 const start = async () => {
   const entryModule = createEntryModule();
@@ -21,10 +28,33 @@ const start = async () => {
 
   const databasePath = process.env.PUBLIC_PROJECTION_DB ?? path.join(process.cwd(), 'public-projection.sqlite3');
   const publicProjectionRepository = await SqlPublicProjectionRepository.initialize({ databasePath });
+
+  const redisUrl = process.env.PUBLIC_PROJECTION_REDIS_URL;
+  let redisClient: RedisClientType | undefined;
+  let publicProjectionCache: PublicProjectionCache | undefined;
+
+  if (redisUrl) {
+    redisClient = createClient({ url: redisUrl });
+    redisClient.on('error', (error) => {
+      console.error('Public projection Redis error', error);
+    });
+
+    try {
+      await redisClient.connect();
+      publicProjectionCache = new PublicProjectionCache(redisClient);
+    } catch (error) {
+      console.error('Failed to connect to Redis for public projection cache', error);
+    }
+  }
+
+  const cdnClient = createCdnClient();
+
   const publicProjectionSubscriber = new PublicProjectionSubscriber({
     repository: publicProjectionRepository,
     eventQueryService: eventModule.eventQueryService,
     startlistQueryService: startlistModule.queryService,
+    cache: publicProjectionCache,
+    cdnClient,
   });
 
   const server = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
@@ -50,7 +80,14 @@ const start = async () => {
 
   void server.register(publicProjectionRoutes, {
     repository: publicProjectionRepository,
+    cache: publicProjectionCache,
   });
+
+  if (redisClient) {
+    server.addHook('onClose', async () => {
+      await redisClient?.quit();
+    });
+  }
 
   const handleProjectionEvent = async (event: unknown) => {
     try {
@@ -78,5 +115,17 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+function createCdnClient(): PublicProjectionCdnClient | undefined {
+  const endpoint = process.env.PUBLIC_PROJECTION_CDN_PURGE_URL;
+  if (!endpoint) {
+    return undefined;
+  }
+
+  return new HttpPublicProjectionCdnClient({
+    endpoint,
+    authorizationToken: process.env.PUBLIC_PROJECTION_CDN_PURGE_TOKEN,
+  });
+}
 
 void start();

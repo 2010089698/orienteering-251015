@@ -1,71 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventCreated, RaceScheduled } from '@event-management/domain';
-import { EventId, RaceId, RaceSchedule } from '@event-management/domain';
+import { EventCreated, EventId, RaceId, RaceSchedule, RaceScheduled } from '@event-management/domain';
 import {
   StartlistFinalizedEvent,
   StartlistSettingsEnteredEvent,
   StartlistVersionGeneratedEvent,
-  type StartlistSnapshot,
 } from '@startlist-management/domain';
 
 import { InMemoryPublicProjectionRepository } from '../InMemoryPublicProjectionRepository.js';
 import { PublicProjectionSubscriber } from '../PublicProjectionSubscriber.js';
-
-const EVENT_ID = 'event-123';
-const RACE_ID = 'race-abc';
-const STARTLIST_ID = 'startlist-xyz';
-const TIMESTAMP = '2024-01-01T10:00:00.000Z';
-
-const buildEventDto = (overrides: Partial<ReturnType<typeof createEventDto>> = {}) => ({
-  ...createEventDto(),
-  ...overrides,
-});
-
-function createEventDto() {
-  return {
-    id: EVENT_ID,
-    name: 'Orienteering Cup',
-    startDate: '2024-01-01T00:00:00.000Z',
-    endDate: '2024-01-02T23:59:59.000Z',
-    venue: 'Forest Arena',
-    allowMultipleRacesPerDay: true,
-    allowScheduleOverlap: true,
-    races: [
-      {
-        id: RACE_ID,
-        name: 'Qualifier',
-        schedule: { start: TIMESTAMP },
-        duplicateDay: false,
-        overlapsExisting: false,
-      },
-    ],
-  };
-}
-
-function createRaceDto() {
-  return createEventDto().races[0]!;
-}
-
-function createStartlistSnapshot(status: StartlistSnapshot['status'] = 'DRAFT'): StartlistSnapshot {
-  return {
-    id: STARTLIST_ID,
-    eventId: EVENT_ID,
-    raceId: RACE_ID,
-    status,
-    settings: {
-      eventId: EVENT_ID,
-      startTime: TIMESTAMP,
-      laneCount: 4,
-      intervals: {
-        laneClass: { milliseconds: 60000 },
-        classPlayer: { milliseconds: 30000 },
-      },
-    },
-    laneAssignments: [],
-    classAssignments: [],
-    startTimes: [],
-  };
-}
+import {
+  EVENT_ID,
+  RACE_ID,
+  STARTLIST_ID,
+  TIMESTAMP,
+  buildEventDto,
+  buildRaceDto,
+  createEventDto,
+  createStartlistSnapshot,
+} from './fixtures.js';
 
 describe('PublicProjectionSubscriber', () => {
   it('projects events, races, and startlists from domain events', async () => {
@@ -78,7 +30,7 @@ describe('PublicProjectionSubscriber', () => {
           buildEventDto({
             races: [
               {
-                ...createRaceDto(),
+                ...buildRaceDto(),
                 startlist: { id: STARTLIST_ID, status: 'DRAFT' },
               },
             ],
@@ -88,7 +40,7 @@ describe('PublicProjectionSubscriber', () => {
           buildEventDto({
             races: [
               {
-                ...createRaceDto(),
+                ...buildRaceDto(),
                 startlist: { id: STARTLIST_ID, status: 'FINALIZED' },
               },
             ],
