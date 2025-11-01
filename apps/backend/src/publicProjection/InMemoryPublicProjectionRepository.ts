@@ -72,6 +72,19 @@ export class InMemoryPublicProjectionRepository implements PublicProjectionRepos
     return clone(stored);
   }
 
+  async replaceStartlistHistory(
+    startlistId: string,
+    history: PublicStartlistVersionRecord[],
+  ): Promise<void> {
+    this.state.history.set(
+      startlistId,
+      history.map((entry) => ({
+        ...clone(entry),
+        snapshot: clone(entry.snapshot),
+      })),
+    );
+  }
+
   async clearAll(): Promise<void> {
     this.state.events.clear();
     this.state.races.clear();

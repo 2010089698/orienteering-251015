@@ -82,3 +82,29 @@ EventManagement UI を利用しない場合は `VITE_EVENT_MANAGEMENT_API_BASE_U
 - [StartlistManagement ドメイン詳細](./StartlistManagement/README.md#startlistmanagement-ドメイン詳細)
 - [スタートリスト UI と連携ガイド](./apps/frontend/README.md)
 - [EntryManagement レイヤ概要と起動フロー](./EntryManagement/README.md)
+- 公開プロジェクション再生成エンドポイント: `POST /api/public/projection/rebuild`
+  - リクエストボディに `eventId` または `startlistId` のいずれか 1 つを指定します（同時指定は 400）。
+  - スタートリスト ID を指定した場合は最新版スナップショットと公開履歴を再読込し、差分 (`diff`) をレスポンスおよび監査用通知に含めます。
+  - 再生成後は該当イベント／スタートリストの Redis キャッシュを即時削除し、設定済み CDN のパスパージを実行します。
+  - レスポンス例:
+
+    ```json
+    {
+      "result": {
+        "type": "startlist",
+        "eventId": "event-123",
+        "raceId": "race-abc",
+        "startlistId": "startlist-xyz",
+        "startlist": { "startlist": { /* 公開スナップショット */ }, "history": [/* バージョン履歴 */] },
+        "urls": [
+          "/api/public/events/event-123",
+          "/api/public/events/event-123/races/race-abc/startlist"
+        ],
+        "diff": { /* StartlistQueryService.diff が返す差分 */ }
+      },
+      "cacheKeys": [
+        { "type": "event", "eventId": "event-123" },
+        { "type": "startlist", "eventId": "event-123", "raceId": "race-abc" }
+      ]
+    }
+    ```

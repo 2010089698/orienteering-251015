@@ -198,6 +198,36 @@ export class SqlPublicProjectionRepository implements PublicProjectionRepository
     };
   }
 
+  async replaceStartlistHistory(
+    startlistId: string,
+    history: PublicStartlistVersionRecord[],
+  ): Promise<void> {
+    await this.db.exec('BEGIN');
+    try {
+      await this.db.run(`DELETE FROM public_startlist_versions WHERE startlist_id = ?`, [startlistId]);
+
+      for (const entry of history) {
+        await this.db.run(
+          `INSERT INTO public_startlist_versions (
+            startlist_id, version, snapshot, confirmed_at, created_at
+          ) VALUES (?, ?, ?, ?, ?)`,
+          [
+            startlistId,
+            entry.version,
+            JSON.stringify(entry.snapshot),
+            entry.confirmedAt,
+            entry.createdAt,
+          ],
+        );
+      }
+
+      await this.db.exec('COMMIT');
+    } catch (error) {
+      await this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   async clearAll(): Promise<void> {
     await this.db.exec(`
       DELETE FROM public_startlist_versions;

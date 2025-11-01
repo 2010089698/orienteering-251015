@@ -81,6 +81,9 @@ const start = async () => {
   void server.register(publicProjectionRoutes, {
     repository: publicProjectionRepository,
     cache: publicProjectionCache,
+    cdnClient,
+    eventQueryService: eventModule.eventQueryService,
+    startlistQueryService: startlistModule.queryService,
   });
 
   if (redisClient) {
