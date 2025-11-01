@@ -2,8 +2,14 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 
+import type { EventQueryService } from '@event-management/application';
+import type { StartlistQueryService } from '@startlist-management/application';
+
 import type { PublicProjectionRepository } from './repository.js';
 import type { PublicProjectionCache } from './cache/PublicProjectionCache.js';
+import type { PublicProjectionCdnClient } from './cdn/HttpPublicProjectionCdnClient.js';
+import type { PublicProjectionNotifier } from './rebuildOne.js';
+import { ProjectionRebuildError, rebuildPublicProjectionRecord } from './rebuildOne.js';
 
 const StartlistSnapshotSchema = Type.Unknown();
 
@@ -114,23 +120,85 @@ const PublicStartlistResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 
+const CacheKeySchema = Type.Union([
+  Type.Object(
+    {
+      type: Type.Literal('event'),
+      eventId: Type.String({ minLength: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      type: Type.Literal('startlist'),
+      eventId: Type.String({ minLength: 1 }),
+      raceId: Type.String({ minLength: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
 type EventParams = Static<typeof EventIdParamsSchema>;
 type EventRaceParams = Static<typeof EventRaceParamsSchema>;
 type ErrorResponse = Static<typeof ErrorResponseSchema>;
 type PublicEventResponse = Static<typeof PublicEventResponseSchema>;
 type PublicEventListResponse = Static<typeof PublicEventListResponseSchema>;
 type PublicStartlistResponse = Static<typeof PublicStartlistResponseSchema>;
+type RebuildRequest = Static<typeof RebuildRequestSchema>;
+type RebuildResponse = Static<typeof RebuildResponseSchema>;
+
+const RebuildRequestSchema = Type.Object(
+  {
+    eventId: Type.Optional(Type.String({ minLength: 1 })),
+    startlistId: Type.Optional(Type.String({ minLength: 1 })),
+  },
+  { additionalProperties: false },
+);
+
+const RebuildEventResultSchema = Type.Object(
+  {
+    type: Type.Literal('event'),
+    event: PublicEventSchema,
+    urls: Type.Array(Type.String({ minLength: 1 })),
+  },
+  { additionalProperties: false },
+);
+
+const RebuildStartlistResultSchema = Type.Object(
+  {
+    type: Type.Literal('startlist'),
+    eventId: Type.String({ minLength: 1 }),
+    raceId: Type.String({ minLength: 1 }),
+    startlistId: Type.String({ minLength: 1 }),
+    startlist: PublicStartlistResponseSchema,
+    urls: Type.Array(Type.String({ minLength: 1 })),
+    diff: Type.Optional(Type.Unknown()),
+  },
+  { additionalProperties: false },
+);
+
+const RebuildResponseSchema = Type.Object(
+  {
+    result: Type.Union([RebuildEventResultSchema, RebuildStartlistResultSchema]),
+    cacheKeys: Type.Array(CacheKeySchema),
+  },
+  { additionalProperties: false },
+);
 
 export interface PublicProjectionRoutesOptions {
   repository: PublicProjectionRepository;
   cache?: PublicProjectionCache;
+  cdnClient?: PublicProjectionCdnClient;
+  eventQueryService: EventQueryService;
+  startlistQueryService: StartlistQueryService;
+  notifier?: PublicProjectionNotifier;
 }
 
 export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionRoutesOptions> = async (
   fastify,
   options,
 ) => {
-  const { repository, cache } = options;
+  const { repository, cache, cdnClient, eventQueryService, startlistQueryService, notifier } = options;
 
   fastify.get<{ Reply: PublicEventListResponse }>(
     '/api/public/events',
@@ -203,6 +271,72 @@ export const publicProjectionRoutes: FastifyPluginAsyncTypebox<PublicProjectionR
       }
       await cache?.setStartlist(request.params.eventId, request.params.raceId, result);
       return result satisfies PublicStartlistResponse;
+    },
+  );
+
+  fastify.post<{ Body: RebuildRequest; Reply: RebuildResponse | ErrorResponse }>(
+    '/api/public/projection/rebuild',
+    {
+      schema: {
+        body: RebuildRequestSchema,
+        response: {
+          200: RebuildResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { eventId, startlistId } = request.body;
+      if ((eventId && startlistId) || (!eventId && !startlistId)) {
+        reply.code(400);
+        return { message: 'Provide either eventId or startlistId.' } satisfies ErrorResponse;
+      }
+
+      try {
+        const result = await rebuildPublicProjectionRecord({
+          repository,
+          cache,
+          cdnClient,
+          notifier,
+          eventQueryService,
+          startlistQueryService,
+          eventId: eventId ?? undefined,
+          startlistId: startlistId ?? undefined,
+          logger: fastify.log,
+        });
+
+        if (result.type === 'event') {
+          return {
+            result: {
+              type: 'event',
+              event: result.event,
+              urls: result.urls,
+            },
+            cacheKeys: result.cacheKeys,
+          };
+        }
+
+        return {
+          result: {
+            type: 'startlist',
+            eventId: result.eventId,
+            raceId: result.raceId,
+            startlistId: result.startlistId,
+            startlist: result.startlist,
+            urls: result.urls,
+            ...(result.diff ? { diff: result.diff } : {}),
+          },
+          cacheKeys: result.cacheKeys,
+        };
+      } catch (error) {
+        if (error instanceof ProjectionRebuildError) {
+          reply.code(404);
+          return { message: error.message } satisfies ErrorResponse;
+        }
+
+        throw error;
+      }
     },
   );
 };
